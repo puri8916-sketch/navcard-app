@@ -829,12 +829,12 @@
       if (lines.length === 0) { skippedFiles++; continue; }
       const header = parseCsvLine(lines[0]).map(s => s.trim());
       const iName = header.indexOf('ชื่อเรือ');
-      const iVal = header.indexOf('ตัวเลขที่กรอก');
-      const iTime = header.indexOf('เวลา');
+      const iVal = header.findIndex(h => h.startsWith('ตัวเลขที่กรอก') || h.includes('ความยาว') || h.includes('เลขที่กรอก'));
+      const iTime = header.findIndex(h => h === 'เวลา' || h.includes('บันทึกล่าสุด'));
       if (iName < 0 || iVal < 0) { skippedFiles++; continue; }   // old files without ship names
       for (let k = 1; k < lines.length; k++) {
         const cols = parseCsvLine(lines[k]);
-        const name = (cols[iName] || '').trim();
+        const name = (cols[iName] || '').replace(/\s+/g, ' ').trim();
         const raw = (cols[iVal] || '').trim();
         const v = parseFloat(raw);
         if (!name || isNaN(v)) continue;
