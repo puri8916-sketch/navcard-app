@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin:0">
+<script>
+  // Minimal Streamlit component (no build step): reads the calculator's ship
+  // memory from this browser's localStorage and sends it to Python.
+  const SHIPS_KEY = 'calc3_2808_ships';
+
+  function post(type, extra) {
+    window.parent.postMessage(Object.assign({ isStreamlitMessage: true, type: type }, extra || {}), '*');
+  }
+
+  function readStore() {
+    try {
+      const raw = localStorage.getItem(SHIPS_KEY);
+      const ships = raw ? JSON.parse(raw) : {};
+      return { ships: (ships && typeof ships === 'object') ? ships : {} };
+    } catch (err) {
+      return { ships: {}, error: String(err) };
+    }
+  }
+
+  let lastSent = null;
+  function sendIfChanged() {
+    const store = readStore();
+    const s = JSON.stringify(store);
+    if (s !== lastSent) {
+      lastSent = s;
+      post('streamlit:setComponentValue', { value: store, dataType: 'json' });
+    }
+  }
+
+  window.addEventListener('message', function (event) {
+    if (event.data && event.data.type === 'streamlit:render') {
+      sendIfChanged();
+    }
+  });
+
+  post('streamlit:componentReady', { apiVersion: 1 });
+  post('streamlit:setFrameHeight', { height: 0 });
+  sendIfChanged();
+</script>
+</body>
+</html>

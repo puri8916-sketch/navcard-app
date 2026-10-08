@@ -5,10 +5,12 @@ import tempfile
 import zipfile
 
 import streamlit as st
+import streamlit.components.v1 as components
 
 import nav_core as nc
 
-st.set_page_config(page_title="Navigation Card Merger", layout="wide")
+st.set_page_config(page_title="Navigation Card Merger", layout="wide",
+                   initial_sidebar_state="expanded")
 
 _BASE_CSS = """
 <style>
@@ -32,6 +34,7 @@ _DARK_CSS = """
     color: #ffffff !important; border-color: #ff4b4b !important; }
 .stApp button[data-testid^="stBaseButton"]:disabled { opacity: 0.45 !important; }
 .stApp hr { border-color: #3b3b45 !important; }
+[data-testid="stSidebar"], [data-testid="stSidebar"] > div:first-child { background-color: #1b1c24 !important; }
 .stApp button[data-testid="stBaseButton-primary"], .stApp button[data-testid="stBaseButton-primary"] * { color: #ffffff !important; }
 .stApp [data-baseweb="input"], .stApp [data-baseweb="textarea"], .stApp [data-baseweb="select"] > div { border-color: #4b4b57 !important; }
 .stApp [data-testid="stTextInputRootElement"], .stApp [data-testid="stTextAreaRootElement"], .stApp [data-testid="stSelectbox"] [data-baseweb="select"] > div { border-color: #4b4b57 !important; }
@@ -62,6 +65,7 @@ _LIGHT_CSS = """
     color: #ffffff !important; border-color: #ff4b4b !important; }
 .stApp button[data-testid^="stBaseButton"]:disabled { opacity: 0.45 !important; }
 .stApp hr { border-color: #e6e9ef !important; }
+[data-testid="stSidebar"], [data-testid="stSidebar"] > div:first-child { background-color: #f0f2f6 !important; }
 .stApp button[data-testid="stBaseButton-primary"], .stApp button[data-testid="stBaseButton-primary"] * { color: #ffffff !important; }
 .stApp [data-baseweb="input"], .stApp [data-baseweb="textarea"], .stApp [data-baseweb="select"] > div { border-color: #d5d8e0 !important; }
 .stApp [data-testid="stTextInputRootElement"], .stApp [data-testid="stTextAreaRootElement"], .stApp [data-testid="stSelectbox"] [data-baseweb="select"] > div { border-color: #d5d8e0 !important; }
@@ -88,13 +92,41 @@ def apply_theme(choice):
     elif choice == _THEME_OPTIONS[2]:
         st.markdown(_BASE_CSS % {"app": _DARK_CSS}, unsafe_allow_html=True)
 
-_title_col, _theme_col = st.columns([3, 2])
-with _title_col:
-    st.title("⚓ Navigation Card Merger")
-with _theme_col:
-    _theme_choice = st.radio("โหมดการแสดงผล", _THEME_OPTIONS, horizontal=True,
-                             key="theme_choice", index=0)
+_HERE = os.path.dirname(os.path.abspath(__file__))
+_PAGES = ["⚓ รวมการ์ด", "🧮 เครื่องคิดเลข ×3.2808"]
+
+with st.sidebar:
+    st.markdown("### เมนู")
+    _page = st.radio("เมนู", _PAGES, key="page_choice", label_visibility="collapsed")
+    st.divider()
+    _theme_choice = st.radio("โหมดการแสดงผล", _THEME_OPTIONS, key="theme_choice", index=0)
 apply_theme(_theme_choice)
+
+if _page == _PAGES[1]:
+    st.title("🧮 เครื่องคิดเลข ×3.2808")
+    st.caption("ความยาวเรือที่บันทึกที่นี่จะถูกใช้ในเมนู ⚓ รวมการ์ด โดยอัตโนมัติ "
+               "(จำไว้ในเบราว์เซอร์เครื่องนี้ — กด “นำเข้าจาก CSV เก่า” เพื่อใส่ข้อมูลเดิมครั้งเดียว)")
+    with open(os.path.join(_HERE, "calc_3_2808.html"), encoding="utf-8") as _f:
+        _calc_html = _f.read()
+    # follow the app's theme choice (the calculator keeps its own ☀️/🌙 button too)
+    _calc_theme = {_THEME_OPTIONS[1]: "light", _THEME_OPTIONS[2]: "dark"}.get(_theme_choice)
+    if _calc_theme:
+        _calc_html = _calc_html.replace(
+            "<script>",
+            "<script>try{localStorage.setItem('calc3_2808_theme','" + _calc_theme + "');}catch(e){}</script>\n<script>", 1)
+    _l, _m, _r = st.columns([1, 2, 1])
+    with _m:
+        components.html(_calc_html, height=900, scrolling=True)
+    st.stop()   # the card-merger UI below is only for the first page
+
+st.title("⚓ Navigation Card Merger")
+
+# Bridge: reads the calculator's remembered ship lengths from this browser.
+_ship_store = components.declare_component(
+    "ship_store", path=os.path.join(_HERE, "ship_store_component"))
+_store = _ship_store(key="ship_store", default=None)
+_ship_memory = nc.ship_memory_from_store(_store)
+
 st.caption("อัปโหลดไฟล์ zip (NavigationCard PDFs + ReportCardIsClosedDaily.xlsx + CSV ตัวเลข) "
            "ระบบจะตรวจสอบความครบถ้วนและรวมเป็น PDF เดียว")
 
@@ -127,10 +159,21 @@ extracted_dir = os.path.join(workdir, "extracted")
 
 uploaded = st.file_uploader("ไฟล์ zip ของชุดการ์ด", type="zip")
 
-col_a, col_b = st.columns([1, 1])
+if _store is None:
+    st.caption("⏳ กำลังอ่านความยาวเรือจากเครื่องคิดเลข...")
+elif _store.get("error"):
+    st.warning("อ่านข้อมูลความยาวเรือจากเบราว์เซอร์ไม่ได้ — ใส่ไฟล์ CSV ใน zip หรือกรอกเองด้านล่างแทน")
+else:
+    st.caption(f"🧮 ความยาวเรือที่จำไว้ในเครื่องคิดเลข: **{len(_ship_memory)}** ลำ"
+               + ("" if _ship_memory else " — ยังไม่มี: ไปเมนู เครื่องคิดเลข แล้วกด “นำเข้าจาก CSV เก่า”"))
+
+col_a, col_b, col_c = st.columns([1, 1, 1])
 with col_a:
     analyze_clicked = st.button("📋 ตรวจสอบความครบถ้วน", type="primary", disabled=uploaded is None)
 with col_b:
+    recheck_clicked = st.button("🔁 ตรวจสอบอีกครั้ง (ไฟล์เดิม)", disabled=st.session_state.report is None,
+                                help="ใช้หลังเพิ่มความยาวเรือในเครื่องคิดเลข ไม่ต้องอัปโหลด zip ซ้ำ")
+with col_c:
     reset_clicked = st.button("🔄 เริ่มใหม่ (ล้างไฟล์ที่อัปโหลด)")
 
 if reset_clicked:
@@ -159,7 +202,7 @@ if analyze_clicked and uploaded is not None:
         st.error("ไม่พบไฟล์ .xlsx ใน zip นี้ — ต้องมี ReportCardIsClosedDaily.xlsx")
     else:
         xlsx_path = xlsx_candidates[0]
-        report = nc.analyze_batch(card_dir, xlsx_path, csv_paths)
+        report = nc.analyze_batch(card_dir, xlsx_path, csv_paths, ship_memory=_ship_memory)
         st.session_state.report = report
         st.session_state.upload_dt = nc.thai_now()
         st.session_state.remarks = {}
@@ -168,10 +211,30 @@ if analyze_clicked and uploaded is not None:
         st.session_state.data_fixes = {}
         st.session_state.row_overrides = {}
 
+if recheck_clicked and st.session_state.report is not None:
+    _x = glob.glob(os.path.join(extracted_dir, "*.xlsx"))
+    _c = glob.glob(os.path.join(extracted_dir, "*.csv"))
+    if _x and os.path.isdir(card_dir):
+        st.session_state.report = nc.analyze_batch(card_dir, _x[0], _c, ship_memory=_ship_memory)
+        st.success("ตรวจสอบใหม่แล้ว (ใช้ความยาวเรือล่าสุดจากเครื่องคิดเลข)")
+    else:
+        st.error("ไม่พบไฟล์เดิมบนเซิร์ฟเวอร์แล้ว — กรุณาอัปโหลด zip ใหม่")
+
 report = st.session_state.report
 
 if report is not None:
-    complete = nc.is_batch_complete(report)
+    # sync manual length overrides from the input boxes first (so the messages below are never stale)
+    for _cn, _nm in report["unmatched_loa_ships"]:
+        _v = str(st.session_state.get(f"loa_{_cn}", "")).strip()
+        try:
+            if _v:
+                st.session_state.loa_overrides[_cn] = float(_v)
+            else:
+                st.session_state.loa_overrides.pop(_cn, None)
+        except ValueError:
+            st.session_state.loa_overrides.pop(_cn, None)
+
+    complete = nc.is_batch_complete(report, st.session_state.loa_overrides)
     n_ships = len(report["ships"])
     n_matched_cards = len(report["card_map"])
 
@@ -194,23 +257,29 @@ if report is not None:
             f"{', '.join(report['extra_cards_no_report_row'])}"
         )
 
-    if report["unmatched_loa_ships"] and not report["no_csv_at_all"]:
-        problems = True
-        st.error("⚠️ ไม่มีค่า LOA (CSV) สำหรับเรือเหล่านี้ — กรอกค่าด้วยตนเองด้านล่าง:")
-        for cn, name in report["unmatched_loa_ships"]:
-            cur = st.session_state.loa_overrides.get(cn, "")
-            val = st.text_input(f"LOA override สำหรับ {cn} ({name})", value=cur, key=f"loa_{cn}")
-            if val:
-                try:
-                    st.session_state.loa_overrides[cn] = float(val)
-                except ValueError:
-                    st.caption("ใส่ตัวเลขเท่านั้น")
+    _missing = [(cn, nm) for cn, nm in report["unmatched_loa_ships"]
+                if cn not in st.session_state.loa_overrides]
+    if report["unmatched_loa_ships"]:
+        if _missing:
+            problems = True
+            st.error("⚠️ ไม่พบความยาวเรือ (ทั้งในเครื่องคิดเลขและ CSV) สำหรับ: "
+                     + ", ".join(f"{nm or cn}" for cn, nm in report["unmatched_loa_ships"]
+                                 if cn not in st.session_state.loa_overrides))
+            st.caption("ไปเพิ่มที่เมนู 🧮 เครื่องคิดเลข ×3.2808 แล้วกลับมากด “ตรวจสอบอีกครั้ง (ไฟล์เดิม)” "
+                       "หรือกรอกค่าชั่วคราวด้านล่าง")
+        _box = st.expander("กรอกความยาวเรือเอง (เฉพาะรอบนี้)", expanded=len(_missing) <= 6)
+        with _box:
+            for cn, name in report["unmatched_loa_ships"]:
+                cur = st.session_state.loa_overrides.get(cn, "")
+                val = st.text_input(f"{cn} ({name or '-'})", value=cur, key=f"loa_{cn}")
+                if val:
+                    try:
+                        st.session_state.loa_overrides[cn] = float(val)
+                    except ValueError:
+                        st.caption("ใส่ตัวเลขเท่านั้น")
 
     if report["unused_csv_entries"]:
         st.info(f"CSV มีรายการที่ไม่ได้ใช้ (ชื่อไม่ตรงกับเรือใดเลย): {report['unused_csv_entries']}")
-
-    if report["no_csv_at_all"]:
-        st.warning("ไม่มีไฟล์ CSV ใน zip นี้ — จะข้ามตัวเลขหลัง LOA ทุกใบ")
 
     st.divider()
     st.subheader("รายการเรือทั้งหมด")
@@ -218,7 +287,13 @@ if report is not None:
         cn = s["card_no"]
         name = report["ship_names"].get(cn, "(ไม่มีไฟล์การ์ด)")
         loa = report["loa_map"].get(cn)
-        loa_display = f"{loa}m" if loa is not None else "-"
+        _src = {"csv": "CSV", "memory": "เครื่องคิดเลข"}.get(report.get("loa_source", {}).get(cn), "")
+        if loa is not None:
+            loa_display = f"{loa}m ({_src})"
+        elif cn in st.session_state.loa_overrides:
+            loa_display = f"{st.session_state.loa_overrides[cn]}m (กรอกเอง)"
+        else:
+            loa_display = "❌ ไม่มี"
         st.write(f"- **{cn}** — {name} — LOA: {loa_display} — {len(s['rows'])} legs")
 
     st.divider()

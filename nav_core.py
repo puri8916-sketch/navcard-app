@@ -299,10 +299,15 @@ def build_overlay(ship, loa_value, remark_lines=None, data_fixes=None, row_count
     return PdfReader(buf).pages[0]
 
 
-def analyze_batch(card_dir, xlsx_path, csv_paths):
+def analyze_batch(card_dir, xlsx_path, csv_paths, ship_memory=None):
     """Read everything and report completeness + the proposed LOA matching,
     without building the final PDF. Used to drive the UI before the user
-    confirms remarks/overrides and clicks Build."""
+    confirms remarks/overrides and clicks Build.
+
+    LOA value sources, in priority order:
+      1. CSV file(s) inside the zip (explicit for this batch)
+      2. ship_memory = {ship name: length} remembered by the calculator page
+    """
     ships = parse_ships(xlsx_path)
 
     all_files = [f for f in os.listdir(card_dir) if f.lower().endswith('.pdf')]
@@ -330,6 +335,7 @@ def analyze_batch(card_dir, xlsx_path, csv_paths):
             ship_names[cn] = extract_ship_name(os.path.join(card_dir, card_map[cn]))
 
     loa_map = {}
+    loa_source = {}
     unmatched_ships = []
     unused_csv = {}
     no_csv_at_all = not csv_paths
@@ -354,9 +360,9 @@ def analyze_batch(card_dir, xlsx_path, csv_paths):
                             break
                 if bucket:
                     loa_map[cn] = bucket.pop(0)
+                    loa_source[cn] = 'csv'
                 else:
                     loa_map[cn] = None
-                    unmatched_ships.append((cn, ship_names.get(cn)))
             unused_csv = {nm: vals for nm, vals in csv_by_name.items() if vals}
         else:
             loa_values = [float(v) for _, v in loa_rows]
@@ -376,14 +382,42 @@ def analyze_batch(card_dir, xlsx_path, csv_paths):
                 row_ind, col_ind = linear_sum_assignment(cost)
                 for i, j in zip(row_ind, col_ind):
                     loa_map[ships[i]['card_no']] = loa_values[j]
-            else:
-                unmatched_ships = [(s['card_no'], ship_names.get(s['card_no'])) for s in ships]
+                    loa_source[ships[i]['card_no']] = 'csv'
+
+    # ---- ship-length memory from the calculator page (fills what the CSV did not) ----
+    mem = {}
+    for k, v in (ship_memory or {}).items():
+        try:
+            mem[normalize_name(k)] = float(v)
+        except (TypeError, ValueError):
+            continue
+    for s in ships:
+        cn = s['card_no']
+        if loa_map.get(cn) is not None:
+            continue
+        nm = normalize_name(ship_names.get(cn))
+        val = None
+        if nm:
+            val = mem.get(nm)
+            if val is None:                      # e.g. combined tow entry "SHIP+TOWNAME"
+                for key, v in mem.items():
+                    if key.startswith(nm):
+                        val = v
+                        break
+        if val is not None:
+            loa_map[cn] = val
+            loa_source[cn] = 'memory'
+
+    unmatched_ships = [(s['card_no'], ship_names.get(s['card_no']))
+                       for s in ships if loa_map.get(s['card_no']) is None]
+    no_csv_at_all = (not csv_paths) and not mem
 
     report = {
         'ships': ships,
         'card_map': card_map,
         'ship_names': ship_names,
         'loa_map': loa_map,
+        'loa_source': loa_source,
         'duplicates': duplicates,
         'missing_card_pdf': missing_card_pdf,
         'extra_cards_no_report_row': extra_cards,
@@ -394,15 +428,26 @@ def analyze_batch(card_dir, xlsx_path, csv_paths):
     return report
 
 
-def is_batch_complete(report):
-    """True only if every card has: a blank PDF, a report row (or is an
-    accepted empty-row 'extra' card), and an LOA value (or LOA skip is ok
-    when there's genuinely no csv at all)."""
+def is_batch_complete(report, loa_overrides=None):
+    """True only if every card has a blank PDF and an LOA value
+    (from CSV, calculator memory, or a manual override)."""
     if report['missing_card_pdf']:
         return False
-    if report['unmatched_loa_ships'] and not report['no_csv_at_all']:
-        return False
-    return True
+    overrides = loa_overrides or {}
+    missing = [cn for cn, _ in report['unmatched_loa_ships'] if cn not in overrides]
+    return not missing
+
+
+def ship_memory_from_store(store):
+    """Convert the browser-component payload
+    {'ships': {name: {'value': '64.8', ...}}} -> {name: 64.8}."""
+    out = {}
+    for name, d in ((store or {}).get('ships') or {}).items():
+        try:
+            out[name] = float(d['value'] if isinstance(d, dict) else d)
+        except (TypeError, ValueError, KeyError):
+            continue
+    return out
 
 
 def build_pdf(card_dir, report, loa_overrides=None, remarks=None, data_fixes=None,

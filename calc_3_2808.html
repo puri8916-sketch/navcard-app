@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<title>เครื่องคิดเลขคูณ 3.2808</title>
+<style>
+  :root {
+    --bg: #f4f4f7;
+    --card-bg: #ffffff;
+    --card-shadow: rgba(0,0,0,0.08);
+    --text-main: #333333;
+    --text-secondary: #666666;
+    --text-muted: #999999;
+    --border: #cccccc;
+    --input-bg: #ffffff;
+    --result-bg: #f0f0f5;
+    --history-item-bg: #f9f9fb;
+    --accent: #5b5be0;
+    --accent-hover: #4a4ac9;
+    --danger: #d33333;
+    --danger-bg: #fdecec;
+    --btn-secondary-bg: #eef0f5;
+    --btn-secondary-text: #444444;
+    --btn-secondary-border: #d5d8e0;
+    --suggest-hover: #eef0fb;
+  }
+
+  [data-theme="dark"] {
+    --bg: #1a1a1f;
+    --card-bg: #24242b;
+    --card-shadow: rgba(0,0,0,0.4);
+    --text-main: #eaeaef;
+    --text-secondary: #b5b5c0;
+    --text-muted: #82828f;
+    --border: #40404a;
+    --input-bg: #2e2e37;
+    --result-bg: #2e2e37;
+    --history-item-bg: #2a2a32;
+    --accent: #7c7cf0;
+    --accent-hover: #9090f5;
+    --danger: #ff6b6b;
+    --danger-bg: #3a2323;
+    --btn-secondary-bg: #33333d;
+    --btn-secondary-text: #e0e0e5;
+    --btn-secondary-border: #45454f;
+    --suggest-hover: #34344a;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+    background: var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    margin: 0;
+    padding: 1rem;
+    transition: background 0.25s ease;
+  }
+
+  .card {
+    position: relative;
+    background: var(--card-bg);
+    border-radius: 16px;
+    box-shadow: 0 4px 20px var(--card-shadow);
+    padding: 2rem 2.5rem;
+    width: 360px;
+    text-align: center;
+    transition: background 0.25s ease, box-shadow 0.25s ease;
+  }
+
+  .theme-toggle {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--btn-secondary-bg);
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    padding: 0;
+  }
+  .theme-toggle:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  h2 {
+    font-size: 18px;
+    color: var(--text-main);
+    margin-bottom: 1.25rem;
+    padding-right: 20px;
+  }
+
+  .field-group {
+    text-align: left;
+    margin-bottom: 10px;
+    position: relative;
+  }
+  .field-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+    display: block;
+  }
+
+  input {
+    width: 100%;
+    font-size: 17px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    text-align: left;
+    background: var(--input-bg);
+    color: var(--text-main);
+  }
+  input#inputNum {
+    text-align: center;
+    font-size: 20px;
+  }
+  input:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  .suggest-box {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-top: 4px;
+    max-height: 160px;
+    overflow-y: auto;
+    z-index: 10;
+    box-shadow: 0 6px 16px var(--card-shadow);
+    text-align: left;
+    display: none;
+  }
+  .suggest-box.show {
+    display: block;
+  }
+  .suggest-item {
+    padding: 10px 12px;
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--text-main);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .suggest-item span:first-child {
+    flex: 1;
+    pointer-events: none;
+  }
+  .suggest-item:hover, .suggest-item.active {
+    background: var(--suggest-hover);
+  }
+  .suggest-item .s-num {
+    color: var(--text-muted);
+    font-size: 12px;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+  .suggest-item .s-right {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+  .suggest-delete-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 13px;
+    padding: 2px 4px;
+    line-height: 1;
+    border-radius: 4px;
+    flex-shrink: 0;
+  }
+  .suggest-delete-btn:hover {
+    color: var(--danger);
+    background: var(--danger-bg);
+  }
+
+  .input-row {
+    display: flex;
+    gap: 8px;
+  }
+
+  .primary-btn {
+    background: var(--accent);
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    padding: 0 16px;
+    font-size: 15px;
+    cursor: pointer;
+    font-weight: 500;
+  }
+  .primary-btn:hover {
+    background: var(--accent-hover);
+  }
+
+  .factor {
+    color: var(--text-muted);
+    font-size: 13px;
+    margin: 0.75rem 0;
+  }
+
+  .result-box {
+    background: var(--result-bg);
+    border-radius: 10px;
+    padding: 1rem;
+    margin-bottom: 1.25rem;
+  }
+  .result-label {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+  }
+  .result-value {
+    font-size: 30px;
+    font-weight: 600;
+    color: var(--text-main);
+  }
+
+  .error-msg {
+    color: var(--danger);
+    font-size: 12px;
+    min-height: 16px;
+    margin: 4px 0 4px 0;
+    text-align: left;
+  }
+  .hint-msg {
+    color: var(--accent);
+    font-size: 12px;
+    min-height: 16px;
+    margin: -4px 0 8px 0;
+    text-align: left;
+  }
+
+  .history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .history-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-main);
+  }
+
+  .history-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .action-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--btn-secondary-bg);
+    color: var(--btn-secondary-text);
+    border: 1px solid var(--btn-secondary-border);
+    border-radius: 6px;
+    font-size: 12px;
+    padding: 5px 10px;
+    cursor: pointer;
+    font-weight: 500;
+  }
+  .action-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  #clearBtn:hover {
+    border-color: var(--danger);
+    color: var(--danger);
+  }
+  .action-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    border-color: var(--btn-secondary-border);
+    color: var(--btn-secondary-text);
+  }
+
+  ul#historyList {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    max-height: 200px;
+    overflow-y: auto;
+    text-align: left;
+  }
+  ul#historyList li {
+    background: var(--history-item-bg);
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin-bottom: 6px;
+    font-size: 14px;
+    color: var(--text-main);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  ul#historyList li .item-info {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  ul#historyList li .item-ship {
+    font-size: 12px;
+    color: var(--accent);
+    font-weight: 600;
+  }
+  ul#historyList li .item-value {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  ul#historyList li span.time {
+    color: var(--text-muted);
+    font-size: 11px;
+    white-space: nowrap;
+  }
+  .item-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .delete-item-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 14px;
+    padding: 2px 4px;
+    line-height: 1;
+    border-radius: 4px;
+  }
+  .delete-item-btn:hover {
+    color: var(--danger);
+    background: var(--danger-bg);
+  }
+
+  .empty-msg {
+    color: var(--text-muted);
+    font-size: 13px;
+    padding: 12px 0;
+  }
+
+  .memory-row {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    text-align: left;
+  }
+  .memory-info {
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+
+  ul#shipsList {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    max-height: 180px;
+    overflow-y: auto;
+    text-align: left;
+  }
+  ul#shipsList li {
+    background: var(--history-item-bg);
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin-bottom: 6px;
+    font-size: 14px;
+    color: var(--text-main);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  ul#shipsList li .ship-name {
+    font-weight: 600;
+    color: var(--text-main);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  ul#shipsList li .ship-num {
+    color: var(--text-muted);
+    font-size: 12px;
+    white-space: nowrap;
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <button class="theme-toggle" id="themeToggle" title="สลับโหมดสว่าง/มืด">🌙</button>
+    <h2>เครื่องคิดเลขคูณ 3.2808</h2>
+
+    <div class="field-group">
+      <label class="field-label">ชื่อเรือ (พิมพ์ตัวอักษรเพื่อค้นหาเรือที่เคยบันทึก)</label>
+      <input type="text" id="shipName" placeholder="เช่น เรือ A" autocomplete="off">
+      <div class="suggest-box" id="suggestBox"></div>
+    </div>
+
+    <div class="field-group">
+      <label class="field-label">ตัวเลข</label>
+      <div class="input-row">
+        <input type="number" id="inputNum" placeholder="ใส่ตัวเลขที่นี่">
+        <button class="primary-btn" id="addBtn">บันทึก</button>
+      </div>
+    </div>
+
+    <div class="error-msg" id="errorMsg"></div>
+    <div class="hint-msg" id="hintMsg"></div>
+
+    <div class="factor">× 3.2808</div>
+
+    <div class="result-box">
+      <div class="result-label">ผลลัพธ์</div>
+      <div class="result-value" id="resultOut">0</div>
+    </div>
+
+    <div class="history-header">
+      <span class="history-title">ประวัติที่กรอก</span>
+      <div class="history-actions">
+        <button class="action-btn" id="downloadBtn">⬇ ดาวน์โหลด</button>
+        <button class="action-btn" id="clearBtn">🗑 ล้างทั้งหมด</button>
+      </div>
+    </div>
+    <ul id="historyList"></ul>
+
+    <div class="memory-row">
+      <div class="memory-info" id="memoryInfo"></div>
+      <button class="action-btn" id="importBtn" title="อ่านชื่อเรือ+ตัวเลขจากไฟล์ CSV ประวัติเดิม (เลือกได้หลายไฟล์)">📥 นำเข้าจาก CSV เก่า</button>
+      <input type="file" id="importFile" accept=".csv,text/csv" multiple style="display:none">
+    </div>
+  </div>
+
+<script>
+  const shipInput = document.getElementById('shipName');
+  const suggestBox = document.getElementById('suggestBox');
+  const input = document.getElementById('inputNum');
+  const out = document.getElementById('resultOut');
+  const addBtn = document.getElementById('addBtn');
+  const clearBtn = document.getElementById('clearBtn');
+  const downloadBtn = document.getElementById('downloadBtn');
+  const historyList = document.getElementById('historyList');
+  const errorMsg = document.getElementById('errorMsg');
+  const hintMsg = document.getElementById('hintMsg');
+  const themeToggle = document.getElementById('themeToggle');
+  const memoryInfo = document.getElementById('memoryInfo');
+  const importBtn = document.getElementById('importBtn');
+  const importFile = document.getElementById('importFile');
+  const factor = 3.2808;
+
+  let history = [];   // [{ship, value, result, time}]
+  let ships = {};      // { shipName: {value, result, time} }
+  const STORAGE_KEY = 'calc3_2808_history';
+  const SHIPS_KEY = 'calc3_2808_ships';
+  const THEME_KEY = 'calc3_2808_theme';
+
+  // ---------- Persistence ----------
+  function loadHistory() {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) history = parsed;
+      }
+    } catch (err) {
+      history = [];
+    }
+  }
+
+  function saveHistory() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+    } catch (err) {
+      showError('ไม่สามารถบันทึกประวัติถาวรได้ (พื้นที่จัดเก็บเต็มหรือถูกปิดใช้งาน)');
+    }
+  }
+
+  function loadShips() {
+    try {
+      const saved = localStorage.getItem(SHIPS_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === 'object') ships = parsed;
+      }
+    } catch (err) {
+      ships = {};
+    }
+  }
+
+  function updateMemoryInfo() {
+    memoryInfo.textContent = 'ความยาวเรือที่จำไว้: ' + Object.keys(ships).length + ' ลำ';
+  }
+
+  function saveShips() {
+    try {
+      localStorage.setItem(SHIPS_KEY, JSON.stringify(ships));
+    } catch (err) {
+      showError('ไม่สามารถบันทึกข้อมูลเรือถาวรได้');
+    }
+    updateMemoryInfo();
+  }
+
+  // ---------- Theme ----------
+  function applyTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    themeToggle.textContent = theme === 'dark' ? '☀️' : '🌙';
+    try { localStorage.setItem(THEME_KEY, theme); } catch (err) { /* ignore */ }
+  }
+
+  let savedTheme = null;
+  try { savedTheme = localStorage.getItem(THEME_KEY); } catch (err) { /* ignore */ }
+  const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  applyTheme(savedTheme || (prefersDark ? 'dark' : 'light'));
+
+  themeToggle.addEventListener('click', () => {
+    const current = document.documentElement.getAttribute('data-theme');
+    applyTheme(current === 'dark' ? 'light' : 'dark');
+  });
+
+  // ---------- Messages ----------
+  function showError(msg) { errorMsg.textContent = msg; }
+  function clearError() { errorMsg.textContent = ''; }
+  function showHint(msg) { hintMsg.textContent = msg; }
+  function clearHint() { hintMsg.textContent = ''; }
+
+  // ---------- Result calc ----------
+  function updateResult() {
+    const v = parseFloat(input.value);
+    if (isNaN(v)) {
+      out.textContent = '0';
+      return;
+    }
+    out.textContent = Number((v * factor).toFixed(4)).toLocaleString();
+  }
+
+  // ---------- Ship autocomplete ----------
+  let activeSuggestIndex = -1;
+
+  function renderSuggestions(matches) {
+    suggestBox.innerHTML = '';
+    activeSuggestIndex = -1;
+    if (matches.length === 0) {
+      suggestBox.classList.remove('show');
+      return;
+    }
+    matches.forEach(name => {
+      const data = ships[name];
+      const div = document.createElement('div');
+      div.className = 'suggest-item';
+      div.innerHTML = `
+        <span>${name}</span>
+        <div class="s-right">
+          <span class="s-num">${data.value}</span>
+          <button class="suggest-delete-btn" data-ship="${name}" title="ลบเรือลำนี้ออกจากความจำ">✕</button>
+        </div>
+      `;
+      div.addEventListener('click', (e) => {
+        if (e.target.closest('.suggest-delete-btn')) return;
+        selectShip(name);
+      });
+      div.querySelector('.suggest-delete-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        deleteShip(name);
+      });
+      suggestBox.appendChild(div);
+    });
+    suggestBox.classList.add('show');
+  }
+
+  function updateSuggestions() {
+    const typed = shipInput.value.trim().toLowerCase();
+    if (typed === '') {
+      suggestBox.classList.remove('show');
+      return;
+    }
+    const names = Object.keys(ships).filter(name =>
+      name.toLowerCase().includes(typed)
+    ).sort();
+    renderSuggestions(names.slice(0, 8));
+  }
+
+  function selectShip(name) {
+    shipInput.value = name;
+    const data = ships[name];
+    if (data) {
+      input.value = data.value;
+      updateResult();
+      showHint(`ดึงเลขล่าสุดของ "${name}" มาให้แล้ว (แก้ไขได้ถ้าต้องการ)`);
+    }
+    suggestBox.classList.remove('show');
+    input.focus();
+    input.select();
+  }
+
+  shipInput.addEventListener('input', () => {
+    clearHint();
+    updateSuggestions();
+  });
+
+  shipInput.addEventListener('keydown', (e) => {
+    const items = Array.from(suggestBox.querySelectorAll('.suggest-item'));
+    if (!suggestBox.classList.contains('show') || items.length === 0) {
+      if (e.key === 'Enter') addToHistory();
+      return;
+    }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      activeSuggestIndex = Math.min(activeSuggestIndex + 1, items.length - 1);
+      items.forEach((it, i) => it.classList.toggle('active', i === activeSuggestIndex));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      activeSuggestIndex = Math.max(activeSuggestIndex - 1, 0);
+      items.forEach((it, i) => it.classList.toggle('active', i === activeSuggestIndex));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (activeSuggestIndex >= 0) {
+        items[activeSuggestIndex].click();
+      } else {
+        suggestBox.classList.remove('show');
+        input.focus();
+      }
+    } else if (e.key === 'Escape') {
+      suggestBox.classList.remove('show');
+    }
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!suggestBox.contains(e.target) && e.target !== shipInput) {
+      suggestBox.classList.remove('show');
+    }
+  });
+
+  // ---------- History ----------
+  function updateButtonStates() {
+    const hasHistory = history.length > 0;
+    downloadBtn.disabled = !hasHistory;
+    clearBtn.disabled = !hasHistory;
+  }
+
+  function renderHistory() {
+    historyList.innerHTML = '';
+    if (history.length === 0) {
+      historyList.innerHTML = '<div class="empty-msg">ยังไม่มีประวัติ</div>';
+      updateButtonStates();
+      return;
+    }
+    history.forEach((item, index) => {
+      const li = document.createElement('li');
+      const shipLine = item.ship ? `<span class="item-ship">${item.ship}</span>` : '';
+      li.innerHTML = `
+        <div class="item-info">
+          ${shipLine}
+          <span class="item-value">${index + 1}. ${item.value} → ${item.result}</span>
+        </div>
+        <div class="item-right">
+          <span class="time">${item.time}</span>
+          <button class="delete-item-btn" data-index="${index}" title="ลบรายการนี้">✕</button>
+        </div>
+      `;
+      historyList.appendChild(li);
+    });
+    historyList.scrollTop = historyList.scrollHeight;
+    updateButtonStates();
+
+    historyList.querySelectorAll('.delete-item-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx = parseInt(btn.getAttribute('data-index'), 10);
+        deleteHistoryItem(idx);
+      });
+    });
+  }
+
+  function deleteHistoryItem(index) {
+    if (index < 0 || index >= history.length) return;
+    history.splice(index, 1);
+    saveHistory();
+    renderHistory();
+    clearError();
+  }
+
+  // ---------- Ships memory ----------
+  function deleteShip(name) {
+    if (!(name in ships)) return;
+    delete ships[name];
+    saveShips();
+    updateSuggestions();
+    clearError();
+  }
+
+  function addToHistory() {
+    clearError();
+    clearHint();
+    const raw = input.value.trim();
+    const shipRaw = shipInput.value.trim();
+
+    if (raw === '') {
+      showError('กรุณาใส่ตัวเลขก่อนบันทึก');
+      return;
+    }
+    const v = parseFloat(raw);
+    if (isNaN(v) || !isFinite(v)) {
+      showError('รูปแบบตัวเลขไม่ถูกต้อง');
+      return;
+    }
+    if (Math.abs(v) > 1e15) {
+      showError('ตัวเลขมีขนาดใหญ่เกินไป');
+      return;
+    }
+
+    const resultValue = Number((v * factor).toFixed(4)).toLocaleString();
+    const now = new Date();
+    const time = now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+    history.push({ ship: shipRaw, value: raw, result: resultValue, time });
+    saveHistory();
+
+    if (shipRaw !== '') {
+      ships[shipRaw] = { value: raw, result: resultValue, time };
+      saveShips();
+    }
+
+    renderHistory();
+    input.value = '';
+    shipInput.value = '';
+    updateResult();
+    shipInput.focus();
+  }
+
+  function downloadHistory() {
+    if (history.length === 0) {
+      showError('ไม่มีประวัติให้ดาวน์โหลด');
+      return;
+    }
+    let content = 'ลำดับ,ชื่อเรือ,ตัวเลขที่กรอก,ผลลัพธ์,เวลา\n';
+    history.forEach((item, index) => {
+      content += `${index + 1},${item.ship || ''},${item.value},${item.result},${item.time}\n`;
+    });
+
+    try {
+      const blob = new Blob(['\uFEFF' + content], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const now = new Date();
+      const stamp = now.toISOString().slice(0, 19).replace(/[:T]/g, '-');
+      a.href = url;
+      a.download = `ประวัติตัวเลข_${stamp}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      showError('ไม่สามารถดาวน์โหลดไฟล์ได้ กรุณาลองใหม่');
+    }
+  }
+
+  input.addEventListener('input', () => {
+    clearError();
+    updateResult();
+  });
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') addToHistory();
+  });
+  addBtn.addEventListener('click', addToHistory);
+  clearBtn.addEventListener('click', () => {
+    if (history.length === 0) return;
+    const confirmed = confirm('ต้องการล้างประวัติทั้งหมดใช่หรือไม่? (ข้อมูลเรือที่จำไว้จะยังอยู่) การกระทำนี้ไม่สามารถย้อนกลับได้');
+    if (!confirmed) return;
+    history = [];
+    saveHistory();
+    renderHistory();
+    clearError();
+  });
+  downloadBtn.addEventListener('click', downloadHistory);
+
+
+  // ---------- Import ship lengths from old history CSV files ----------
+  function parseCsvLine(line) {
+    const out = [];
+    let cur = '';
+    let inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (inQ) {
+        if (ch === '"') {
+          if (line[i + 1] === '"') { cur += '"'; i++; } else { inQ = false; }
+        } else { cur += ch; }
+      } else if (ch === '"') { inQ = true; }
+      else if (ch === ',') { out.push(cur); cur = ''; }
+      else { cur += ch; }
+    }
+    out.push(cur);
+    return out;
+  }
+
+  async function importCsvFiles(files) {
+    const list = Array.from(files).sort((a, b) => a.name.localeCompare(b.name)); // older -> newer
+    let newShips = 0, rowsRead = 0, skippedFiles = 0;
+    for (const f of list) {
+      let text = await f.text();
+      text = text.replace(/^\uFEFF/, '');
+      const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
+      if (lines.length === 0) { skippedFiles++; continue; }
+      const header = parseCsvLine(lines[0]).map(s => s.trim());
+      const iName = header.indexOf('ชื่อเรือ');
+      const iVal = header.indexOf('ตัวเลขที่กรอก');
+      const iTime = header.indexOf('เวลา');
+      if (iName < 0 || iVal < 0) { skippedFiles++; continue; }   // old files without ship names
+      for (let k = 1; k < lines.length; k++) {
+        const cols = parseCsvLine(lines[k]);
+        const name = (cols[iName] || '').trim();
+        const raw = (cols[iVal] || '').trim();
+        const v = parseFloat(raw);
+        if (!name || isNaN(v)) continue;
+        const result = Number((v * factor).toFixed(4)).toLocaleString();
+        if (!(name in ships)) newShips++;
+        ships[name] = { value: raw, result: result, time: iTime >= 0 ? (cols[iTime] || '').trim() : '' };
+        rowsRead++;
+      }
+    }
+    saveShips();
+    let msg = 'นำเข้าแล้ว: เรือใหม่ ' + newShips + ' ลำ (อ่าน ' + rowsRead + ' แถว)';
+    if (skippedFiles > 0) msg += ' • ข้าม ' + skippedFiles + ' ไฟล์ที่ไม่มีคอลัมน์ชื่อเรือ';
+    showHint(msg);
+  }
+
+  importBtn.addEventListener('click', () => importFile.click());
+  importFile.addEventListener('change', async () => {
+    if (importFile.files.length === 0) return;
+    clearError();
+    await importCsvFiles(importFile.files);
+    importFile.value = '';
+  });
+
+  loadHistory();
+  loadShips();
+  updateMemoryInfo();
+  renderHistory();
+</script>
+</body>
+</html>
