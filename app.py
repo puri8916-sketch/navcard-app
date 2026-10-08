@@ -9,7 +9,92 @@ import streamlit as st
 import nav_core as nc
 
 st.set_page_config(page_title="Navigation Card Merger", layout="wide")
-st.title("⚓ Navigation Card Merger")
+
+_BASE_CSS = """
+<style>
+%(app)s
+</style>
+"""
+
+_DARK_CSS = """
+.stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"], [data-testid="stMain"] {
+    background-color: #0e1117 !important; }
+.stApp, .stApp p, .stApp span, .stApp label, .stApp li, .stApp h1, .stApp h2, .stApp h3,
+.stApp [data-testid="stMarkdownContainer"], .stApp [data-testid="stCaptionContainer"],
+.stApp [data-testid="stWidgetLabel"] { color: #fafafa !important; }
+.stApp [data-testid="stFileUploaderDropzone"] { background-color: #262730 !important; }
+.stApp .stTextInput input, .stApp .stTextArea textarea,
+.stApp [data-baseweb="select"] > div, .stApp [data-baseweb="input"],
+.stApp [data-baseweb="textarea"] { background-color: #262730 !important; color: #fafafa !important; }
+.stApp button[data-testid^="stBaseButton"] { background-color: #262730 !important;
+    color: #fafafa !important; border: 1px solid #4b4b57 !important; }
+.stApp button[data-testid="stBaseButton-primary"] { background-color: #ff4b4b !important;
+    color: #ffffff !important; border-color: #ff4b4b !important; }
+.stApp button[data-testid^="stBaseButton"]:disabled { opacity: 0.45 !important; }
+.stApp hr { border-color: #3b3b45 !important; }
+.stApp button[data-testid="stBaseButton-primary"], .stApp button[data-testid="stBaseButton-primary"] * { color: #ffffff !important; }
+.stApp [data-baseweb="input"], .stApp [data-baseweb="textarea"], .stApp [data-baseweb="select"] > div { border-color: #4b4b57 !important; }
+.stApp [data-testid="stTextInputRootElement"], .stApp [data-testid="stTextAreaRootElement"], .stApp [data-testid="stSelectbox"] [data-baseweb="select"] > div { border-color: #4b4b57 !important; }
+.stApp label[data-testid="stRadioOption"]:not([data-selected="true"]) > div > div:first-child,
+.stApp label[data-baseweb="radio"]:not(:has(input:checked)) > div:first-child {
+    background-color: #262730 !important; border-color: #8b8b97 !important; }
+.stApp label[data-baseweb="checkbox"]:not(:has(input:checked)) > span:first-of-type,
+.stApp label[data-testid="stCheckbox"]:not(:has(input:checked)) span[class*="Checkmark"],
+.stApp label[data-testid="stCheckbox"]:not(:has(input:checked)) > span:first-of-type {
+    background-color: #262730 !important; border-color: #8b8b97 !important; }
+[data-baseweb="popover"] *, [data-baseweb="menu"], [data-baseweb="menu"] * {
+    background-color: #262730 !important; color: #fafafa !important; }
+"""
+
+_LIGHT_CSS = """
+.stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"], [data-testid="stMain"] {
+    background-color: #ffffff !important; }
+.stApp, .stApp p, .stApp span, .stApp label, .stApp li, .stApp h1, .stApp h2, .stApp h3,
+.stApp [data-testid="stMarkdownContainer"], .stApp [data-testid="stCaptionContainer"],
+.stApp [data-testid="stWidgetLabel"] { color: #31333f !important; }
+.stApp [data-testid="stFileUploaderDropzone"] { background-color: #f0f2f6 !important; }
+.stApp .stTextInput input, .stApp .stTextArea textarea,
+.stApp [data-baseweb="select"] > div, .stApp [data-baseweb="input"],
+.stApp [data-baseweb="textarea"] { background-color: #f0f2f6 !important; color: #31333f !important; }
+.stApp button[data-testid^="stBaseButton"] { background-color: #ffffff !important;
+    color: #31333f !important; border: 1px solid #d5d8e0 !important; }
+.stApp button[data-testid="stBaseButton-primary"] { background-color: #ff4b4b !important;
+    color: #ffffff !important; border-color: #ff4b4b !important; }
+.stApp button[data-testid^="stBaseButton"]:disabled { opacity: 0.45 !important; }
+.stApp hr { border-color: #e6e9ef !important; }
+.stApp button[data-testid="stBaseButton-primary"], .stApp button[data-testid="stBaseButton-primary"] * { color: #ffffff !important; }
+.stApp [data-baseweb="input"], .stApp [data-baseweb="textarea"], .stApp [data-baseweb="select"] > div { border-color: #d5d8e0 !important; }
+.stApp [data-testid="stTextInputRootElement"], .stApp [data-testid="stTextAreaRootElement"], .stApp [data-testid="stSelectbox"] [data-baseweb="select"] > div { border-color: #d5d8e0 !important; }
+.stApp label[data-testid="stRadioOption"]:not([data-selected="true"]) > div > div:first-child,
+.stApp label[data-baseweb="radio"]:not(:has(input:checked)) > div:first-child {
+    background-color: #ffffff !important; border-color: #bfc5d3 !important; }
+.stApp label[data-baseweb="checkbox"]:not(:has(input:checked)) > span:first-of-type,
+.stApp label[data-testid="stCheckbox"]:not(:has(input:checked)) span[class*="Checkmark"],
+.stApp label[data-testid="stCheckbox"]:not(:has(input:checked)) > span:first-of-type {
+    background-color: #ffffff !important; border-color: #bfc5d3 !important; }
+[data-baseweb="popover"] *, [data-baseweb="menu"], [data-baseweb="menu"] * {
+    background-color: #ffffff !important; color: #31333f !important; }
+"""
+
+_THEME_OPTIONS = ["🖥️ ตามระบบ", "☀️ สว่าง", "🌙 มืด"]
+
+
+def apply_theme(choice):
+    """Native Streamlit theme can't be switched per-session from code, so
+    'สว่าง'/'มืด' are applied with CSS; 'ตามระบบ' leaves Streamlit's own
+    theme untouched (it follows the browser/OS setting)."""
+    if choice == _THEME_OPTIONS[1]:
+        st.markdown(_BASE_CSS % {"app": _LIGHT_CSS}, unsafe_allow_html=True)
+    elif choice == _THEME_OPTIONS[2]:
+        st.markdown(_BASE_CSS % {"app": _DARK_CSS}, unsafe_allow_html=True)
+
+_title_col, _theme_col = st.columns([3, 2])
+with _title_col:
+    st.title("⚓ Navigation Card Merger")
+with _theme_col:
+    _theme_choice = st.radio("โหมดการแสดงผล", _THEME_OPTIONS, horizontal=True,
+                             key="theme_choice", index=0)
+apply_theme(_theme_choice)
 st.caption("อัปโหลดไฟล์ zip (NavigationCard PDFs + ReportCardIsClosedDaily.xlsx + CSV ตัวเลข) "
            "ระบบจะตรวจสอบความครบถ้วนและรวมเป็น PDF เดียว")
 
@@ -61,6 +146,7 @@ if analyze_clicked and uploaded is not None:
         xlsx_path = xlsx_candidates[0]
         report = nc.analyze_batch(card_dir, xlsx_path, csv_paths)
         st.session_state.report = report
+        st.session_state.upload_dt = nc.thai_now()
         st.session_state.remarks = {}
         st.session_state.loa_overrides = {}
         st.session_state.data_fixes = {}
@@ -159,7 +245,7 @@ if report is not None:
             st.download_button(
                 "⬇️ ดาวน์โหลดไฟล์ PDF รวม",
                 f.read(),
-                file_name="navigation_cards_merged.pdf",
+                file_name=nc.thai_card_filename(st.session_state.get("upload_dt")),
                 mime="application/pdf",
             )
         st.success("สร้างไฟล์เสร็จแล้ว!")

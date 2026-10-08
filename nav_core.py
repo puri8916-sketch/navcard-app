@@ -7,6 +7,7 @@ import io
 import os
 import re
 from collections import defaultdict
+from datetime import datetime, timedelta, timezone
 
 import numpy as np
 import openpyxl
@@ -26,6 +27,24 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 _CAVEAT_PATH = os.path.join(_HERE, 'caveat_fixed.ttf')
 THAI_FONT_PATH = os.path.join(_HERE, 'Loma.otf')  # Thai handwriting-style, for Remarks; bundled
 pdfmetrics.registerFont(TTFont('Caveat', _CAVEAT_PATH))
+
+
+# ---------- output filename (Thai date, Bangkok time) ----------
+_TH_TZ = timezone(timedelta(hours=7))  # Thailand has no DST -> fixed offset is safe everywhere
+_TH_MONTHS_SHORT = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.',
+                    'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.']
+
+
+def thai_now():
+    """Current date/time in Thailand (server may run in UTC)."""
+    return datetime.now(_TH_TZ)
+
+
+def thai_card_filename(dt=None):
+    """'การ์ดประจำวันที่ <วัน> <เดือนย่อ> <พ.ศ. 2 หลัก> (รวม).pdf'"""
+    dt = dt or thai_now()
+    be_short = (dt.year + 543) % 100
+    return f"การ์ดประจำวันที่ {dt.day} {_TH_MONTHS_SHORT[dt.month - 1]} {be_short} (รวม).pdf"
 
 
 def baseline(top, size):
