@@ -98,10 +98,25 @@ apply_theme(_theme_choice)
 st.caption("อัปโหลดไฟล์ zip (NavigationCard PDFs + ReportCardIsClosedDaily.xlsx + CSV ตัวเลข) "
            "ระบบจะตรวจสอบความครบถ้วนและรวมเป็น PDF เดียว")
 
+def _add_remarks():
+    """Button callback: parse the pasted '<card no> <message>' lines."""
+    rep = st.session_state.report
+    valid = [s["card_no"] for s in rep["ships"]] if rep else []
+    new_remarks, new_texts, notes = nc.parse_remark_lines(
+        st.session_state.get("remark_bulk_input", ""), valid)
+    replaced = [cn for cn in new_remarks if cn in st.session_state.remarks]
+    st.session_state.remarks.update(new_remarks)
+    st.session_state.remark_texts.update(new_texts)
+    st.session_state.remark_msg = {"added": list(new_remarks), "replaced": replaced, "notes": notes}
+    if new_remarks:
+        st.session_state.remark_bulk_input = ""   # clear the box once something was added
+
+
 if "workdir" not in st.session_state:
     st.session_state.workdir = tempfile.mkdtemp(prefix="navcard_")
     st.session_state.report = None
     st.session_state.remarks = {}
+    st.session_state.remark_texts = {}
     st.session_state.loa_overrides = {}
     st.session_state.data_fixes = {}
     st.session_state.row_overrides = {}
@@ -148,6 +163,7 @@ if analyze_clicked and uploaded is not None:
         st.session_state.report = report
         st.session_state.upload_dt = nc.thai_now()
         st.session_state.remarks = {}
+        st.session_state.remark_texts = {}
         st.session_state.loa_overrides = {}
         st.session_state.data_fixes = {}
         st.session_state.row_overrides = {}
@@ -207,20 +223,32 @@ if report is not None:
 
     st.divider()
     st.subheader("✏️ เพิ่ม Remark (ถ้ามี)")
-    st.caption("พิมพ์ข้อความเต็ม ระบบจะตัดบรรทัดให้เอง ใส่สีแดงและฟอนต์ลายมือไทยอัตโนมัติ")
-    remark_card = st.selectbox("เลือกการ์ด", ["-"] + [s["card_no"] for s in report["ships"]])
-    remark_text = st.text_area("ข้อความ Remark", key="remark_text_input")
-    if st.button("➕ เพิ่ม Remark นี้") and remark_card != "-" and remark_text.strip():
-        st.session_state.remarks[remark_card] = nc.wrap_thai(remark_text.strip(), 100)
-        st.success(f"เพิ่ม Remark ให้ {remark_card} แล้ว")
+    st.caption("วางได้หลายบรรทัดพร้อมกัน บรรทัดละ 1 การ์ด รูปแบบ: เลขการ์ด เว้นวรรค ข้อความ "
+               "— ระบบตัดบรรทัด ใส่สีแดงและฟอนต์ลายมือไทยให้เอง")
+    st.text_area(
+        "เลขการ์ด + ข้อความ Remark", key="remark_bulk_input", height=140,
+        placeholder="SGZ40/70 **แยกใบแจ้งหนี้เรือออก/ไม่มีเรือออก**\n"
+                    "SGZ41/70 แจ้งเรือออก: เปลี่ยนบริษัทหรือตัวแทนสายเรือ*แยกใบแจ้งหนี้เรือเข้า/ไม่มีเรือเข้า*",
+    )
+    st.button("➕ เพิ่ม Remark ทั้งหมดที่วาง", on_click=_add_remarks)
+
+    _msg = st.session_state.pop("remark_msg", None)
+    if _msg:
+        if _msg["added"]:
+            st.success("เพิ่มแล้ว: " + ", ".join(_msg["added"])
+                       + (f"  (แทนที่ของเดิม: {', '.join(_msg['replaced'])})" if _msg["replaced"] else ""))
+        for _n in _msg["notes"]:
+            st.warning(_n)
 
     if st.session_state.remarks:
         st.write("Remark ที่ตั้งไว้:")
         for cn, lines in list(st.session_state.remarks.items()):
             c1, c2 = st.columns([5, 1])
-            c1.write(f"**{cn}**: {' '.join(lines)}")
+            c1.markdown(f"**{cn}**")
+            c1.text(st.session_state.remark_texts.get(cn, " ".join(lines)))
             if c2.button("ลบ", key=f"del_remark_{cn}"):
                 del st.session_state.remarks[cn]
+                st.session_state.remark_texts.pop(cn, None)
                 st.rerun()
 
     st.divider()

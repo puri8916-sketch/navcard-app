@@ -87,6 +87,47 @@ def wrap_thai(text, max_w_pt, pt_size=10):
     return lines
 
 
+# ---------- bulk remark input: "SGZ40/70 <message>" per line ----------
+_REMARK_LINE_RE = re.compile(
+    r'^\s*SGZ\s*(\d+)\s*/\s*(\d+)'          # card number, e.g. SGZ40/70 or SGZ 25/70
+    r'(?:\s*[:：]\s*|\s+[-–—]\s+|\s+)'        # separator: spaces, ':' or ' - '
+    r'(.+?)\s*$', re.IGNORECASE)
+_QUOTES = '"\'\u201c\u201d\u2018\u2019'
+
+
+def parse_remark_lines(text, valid_card_nos=None, wrap_width=100):
+    """Parse pasted text, one remark per line: '<card no> <message>'.
+
+    Returns (remarks, texts, notes)
+      remarks: {card_no: [wrapped lines]}   -> for build_pdf
+      texts:   {card_no: original message}  -> for display
+      notes:   [str] warnings (bad line, unknown card, replaced duplicate)
+    Surrounding quotes are stripped; asterisks in the message are kept.
+    """
+    remarks, texts, notes = {}, {}, []
+    valid = set(valid_card_nos) if valid_card_nos is not None else None
+    for raw in (text or '').splitlines():
+        if not raw.strip():
+            continue
+        m = _REMARK_LINE_RE.match(raw)
+        if not m:
+            notes.append(f"ข้ามบรรทัด (ไม่พบเลขการ์ดนำหน้า): {raw.strip()[:60]}")
+            continue
+        card_no = f"SGZ{m.group(1)}/{m.group(2)}"
+        msg = m.group(3).strip().strip(_QUOTES).strip()
+        if not msg:
+            notes.append(f"ข้าม {card_no}: ไม่มีข้อความ")
+            continue
+        if valid is not None and card_no not in valid:
+            notes.append(f"ข้าม {card_no}: ไม่มีการ์ดนี้ในชุดที่อัปโหลด")
+            continue
+        if card_no in remarks:
+            notes.append(f"{card_no}: มีหลายบรรทัด ใช้บรรทัดหลังสุด")
+        remarks[card_no] = wrap_thai(msg, wrap_width)
+        texts[card_no] = msg
+    return remarks, texts, notes
+
+
 def fmt_num(s):
     try:
         v = float(s)
