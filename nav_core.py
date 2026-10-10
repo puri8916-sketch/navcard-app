@@ -499,3 +499,30 @@ def build_pdf(card_dir, report, loa_overrides=None, remarks=None, data_fixes=Non
         writer.write(out_buf)
         out_buf.seek(0)
         return out_buf
+
+
+def load_default_ships(path):
+    """Read the repo's ships.csv -> {name: {'value': str, 'result': str, 'time': str}}."""
+    import csv, re
+    out = {}
+    if not path or not os.path.exists(path):
+        return out
+    with open(path, encoding='utf-8-sig', newline='') as f:
+        rows = list(csv.reader(f))
+    if not rows:
+        return out
+    h = [x.strip() for x in rows[0]]
+    iN = h.index('ชื่อเรือ') if 'ชื่อเรือ' in h else 0
+    iV = next((i for i, x in enumerate(h) if 'เลขที่กรอก' in x or 'ความยาว' in x), 1)
+    iT = next((i for i, x in enumerate(h) if 'บันทึกล่าสุด' in x or x == 'เวลา'), None)
+    for r in rows[1:]:
+        if len(r) <= max(iN, iV):
+            continue
+        name = re.sub(r'\s+', ' ', r[iN]).strip()
+        try:
+            v = float(r[iV])
+        except ValueError:
+            continue
+        out[name] = {'value': r[iV].strip(), 'result': f"{round(v * 3.2808, 4):,}",
+                     'time': r[iT].strip() if iT is not None and len(r) > iT else ''}
+    return out

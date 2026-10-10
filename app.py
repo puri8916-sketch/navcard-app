@@ -1,4 +1,5 @@
 import glob
+import json
 import os
 import shutil
 import tempfile
@@ -109,6 +110,9 @@ if _page == _PAGES[1]:
     with open(os.path.join(_HERE, "calc_3_2808.html"), encoding="utf-8") as _f:
         _calc_html = _f.read()
     # follow the app's theme choice (the calculator keeps its own ☀️/🌙 button too)
+    _defaults = nc.load_default_ships(os.path.join(_HERE, "ships.csv"))
+    _calc_html = _calc_html.replace(
+        "<script>", "<script>window.__DEFAULT_SHIPS__=" + json.dumps(_defaults, ensure_ascii=False).replace("</", "<\\/") + ";</script>\n<script>", 1)
     _calc_theme = {_THEME_OPTIONS[1]: "light", _THEME_OPTIONS[2]: "dark"}.get(_theme_choice)
     if _calc_theme:
         _calc_html = _calc_html.replace(
@@ -125,7 +129,9 @@ st.title("⚓ Navigation Card Merger")
 _ship_store = components.declare_component(
     "ship_store", path=os.path.join(_HERE, "ship_store_component"))
 _store = _ship_store(key="ship_store", default=None)
-_ship_memory = nc.ship_memory_from_store(_store)
+_ship_memory = {k: v["value"] for k, v in nc.load_default_ships(os.path.join(_HERE, "ships.csv")).items()}
+_ship_memory = {k: float(v) for k, v in _ship_memory.items()}
+_ship_memory.update(nc.ship_memory_from_store(_store))
 
 st.caption("อัปโหลดไฟล์ zip (NavigationCard PDFs + ReportCardIsClosedDaily.xlsx + CSV ตัวเลข) "
            "ระบบจะตรวจสอบความครบถ้วนและรวมเป็น PDF เดียว")

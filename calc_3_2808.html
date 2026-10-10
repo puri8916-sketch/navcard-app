@@ -453,6 +453,7 @@
 
     <div class="memory-row">
       <div class="memory-info" id="memoryInfo"></div>
+      <button class="action-btn" id="exportShipsBtn" title="บันทึกข้อมูลเรือทั้งหมดเป็น CSV (ใช้เป็น ships.csv ใน GitHub หรือนำเข้าเครื่องอื่น)">⬇ ส่งออกข้อมูลเรือ</button>
       <button class="action-btn" id="importBtn" title="อ่านชื่อเรือ+ตัวเลขจากไฟล์ CSV ประวัติเดิม (เลือกได้หลายไฟล์)">📥 นำเข้าจาก CSV เก่า</button>
       <input type="file" id="importFile" accept=".csv,text/csv" multiple style="display:none">
     </div>
@@ -472,6 +473,7 @@
   const themeToggle = document.getElementById('themeToggle');
   const memoryInfo = document.getElementById('memoryInfo');
   const importBtn = document.getElementById('importBtn');
+  const exportShipsBtn = document.getElementById('exportShipsBtn');
   const importFile = document.getElementById('importFile');
   const factor = 3.2808;
 
@@ -512,6 +514,11 @@
     } catch (err) {
       ships = {};
     }
+    // defaults shipped with the app (ships.csv in the repo): local entries win
+    try {
+      const d = window.__DEFAULT_SHIPS__ || {};
+      for (const k in d) if (!(k in ships)) ships[k] = d[k];
+    } catch (err) {}
   }
 
   function updateMemoryInfo() {
@@ -850,6 +857,19 @@
     showHint(msg);
   }
 
+  function exportShips() {
+    const names = Object.keys(ships).sort();
+    if (!names.length) { showError('ยังไม่มีข้อมูลเรือ'); return; }
+    const q = v => /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+    let c = 'ชื่อเรือ,ความยาว (เลขที่กรอก),ผลลัพธ์ (× 3.2808),บันทึกล่าสุด\n';
+    names.forEach(n => { const d = ships[n]; c += [q(n), q(String(d.value)), q(String(d.result).replace(/,/g, '')), q(d.time || '')].join(',') + '\n'; });
+    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob(['\uFEFF' + c], { type: 'text/csv;charset=utf-8;' }));
+    a.download = 'ข้อมูลเรือ_' + stamp + '.csv';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  }
+  exportShipsBtn.addEventListener('click', exportShips);
   importBtn.addEventListener('click', () => importFile.click());
   importFile.addEventListener('change', async () => {
     if (importFile.files.length === 0) return;
