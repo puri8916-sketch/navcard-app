@@ -248,7 +248,7 @@ def build_overlay(ship, loa_value, remark_lines=None, data_fixes=None, row_count
             if idx < len(rows):
                 rows[idx].update(field_updates)
 
-    n_override = row_count_override
+    n_override = max(row_count_override or 0, len(rows))   # auto-compress when > 7 legs
     if n_override and n_override > 7:
         row_height = 126.0 / n_override
         font_size = 11 * (row_height / 18.0)
