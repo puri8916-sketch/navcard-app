@@ -95,31 +95,51 @@ mark{background:var(--warn-bg);color:inherit;border-radius:2px}
 .combo-pop .opt small{color:var(--muted);font-family:var(--f-body);font-size:11px}
 .combo-pop .opt.act,.combo-pop .opt:hover{background:var(--accent-soft)}
 .combo-pop .opt mark{background:none;color:var(--accent);font-weight:600}
-/* editor sheet */
-.scrim{position:fixed;inset:0;background:rgb(0 0 0 / .35);z-index:40}
-.sheet{position:fixed;top:0;right:0;bottom:0;width:min(560px,100%);background:var(--surface);z-index:41;box-shadow:var(--shadow);display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-.sheet header{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line)}
-.sheet header h2{margin:0;font-size:17px;font-weight:600;flex:1;text-wrap:balance}
-.sheet .body{overflow-y:auto;padding:16px 18px;display:flex;flex-direction:column;gap:18px}
-.sheet footer{display:flex;gap:8px;padding:12px 18px;border-top:1px solid var(--line);flex-wrap:wrap}
-fieldset{border:0;padding:0;margin:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px 12px}
-legend{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin-bottom:8px;padding:0}
-label.f{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted);min-width:0}
-label.f.wide{grid-column:1/-1}
-label.f input,label.f select{border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:6px 8px;color:var(--ink);font-size:14px;width:100%;min-width:0}
-label.f input.mono{font-family:var(--f-mono)}
-label.f input[readonly]{background:var(--surface);border-style:dashed}
+/* editor: centred compact window */
+.scrim{position:fixed;inset:0;background:rgb(0 0 0 / .4);z-index:40}
+.sheet{position:fixed;left:0;right:0;top:0;bottom:0;margin:auto;width:min(1040px,calc(100% - 24px));height:fit-content;max-height:calc(100% - 24px);background:var(--surface);z-index:41;box-shadow:var(--shadow);border-radius:12px;display:flex;flex-direction:column;overflow:hidden}
+.sheet header{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--line)}
+.sheet header h2{margin:0;font-size:16px;font-weight:600;flex:1;text-wrap:balance}
+.sheet .body{overflow-y:auto;padding:12px 16px 14px;display:flex;flex-direction:column;gap:12px}
+.sheet footer{display:flex;gap:8px;padding:10px 16px;border-top:1px solid var(--line);flex-wrap:wrap;align-items:center}
+.blk{display:flex;flex-direction:column;gap:6px;min-width:0}
+.blk+.blk,.two+.blk,.blk+.two{border-top:1px solid var(--line);padding-top:10px}
+.lg{margin:0;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);display:flex;align-items:center;gap:10px}
+.lg .spacer{flex:1}
+.g{display:grid;gap:6px 10px}
+.g6{grid-template-columns:repeat(6,minmax(0,1fr))}
+.g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.s2{grid-column:span 2}.s3{grid-column:span 3}.s4{grid-column:span 4}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 22px}
+.two>.blk+.blk{border-top:0;padding-top:0;border-left:1px solid var(--line);padding-left:22px}
+label.f{display:flex;flex-direction:column;gap:2px;font-size:11.5px;color:var(--muted);min-width:0}
+label.f input{border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:5px 8px;color:var(--ink);font-size:14px;width:100%;min-width:0;height:32px}
+label.f input.mono,.srow input.mono{font-family:var(--f-mono)}
+label.f input:focus,.srow input:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 2px var(--accent-soft)}
 .hint{font-size:12px;color:var(--muted)}
-.hint.warn{color:var(--warn-ink);background:var(--warn-bg);padding:6px 8px;border-radius:6px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.hint.warn{color:var(--warn-ink);background:var(--warn-bg);padding:5px 8px;border-radius:6px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;align-self:end}
 .seg{display:flex;gap:6px;flex-wrap:wrap}
 .seg button{border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:4px 12px;cursor:pointer}
 .seg button[aria-pressed="true"].ok{background:var(--ok-bg);color:var(--ok-ink);border-color:transparent;font-weight:500}
 .seg button[aria-pressed="true"].wait{background:var(--warn-bg);color:var(--warn-ink);border-color:transparent;font-weight:500}
 .seg button[aria-pressed="true"].none{background:var(--hover);font-weight:500}
-.shiftcard{border:1px dashed var(--line);border-radius:8px;padding:10px;display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;position:relative}
-.shiftcard .lbl{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:600}
+.srows{display:flex;flex-direction:column;gap:6px}
+.srow{display:grid;grid-template-columns:22px minmax(0,1.1fr) minmax(0,.8fr) minmax(0,1fr) 14px minmax(0,1fr) minmax(0,.8fr) minmax(0,1.6fr) 26px;gap:6px;align-items:center}
+.srow.head{font-size:11.5px;color:var(--muted)}
+.srow input{border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:5px 8px;color:var(--ink);font-size:14px;width:100%;min-width:0;height:32px}
+.srow .num{font-family:var(--f-mono);font-size:12px;color:var(--muted);text-align:center}
+.srow .arw{color:var(--accent);font-weight:600;text-align:center}
+.srow .x{border:0;background:none;color:var(--muted);cursor:pointer;border-radius:6px;height:28px}
+.srow .x:hover{color:var(--danger);background:var(--hover)}
 .linkbtn{border:0;background:none;color:var(--accent);cursor:pointer;padding:0;font-size:12px;text-decoration:underline}
 .linkbtn.del{color:var(--danger)}
+.btn.sm{padding:3px 10px;font-size:12px;text-transform:none;letter-spacing:0}
+.stbox{display:flex;flex-direction:column;gap:2px;font-size:11.5px;color:var(--muted)}
+@media (max-width:760px){
+  .g6{grid-template-columns:repeat(2,minmax(0,1fr))}.g6>.s3,.g6>.s4{grid-column:1/-1}
+  .two{grid-template-columns:1fr;gap:10px}.two>.blk+.blk{border-left:0;padding-left:0;border-top:1px solid var(--line);padding-top:10px}
+  .srow{grid-template-columns:repeat(6,minmax(0,1fr));padding-bottom:8px;border-bottom:1px dashed var(--line)}.srow.head,.srow .num,.srow .arw{display:none}.srow>input{grid-column:span 2}.srow>[id^="sf"],.srow>[id^="sb"]{grid-column:span 3;order:4}.srow>[id^="sb"]{order:5}.srow>[id^="sd"]{order:3}.srow>.ag{grid-column:span 5;order:6}.srow .x{order:7}
+}
 /* vessels + settings */
 .panel{margin-top:16px;display:flex;flex-direction:column;gap:14px}
 .toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:end}
@@ -140,7 +160,7 @@ table.reg{border-collapse:collapse;width:100%;min-width:520px}
 .addrow{display:flex;gap:6px}
 .addrow input{flex:1;min-width:0;border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:5px 8px;font-family:var(--f-mono)}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:8px;z-index:60;font-size:13px}
-@media (prefers-reduced-motion:no-preference){.sheet{animation:slide .18s ease-out}@keyframes slide{from{transform:translateX(24px);opacity:.6}}}
+@media (prefers-reduced-motion:no-preference){.sheet{animation:pop .16s ease-out}@keyframes pop{from{transform:translateY(8px) scale(.99);opacity:.5}}}
 @media (max-width:640px){.brand span{display:none}.datebox .tab{min-width:72px}}
 </style>
 </head>
@@ -255,54 +275,62 @@ table.reg{border-collapse:collapse;width:100%;min-width:520px}
 <aside class="sheet" id="sheet" hidden aria-modal="true" role="dialog" aria-labelledby="edTitle">
   <header><h2 id="edTitle">เพิ่มเรือ</h2><button class="ibtn" id="edClose" aria-label="ปิด">✕</button></header>
   <div class="body">
-    <fieldset>
-      <legend>เรือ</legend>
-      <label class="f">No. (เลขการ์ด)<input id="fJob" class="mono" placeholder="SGZ40/70" autocomplete="off"></label>
-      <label class="f" style="grid-column:span 2">Ship's Name<input id="fShip" placeholder="พิมพ์ชื่อเรือ"></label>
-      <label class="f">From<input id="fFrom" class="mono" placeholder="พิมพ์รหัสท่า"></label>
-      <label class="f">LOA (ft)<input id="fLoa" class="mono" autocomplete="off"></label>
-      <label class="f">LBP<input id="fLbp" class="mono" autocomplete="off"></label>
-      <label class="f">Net/Gross<input id="fNg" class="mono" autocomplete="off"></label>
-      <label class="f">Agent<input id="fAgent"></label>
-      <div id="newShipHint" class="hint warn" style="grid-column:1/-1" hidden>เรือนี้ยังไม่อยู่ในทะเบียน <button class="linkbtn" id="addShipFromForm" type="button">เพิ่มเข้าทะเบียนเรือ</button></div>
-    </fieldset>
-    <fieldset>
-      <legend>ขาเข้า</legend>
-      <label class="f">ETA Bar<input id="fEta" class="mono" inputmode="numeric" placeholder="hhmm" autocomplete="off"></label>
-      <label class="f">Order for Entering<input id="fOrder" class="mono" inputmode="numeric" placeholder="hhmm" autocomplete="off"></label>
-      <label class="f">Pilot No.<input id="fPilotIn" class="mono" placeholder="พิมพ์เลข"></label>
-      <label class="f">Berth<input id="fBerth" class="mono" placeholder="พิมพ์ชื่อท่า"></label>
-      <label class="f">Draught<input id="fDraughtIn" class="mono" autocomplete="off"></label>
-    </fieldset>
-    <div>
-      <legend style="display:block">ย้ายท่า</legend>
-      <div id="shiftList" style="display:flex;flex-direction:column;gap:8px"></div>
-      <button class="btn" id="addShift" type="button" style="margin-top:8px">+ ย้ายท่า</button>
+    <section class="blk">
+      <h3 class="lg">เรือ</h3>
+      <div class="g g6">
+        <label class="f">No. (เลขการ์ด)<input id="fJob" class="mono" placeholder="SGZ40/70" autocomplete="off"></label>
+        <label class="f s2">Ship's Name<input id="fShip" placeholder="พิมพ์ชื่อเรือ"></label>
+        <label class="f s2">Agent<input id="fAgent"></label>
+        <label class="f">From<input id="fFrom" class="mono" placeholder="รหัสท่า"></label>
+        <label class="f">LOA (ft)<input id="fLoa" class="mono" autocomplete="off"></label>
+        <label class="f">LBP<input id="fLbp" class="mono" autocomplete="off"></label>
+        <label class="f">Net/Gross<input id="fNg" class="mono" autocomplete="off"></label>
+        <div id="newShipHint" class="hint warn s3" hidden>เรือนี้ยังไม่อยู่ในทะเบียน <button class="linkbtn" id="addShipFromForm" type="button">เพิ่มเข้าทะเบียนเรือ</button></div>
+      </div>
+    </section>
+    <div class="two">
+      <section class="blk">
+        <h3 class="lg">ขาเข้า</h3>
+        <div class="g g3">
+          <label class="f">ETA Bar<input id="fEta" class="mono" inputmode="numeric" placeholder="hhmm" autocomplete="off"></label>
+          <label class="f">Order for Entering<input id="fOrder" class="mono" inputmode="numeric" placeholder="hhmm" autocomplete="off"></label>
+          <label class="f">Pilot No.<input id="fPilotIn" class="mono" placeholder="เลข"></label>
+          <label class="f">Berth<input id="fBerth" class="mono" placeholder="ชื่อท่า"></label>
+          <label class="f">Draught<input id="fDraughtIn" class="mono" autocomplete="off"></label>
+        </div>
+      </section>
+      <section class="blk">
+        <h3 class="lg">ขาออก</h3>
+        <div class="g g3">
+          <label class="f">ATD Bar<input id="fAtd" class="mono" inputmode="numeric" placeholder="hhmm" autocomplete="off"></label>
+          <label class="f">Passing Paknam<input id="fPaknam" class="mono" inputmode="numeric" placeholder="hhmm" autocomplete="off"></label>
+          <label class="f">Pilot No.<input id="fPilotOut" class="mono" placeholder="เลข"></label>
+          <label class="f">Draught<input id="fDraughtOut" class="mono" autocomplete="off"></label>
+        </div>
+      </section>
     </div>
-    <fieldset>
-      <legend>ขาออก</legend>
-      <label class="f">ATD Bar<input id="fAtd" class="mono" inputmode="numeric" placeholder="hhmm" autocomplete="off"></label>
-      <label class="f">Passing Paknam<input id="fPaknam" class="mono" inputmode="numeric" placeholder="hhmm" autocomplete="off"></label>
-      <label class="f">Pilot No.<input id="fPilotOut" class="mono" placeholder="พิมพ์เลข"></label>
-      <label class="f">Draught<input id="fDraughtOut" class="mono" autocomplete="off"></label>
-    </fieldset>
-    <fieldset>
-      <legend>ปิดงาน</legend>
-      <label class="f wide">Remark<input id="fRemark"></label>
-      <div class="wide" style="grid-column:1/-1"><button class="linkbtn" id="insOver" type="button">แทรก “เรือยาวเกินกำหนด” จาก LOA</button></div>
-      <div style="grid-column:1/-1;display:flex;flex-direction:column;gap:6px">
-        <span class="hint">ลำดับการปิด</span>
-        <div class="seg" id="fStatus">
-          <button type="button" class="none" data-v="">ยังไม่ระบุ</button>
-          <button type="button" class="wait" data-v="รอยืนยัน">รอยืนยัน</button>
-          <button type="button" class="ok" data-v="ปิดการเงิน">ปิดการเงิน</button>
+    <section class="blk">
+      <h3 class="lg">ย้ายท่า<span class="spacer"></span><button class="btn sm" id="addShift" type="button">+ ย้ายท่า</button></h3>
+      <div id="shiftList" class="srows"></div>
+    </section>
+    <section class="blk">
+      <div class="g g6">
+        <label class="f s4">Remark<input id="fRemark"></label>
+        <div class="stbox s2">ลำดับการปิด
+          <div class="seg" id="fStatus">
+            <button type="button" class="none" data-v="">ยังไม่ระบุ</button>
+            <button type="button" class="wait" data-v="รอยืนยัน">รอยืนยัน</button>
+            <button type="button" class="ok" data-v="ปิดการเงิน">ปิดการเงิน</button>
+          </div>
         </div>
       </div>
-    </fieldset>
+      <div><button class="linkbtn" id="insOver" type="button">แทรก “เรือยาวเกินกำหนด” จาก LOA</button></div>
+    </section>
   </div>
   <footer>
     <button class="btn primary" id="edSave">บันทึก</button>
     <button class="btn" id="edCancel">ยกเลิก</button>
+    <span class="hint">Esc = ปิด</span>
     <div class="spacer"></div>
     <button class="btn danger" id="edDelete" hidden>ลบรายการ</button>
   </footer>
@@ -473,6 +501,18 @@ function combo(inp,getOpts,o={}){
 }
 
 /* ---------- editor ---------- */
+/* keep the window centred on what the viewer can actually see (page may be embedded in a tall frame) */
+function placeSheet(){
+  const sh=$("sheet");if(sh.hidden)return;
+  let fr=null,ph=0;try{if(window.frameElement&&window.parent!==window){fr=window.frameElement.getBoundingClientRect();ph=window.parent.innerHeight}}catch(e){}
+  if(!fr||!ph||ph>=window.innerHeight){sh.style.top="";sh.style.bottom="";sh.style.maxHeight="";return}
+  const visTop=Math.max(0,-fr.top),visBot=Math.min(window.innerHeight,ph-fr.top),visH=Math.max(200,visBot-visTop);
+  sh.style.maxHeight=(visH-24)+"px";sh.style.bottom="auto";
+  const h=Math.min(sh.scrollHeight,visH-24);
+  sh.style.top=Math.max(8,visTop+(visH-h)/2)+"px";
+}
+try{window.parent.addEventListener("scroll",placeSheet,true);window.parent.addEventListener("resize",placeSheet)}catch(e){}
+
 function fillSelect(sel,list,val){sel.replaceChildren(el("option",{value:""},"—"));const all=[...list];if(val&&!all.includes(val))all.push(val);for(const v of all)sel.append(el("option",{value:v},v));sel.value=val||""}
 function setStatus(v){status=v;document.querySelectorAll("#fStatus button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.v===v))}
 document.querySelectorAll("#fStatus button").forEach(b=>b.addEventListener("click",()=>setStatus(b.dataset.v)));
@@ -496,7 +536,7 @@ async function openEditor(c){
   $("fAtd").value=v.atd||"";$("fPaknam").value=v.paknam||"";$("fDraughtOut").value=v.draughtOut||"";$("fRemark").value=v.remark||"";
   $("fFrom").value=v.from||"";$("fBerth").value=v.berth||"";$("fPilotIn").value=v.pilotIn||"";$("fPilotOut").value=v.pilotOut||"";pop.hidden=true;
   shifts=(v.shifts||[]).map(s=>({...s}));renderShifts();setStatus(v.status||"");checkShip();
-  $("scrim").hidden=false;$("sheet").hidden=false;$("fShip").focus();
+  $("scrim").hidden=false;$("sheet").hidden=false;placeSheet();$("fShip").focus();
   if(!v.job&&db){const j=await nextJob(v.date||curDate);
     if(editing===(c||null)&&!$("fJob").value){$("fJob").value=j.v;if(j.caret!=null){$("fJob").focus();$("fJob").setSelectionRange(j.caret,j.caret)}}}
 }
@@ -525,20 +565,20 @@ $("insOver").onclick=()=>{
 
 function renderShifts(){
   const box=$("shiftList");box.replaceChildren();
-  if(!shifts.length){box.append(el("p",{class:"hint",style:"margin:0"},"ไม่มีการย้ายท่า แถวจะถูกซ่อนในตาราง"));return}
+  if(!shifts.length){box.append(el("p",{class:"hint",style:"margin:0"},"ไม่มีการย้ายท่า (ถ้ามี กด “+ ย้ายท่า”)"));return}
+  box.append(el("div",{class:"srow head","aria-hidden":"true"},el("span"),el("span",{},"Order"),el("span",{},"Pilot No."),el("span",{},"จากท่า"),el("span"),el("span",{},"ไปท่า"),el("span",{},"Draught"),el("span",{},"Agent"),el("span")));
   shifts.forEach((s,i)=>{
-    const pi=el("input",{id:"sp"+i,class:"mono","aria-label":"Pilot No.",placeholder:"พิมพ์เลข",value:s.pilot||""});combo(pi,pilotOpts);pi.oninput=()=>s.pilot=pi.value.trim();
-    const fb=el("input",{id:"sf"+i,class:"mono","aria-label":"จากท่า",placeholder:"พิมพ์ชื่อท่า",value:s.fromBerth||""});combo(fb,berthOpts,{upper:true});fb.oninput=()=>s.fromBerth=fb.value.trim();
-    const be=el("input",{id:"sb"+i,class:"mono","aria-label":"ย้ายไปท่า",placeholder:"พิมพ์ชื่อท่า",value:s.berth||""});combo(be,berthOpts,{upper:true});be.oninput=()=>s.berth=be.value.trim();
-    const ag=el("input",{id:"sa"+i,"aria-label":"Agent",autocomplete:"off",value:s.agent||""});ag.oninput=()=>s.agent=ag.value.trim();
-    const or=el("input",{id:"so"+i,class:"mono",inputmode:"numeric",placeholder:"hhmm",value:s.order||""});or.oninput=()=>s.order=or.value.trim();
-    const dr=el("input",{id:"sd"+i,class:"mono",value:s.draught||""});dr.oninput=()=>s.draught=dr.value.trim();
-    box.append(el("div",{class:"shiftcard"},
-      el("div",{class:"lbl"},"ย้ายท่าครั้งที่ "+(i+1),el("button",{type:"button",class:"linkbtn del",onclick:()=>{shifts.splice(i,1);renderShifts()}},"ลบ")),
-      el("label",{class:"f"},"Order",or),el("label",{class:"f"},"Pilot No.",pi),el("label",{class:"f"},"จากท่า",fb),el("label",{class:"f"},"ไปท่า",be),el("label",{class:"f"},"Draught",dr),el("label",{class:"f",style:"grid-column:span 2"},"Agent",ag)));
+    const or=el("input",{id:"so"+i,class:"mono","aria-label":"Order ครั้งที่ "+(i+1),placeholder:"Order",autocomplete:"off",value:s.order||""});or.oninput=()=>s.order=or.value.trim();
+    const pi=el("input",{id:"sp"+i,class:"mono","aria-label":"Pilot No.",placeholder:"Pilot",value:s.pilot||""});combo(pi,pilotOpts);pi.oninput=()=>s.pilot=pi.value.trim();
+    const fb=el("input",{id:"sf"+i,class:"mono","aria-label":"จากท่า",placeholder:"จากท่า",value:s.fromBerth||""});combo(fb,berthOpts,{upper:true});fb.oninput=()=>s.fromBerth=fb.value.trim();
+    const be=el("input",{id:"sb"+i,class:"mono","aria-label":"ไปท่า",placeholder:"ไปท่า",value:s.berth||""});combo(be,berthOpts,{upper:true});be.oninput=()=>s.berth=be.value.trim();
+    const dr=el("input",{id:"sd"+i,class:"mono","aria-label":"Draught",placeholder:"Draught",autocomplete:"off",value:s.draught||""});dr.oninput=()=>s.draught=dr.value.trim();
+    const ag=el("input",{id:"sa"+i,class:"ag","aria-label":"Agent",placeholder:"Agent",autocomplete:"off",value:s.agent||""});ag.oninput=()=>s.agent=ag.value.trim();
+    box.append(el("div",{class:"srow"},el("span",{class:"num"},i+1),or,pi,fb,el("span",{class:"arw","aria-hidden":"true"},"→"),be,dr,ag,
+      el("button",{type:"button",class:"x","aria-label":"ลบการย้ายท่าครั้งที่ "+(i+1),title:"ลบ",onclick:()=>{shifts.splice(i,1);renderShifts()}},"✕")));
   });
 }
-$("addShift").onclick=()=>{shifts.push({order:"",pilot:"",fromBerth:(shifts.length?shifts[shifts.length-1].berth:$("fBerth").value.trim())||"",berth:"",draught:"",agent:""});renderShifts()};
+$("addShift").onclick=()=>{shifts.push({order:"",pilot:"",fromBerth:(shifts.length?shifts[shifts.length-1].berth:$("fBerth").value.trim())||"",berth:"",draught:"",agent:""});renderShifts();placeSheet();$("so"+(shifts.length-1))?.focus()};
 
 $("edSave").onclick=async()=>{
   if(!db)return;
