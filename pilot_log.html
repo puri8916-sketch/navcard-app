@@ -59,18 +59,26 @@ input[type=date]{border:1px solid var(--line);background:var(--surface);border-r
 .stat{display:flex;align-items:baseline;gap:6px;padding:4px 10px;border-radius:999px;background:var(--surface);border:1px solid var(--line);font-size:13px;color:var(--muted)}
 .stat b{font-family:var(--f-mono);font-size:15px;color:var(--ink);font-variant-numeric:tabular-nums}
 .tablebox{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:10px}
-table.log{border-collapse:collapse;width:100%;min-width:1380px;font-variant-numeric:tabular-nums}
-.log th,.log td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle;white-space:nowrap}
-.log thead th{font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.04em;text-transform:uppercase;background:var(--surface);position:sticky;top:0}
-.log thead tr.grp th{font-size:11px;text-align:center;border-bottom:2px solid var(--accent);color:var(--accent)}
-.log thead tr.grp th.blank{border-bottom-color:transparent}
-.log td.mono{font-family:var(--f-mono);font-size:13px}
-.log td.ship{font-weight:600;max-width:240px;white-space:normal}
+table.log{border-collapse:separate;border-spacing:0;width:100%;min-width:1240px;font-variant-numeric:tabular-nums;font-size:13px;
+  --grid:color-mix(in srgb,var(--line) 70%,transparent);--zebra:color-mix(in srgb,var(--bg) 60%,var(--surface));--head:color-mix(in srgb,var(--accent-soft) 40%,var(--surface))}
+.log th,.log td{padding:6px 9px;border-bottom:1px solid var(--grid);border-right:1px solid var(--grid);text-align:left;vertical-align:middle;white-space:nowrap;background:var(--rb,var(--surface))}
+.log tr>*:last-child{border-right:0}
+.log thead th{font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.03em;text-transform:uppercase;background:var(--head);white-space:normal;line-height:1.25;vertical-align:bottom;border-bottom:1px solid var(--line)}
+.log thead tr.grp th{text-align:center;color:var(--accent);font-size:11.5px;letter-spacing:.08em;padding:4px 9px;border-bottom:2px solid var(--accent);vertical-align:middle}
+.log thead tr.grp th.blank{border-bottom:1px solid var(--grid);background:var(--surface)}
+.log td.mono{font-family:var(--f-mono)}
+.log td.ship{font-weight:600}
+.log tbody tr{--rb:var(--surface)}
+.log tbody tr.alt{--rb:var(--zebra)}
 .log tbody tr.main{cursor:pointer}
-.log tbody tr.main:hover{background:var(--hover)}
-.log tbody tr.shift td{background:var(--bg);font-size:13px;border-bottom-style:dashed}
-.log tbody tr.shift td.ship{font-weight:400;color:var(--muted);padding-left:24px}
-.log .div{border-left:1px solid var(--line)}
+.log tbody tr.main:hover,.log tbody tr.main:focus-visible{--rb:var(--hover);outline:none}
+.log tbody tr.shift td{font-size:12.5px;padding-top:4px;padding-bottom:4px;border-bottom-style:dashed;color:var(--ink)}
+.log tbody tr.shift td.ship{font-weight:400;color:var(--muted);padding-left:22px}
+.log tbody tr.grp-end td{border-bottom:1px solid var(--line)}
+.log .div{border-left:2px solid var(--line)}
+.log tbody tr:is(.main,.shift) td:nth-child(1),.log thead tr:not(.grp) th:nth-child(1){position:sticky;left:0;z-index:1;min-width:92px}
+.log tbody tr:is(.main,.shift) td:nth-child(2),.log thead tr:not(.grp) th:nth-child(2){position:sticky;left:92px;z-index:1;box-shadow:inset -2px 0 0 var(--line)}
+.log thead th:nth-child(4),.log thead th:nth-child(5){min-width:84px}
 .jobno{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
 .chip{display:inline-block;padding:1px 9px;border-radius:999px;font-size:12px;font-weight:500}
 .chip.ok{background:var(--ok-bg);color:var(--ok-ink)}
@@ -80,13 +88,13 @@ table.log{border-collapse:collapse;width:100%;min-width:1380px;font-variant-nume
 .remark{max-width:220px;white-space:normal;font-size:12px;color:var(--muted)}
 .empty{padding:48px 16px;text-align:center;color:var(--muted)}
 .empty b{display:block;color:var(--ink);font-size:16px;margin-bottom:4px}
-.dash{color:var(--line)}
+.dash{color:var(--muted);opacity:.45}
 .filters{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;margin-bottom:10px}
 .filters #q{flex:1 1 240px;min-width:0;border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:6px 10px}
 .filters .seg button{background:var(--surface)}
 .filters .seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .cnt{font-family:var(--f-mono);margin-left:6px;font-weight:600}
-.log tbody tr.dgroup td{background:var(--bg);font-size:12px;font-weight:600;color:var(--muted);padding:6px 8px}
+.log tbody tr.dgroup td{background:var(--bg);border-right:0;font-size:12px;font-weight:600;color:var(--muted);padding:6px 8px}
 .log tbody tr.dgroup .linkbtn{font-family:var(--f-mono);font-size:13px;font-weight:600}
 mark{background:var(--warn-bg);color:inherit;border-radius:2px}
 .mv{font-family:var(--f-mono);white-space:nowrap}.mv .ar{color:var(--accent);font-weight:600;padding:0 4px}
@@ -411,10 +419,10 @@ function renderLog(){
     body.append(el("tr",{},el("td",{colspan:18,class:"empty"},el("b",{},title),sub)));
     return;
   }
-  let lastDate=null;
+  let lastDate=null,gi=0;
   for(const c of rows){
     if(scope==="all"&&c.date!==lastDate){
-      lastDate=c.date;const n=rows.filter(r=>r.date===c.date).length;
+      lastDate=c.date;gi=0;const n=rows.filter(r=>r.date===c.date).length;
       body.append(el("tr",{class:"dgroup"},el("td",{colspan:18},
         el("button",{class:"linkbtn",type:"button",title:"เปิดวันนี้",onclick:()=>{scope="day";setSeg("scopeSeg","day");setDate(c.date)}},beTab(c.date||"")),
         " · "+n+" ลำ")));
@@ -422,7 +430,8 @@ function renderLog(){
     const n=c.shifts?.length||0;
     const ship=el("td",{class:"ship"},hl(c.vessel||"—"));
     if(n){ship.append(el("button",{class:"shiftbtn","aria-expanded":expanded.has(c.id),title:"แสดง/ซ่อนการย้ายท่า",onclick:e=>{e.stopPropagation();expanded.has(c.id)?expanded.delete(c.id):expanded.add(c.id);renderLog()}},(expanded.has(c.id)?"▾":"▸")+" ย้ายท่า "+n))}
-    const tr=el("tr",{class:"main",tabindex:0,onclick:()=>openEditor(c),onkeydown:e=>{if(e.key==="Enter")openEditor(c)}},
+    const alt=(gi++%2)?" alt":"",showShifts=n&&expanded.has(c.id);
+    const tr=el("tr",{class:"main"+alt+(showShifts?"":" grp-end"),tabindex:0,onclick:()=>openEditor(c),onkeydown:e=>{if(e.key==="Enter")openEditor(c)}},
       cell(el("span",{class:"jobno"},hl(c.job||"")),""), ship, cell(c.from,"mono"),
       cell(c.eta,"mono div"), cell(c.order,"mono"), cell(pilotChip(c.pilotIn),"mono"), cell(c.berth,"mono"), cell(c.draughtIn,"mono"),
       cell(c.loa,"mono div"), cell(c.lbp,"mono"), cell(c.ng,"mono"), cell(c.agent?hl(c.agent):""),
@@ -431,7 +440,7 @@ function renderLog(){
     body.append(tr);
     if(n&&expanded.has(c.id)){
       c.shifts.forEach((s,i)=>{
-        body.append(el("tr",{class:"shift"},el("td"),el("td",{class:"ship"},"↳ ย้ายท่าครั้งที่ "+(i+1)),el("td"),
+        body.append(el("tr",{class:"shift"+alt+(i===c.shifts.length-1?" grp-end":"")},el("td"),el("td",{class:"ship"},"↳ ย้ายท่า "+(i+1)),el("td"),
           el("td",{class:"div"}),cell(s.order,"mono"),cell(pilotChip(s.pilot),"mono"),cell(moveEl(s)),cell(s.draught,"mono"),
           el("td",{class:"div"}),el("td"),el("td"),cell(s.agent?hl(s.agent):""),el("td",{class:"div"}),el("td"),el("td"),el("td"),el("td",{class:"div"}),el("td")));
       });
