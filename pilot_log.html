@@ -81,6 +81,14 @@ table.log{border-collapse:collapse;width:100%;min-width:1380px;font-variant-nume
 .empty{padding:48px 16px;text-align:center;color:var(--muted)}
 .empty b{display:block;color:var(--ink);font-size:16px;margin-bottom:4px}
 .dash{color:var(--line)}
+.filters{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;margin-bottom:10px}
+.filters #q{flex:1 1 240px;min-width:0;border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:6px 10px}
+.filters .seg button{background:var(--surface)}
+.filters .seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.cnt{font-family:var(--f-mono);margin-left:6px;font-weight:600}
+.log tbody tr.dgroup td{background:var(--bg);font-size:12px;font-weight:600;color:var(--muted);padding:6px 8px}
+.log tbody tr.dgroup .linkbtn{font-family:var(--f-mono);font-size:13px;font-weight:600}
+mark{background:var(--warn-bg);color:inherit;border-radius:2px}
 /* editor sheet */
 .scrim{position:fixed;inset:0;background:rgb(0 0 0 / .35);z-index:40}
 .sheet{position:fixed;top:0;right:0;bottom:0;width:min(560px,100%);background:var(--surface);z-index:41;box-shadow:var(--shadow);display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -161,6 +169,21 @@ table.reg{border-collapse:collapse;width:100%;min-width:520px}
       <div class="spacer"></div>
       <button class="btn" id="exportBtn" hidden>ส่งออก CSV</button>
       <button class="btn primary" id="addBtn">+ เพิ่มเรือ</button>
+    </div>
+    <div class="filters">
+      <input id="q" type="search" placeholder="ค้นหาชื่อเรือ / เลขการ์ด / Agent" aria-label="ค้นหาประวัติเรือ" autocomplete="off">
+      <div class="seg" id="fSeg" role="group" aria-label="สถานะการ์ด">
+        <button type="button" data-v="all" aria-pressed="true">ทั้งหมด</button>
+        <button type="button" data-v="open" aria-pressed="false">ยังไม่ปิดการ์ด<b class="cnt" id="openN">0</b></button>
+        <button type="button" data-v="รอยืนยัน" aria-pressed="false">รอยืนยัน</button>
+        <button type="button" data-v="ปิดการเงิน" aria-pressed="false">ปิดการเงิน</button>
+      </div>
+      <div class="seg" id="scopeSeg" role="group" aria-label="ช่วงวันที่">
+        <button type="button" data-v="day" aria-pressed="true">วันที่เลือก</button>
+        <button type="button" data-v="all" aria-pressed="false">ทุกวัน</button>
+      </div>
+      <button class="linkbtn" id="clearF" type="button" hidden>ล้างตัวกรอง</button>
+      <span class="hint" id="resN"></span>
     </div>
     <div class="tablebox">
       <table class="log">
@@ -292,7 +315,7 @@ const CFG_META = [
   {key:"ports",  title:"From (รหัสท่าต้นทาง)"}
 ];
 const $ = id => document.getElementById(id);
-let db=null, cfg={...DEF}, vessels=[], vByName=new Map(), calls=[], unsubCalls=null;
+let db=null, cfg={...DEF}, vessels=[], vByName=new Map(), calls=[], allCalls=[], lastRows=[], unsubCalls=null, searchQ="", fStatus="all", scope="day";
 let curDate=isoToday(), tab="log", editing=null, status="", shifts=[], expanded=new Set(), canWrite=true, downloads=null, vEditId=null, armedDel=false;
 
 function isoToday(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
@@ -313,32 +336,60 @@ document.querySelectorAll("nav.tabs button").forEach(b=>b.addEventListener("clic
 function setTab(t){tab=t;document.querySelectorAll("nav.tabs button").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===t));
   $("view-log").hidden=t!=="log";$("view-ves").hidden=t!=="ves";$("view-cfg").hidden=t!=="cfg";$("datebox").style.visibility=t==="log"?"visible":"hidden";
   try{localStorage.setItem("pl.tab",t)}catch(e){}}
-$("prevDay").onclick=()=>setDate(shiftDate(curDate,-1));
-$("nextDay").onclick=()=>setDate(shiftDate(curDate,1));
-$("todayBtn").onclick=()=>setDate(isoToday());
-$("datePick").onchange=e=>{if(e.target.value)setDate(e.target.value)};
-function setDate(iso){curDate=iso;$("datePick").value=iso;$("sheetTab").textContent=beTab(iso);expanded.clear();subscribeCalls()}
+function toDay(){if(scope!=="day"){scope="day";setSeg("scopeSeg","day")}}
+$("prevDay").onclick=()=>{toDay();setDate(shiftDate(curDate,-1))};
+$("nextDay").onclick=()=>{toDay();setDate(shiftDate(curDate,1))};
+$("todayBtn").onclick=()=>{toDay();setDate(isoToday())};
+$("datePick").onchange=e=>{if(e.target.value){toDay();setDate(e.target.value)}};
+function setDate(iso){curDate=iso;$("datePick").value=iso;$("sheetTab").textContent=beTab(iso);expanded.clear();renderLog()}
 
 /* ---------- daily log ---------- */
+const isOpen=c=>c.status!=="ปิดการเงิน";
+function matchQ(c){if(!searchQ)return true;const hay=norm([c.vessel,c.job,c.agent,c.berth,c.from,c.remark].join(" "));return searchQ.split(" ").every(t=>hay.includes(t))}
+function matchS(c){return fStatus==="all"||(fStatus==="open"?isOpen(c):c.status===fStatus)}
+function setSeg(id,v){document.querySelectorAll("#"+id+" button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.v===v))}
+function hl(text){
+  text=String(text||"");if(!searchQ||!text)return text;
+  const terms=searchQ.split(" ").filter(Boolean),up=text.toUpperCase();
+  for(const t of terms){const i=up.indexOf(t);if(i>=0){const f=document.createDocumentFragment();f.append(text.slice(0,i),el("mark",{},text.slice(i,i+t.length)),text.slice(i+t.length));return f}}
+  return text;
+}
 function renderLog(){
+  calls=allCalls.filter(c=>c.date===curDate);
   const body=$("logBody");body.replaceChildren();
-  const rows=[...calls].sort((a,b)=>(a.t||0)-(b.t||0));
-  $("sCount").textContent=rows.length;
-  $("sShift").textContent=rows.reduce((n,c)=>n+(c.shifts?.length||0),0);
-  $("sWait").textContent=rows.filter(c=>c.status==="รอยืนยัน").length;
-  $("sOk").textContent=rows.filter(c=>c.status==="ปิดการเงิน").length;
+  $("sCount").textContent=calls.length;
+  $("sShift").textContent=calls.reduce((n,c)=>n+(c.shifts?.length||0),0);
+  $("sWait").textContent=calls.filter(c=>c.status==="รอยืนยัน").length;
+  $("sOk").textContent=calls.filter(c=>c.status==="ปิดการเงิน").length;
+  $("openN").textContent=allCalls.filter(isOpen).length;
+  const base=scope==="all"?allCalls:calls;
+  const rows=base.filter(c=>matchQ(c)&&matchS(c)).sort((a,b)=>scope==="all"?(b.date||"").localeCompare(a.date||"")||(a.t||0)-(b.t||0):(a.t||0)-(b.t||0));
+  lastRows=rows;
+  const filtered=!!searchQ||fStatus!=="all"||scope==="all";
+  $("clearF").hidden=!filtered;
+  $("resN").textContent=filtered?`พบ ${rows.length} รายการ`+(scope==="all"?" จากทุกวัน":" ในวันที่ "+beTab(curDate)):"";
   if(!rows.length){
-    body.append(el("tr",{},el("td",{colspan:18,class:"empty"},el("b",{},"ยังไม่มีเรือในแท็บ "+beTab(curDate)),db?"กด “+ เพิ่มเรือ” เพื่อบันทึกลำแรกของวัน":"กำลังเชื่อมต่อฐานข้อมูล…")));
+    let title,sub;
+    if(filtered){title="ไม่พบรายการที่ตรงกับตัวกรอง";sub=fStatus==="open"?"การ์ดทุกใบปิดการเงินแล้ว":"ลองพิมพ์ชื่อเรือสั้นลง หรือกด “ล้างตัวกรอง”"}
+    else{title="ยังไม่มีเรือในแท็บ "+beTab(curDate);sub=db?"กด “+ เพิ่มเรือ” เพื่อบันทึกลำแรกของวัน":"กำลังเชื่อมต่อฐานข้อมูล…"}
+    body.append(el("tr",{},el("td",{colspan:18,class:"empty"},el("b",{},title),sub)));
     return;
   }
+  let lastDate=null;
   for(const c of rows){
+    if(scope==="all"&&c.date!==lastDate){
+      lastDate=c.date;const n=rows.filter(r=>r.date===c.date).length;
+      body.append(el("tr",{class:"dgroup"},el("td",{colspan:18},
+        el("button",{class:"linkbtn",type:"button",title:"เปิดวันนี้",onclick:()=>{scope="day";setSeg("scopeSeg","day");setDate(c.date)}},beTab(c.date||"")),
+        " · "+n+" ลำ")));
+    }
     const n=c.shifts?.length||0;
-    const ship=el("td",{class:"ship"},c.vessel||"—");
+    const ship=el("td",{class:"ship"},hl(c.vessel||"—"));
     if(n){ship.append(el("button",{class:"shiftbtn","aria-expanded":expanded.has(c.id),title:"แสดง/ซ่อนการย้ายท่า",onclick:e=>{e.stopPropagation();expanded.has(c.id)?expanded.delete(c.id):expanded.add(c.id);renderLog()}},(expanded.has(c.id)?"▾":"▸")+" ย้ายท่า "+n))}
     const tr=el("tr",{class:"main",tabindex:0,onclick:()=>openEditor(c),onkeydown:e=>{if(e.key==="Enter")openEditor(c)}},
-      cell(el("span",{class:"jobno"},c.job||""),""), ship, cell(c.from,"mono"),
+      cell(el("span",{class:"jobno"},hl(c.job||"")),""), ship, cell(c.from,"mono"),
       cell(c.eta,"mono div"), cell(c.order,"mono"), cell(pilotChip(c.pilotIn),"mono"), cell(c.berth,"mono"), cell(c.draughtIn,"mono"),
-      cell(c.loa,"mono div"), cell(c.lbp,"mono"), cell(c.ng,"mono"), cell(c.agent),
+      cell(c.loa,"mono div"), cell(c.lbp,"mono"), cell(c.ng,"mono"), cell(c.agent?hl(c.agent):""),
       cell(c.atd,"mono div"), cell(c.paknam,"mono"), cell(pilotChip(c.pilotOut),"mono"), cell(c.draughtOut,"mono"),
       cell(c.remark?el("span",{class:"remark"},c.remark):"","div"), cell(statusChip(c.status)));
     body.append(tr);
@@ -351,16 +402,15 @@ function renderLog(){
     }
   }
 }
+$("q").addEventListener("input",()=>{searchQ=norm($("q").value);if(searchQ&&scope!=="all"){scope="all";setSeg("scopeSeg","all")}renderLog()});
+document.querySelectorAll("#fSeg button").forEach(b=>b.addEventListener("click",()=>{fStatus=b.dataset.v;setSeg("fSeg",fStatus);if(fStatus==="open"&&scope!=="all"){scope="all";setSeg("scopeSeg","all")}renderLog()}));
+document.querySelectorAll("#scopeSeg button").forEach(b=>b.addEventListener("click",()=>{scope=b.dataset.v;setSeg("scopeSeg",scope);renderLog()}));
+$("clearF").onclick=()=>{searchQ="";$("q").value="";fStatus="all";scope="day";setSeg("fSeg","all");setSeg("scopeSeg","day");renderLog()};
 
 function subscribeCalls(){
-  if(unsubCalls){unsubCalls();unsubCalls=null}
-  calls=[];renderLog();
-  if(!db)return;
-  const d=curDate;
-  unsubCalls=db.collection("calls").where("date","==",d).onSnapshot(snap=>{
-    if(d!==curDate)return;
-    calls=snap.docs.map(x=>({id:x.id,...x.data()}));renderLog();
-  },err=>notice("โหลดข้อมูลวันนี้ไม่สำเร็จ ("+err.code+") ลองรีเฟรชหน้า"));
+  if(!db||unsubCalls){renderLog();return}
+  unsubCalls=db.collection("calls").onSnapshot(snap=>{allCalls=snap.docs.map(x=>({id:x.id,...x.data()}));renderLog()},
+    err=>notice("โหลดข้อมูลไม่สำเร็จ ("+err.code+") ลองรีเฟรชหน้า"));
 }
 
 /* ---------- editor ---------- */
@@ -379,7 +429,7 @@ async function nextJob(date){
 
 async function openEditor(c){
   editing=c||null;armedDel=false;$("edDelete").classList.remove("armed");$("edDelete").textContent="ลบรายการ";
-  $("edTitle").textContent=c?(c.vessel||"แก้ไขรายการ"):"เพิ่มเรือ · แท็บ "+beTab(curDate);
+  $("edTitle").textContent=c?((c.vessel||"แก้ไขรายการ")+" · "+beTab(c.date||curDate)):"เพิ่มเรือ · แท็บ "+beTab(curDate);
   $("edDelete").hidden=!c||!canWrite;$("edSave").disabled=!canWrite;
   const v=c||{};
   $("fJob").value=v.job||"";$("fShip").value=v.vessel||"";$("fLoa").value=v.loa||"";$("fLbp").value=v.lbp||"";$("fNg").value=v.ng||"";$("fAgent").value=v.agent||"";
@@ -452,14 +502,14 @@ $("edDelete").onclick=async()=>{
 
 /* ---------- export ---------- */
 $("exportBtn").onclick=async()=>{
-  const H=["No.","Ship's Name","From","ETA Bar","Order for Entering","Pilot No.","Berth","Draught","LOA","LBP","Net/Gross","Agent","ATD Bar","Passing Paknam","Pilot No.","Draught","Remark","ลำดับการปิด"];
+  const H=["วันที่","No.","Ship's Name","From","ETA Bar","Order for Entering","Pilot No.","Berth","Draught","LOA","LBP","Net/Gross","Agent","ATD Bar","Passing Paknam","Pilot No.","Draught","Remark","ลำดับการปิด"];
   const q=v=>{v=String(v??"");return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
   const lines=[H.map(q).join(",")];
-  for(const c of [...calls].sort((a,b)=>(a.t||0)-(b.t||0))){
-    lines.push([c.job,c.vessel,c.from,c.eta,c.order,c.pilotIn,c.berth,c.draughtIn,c.loa,c.lbp,c.ng,c.agent,c.atd,c.paknam,c.pilotOut,c.draughtOut,c.remark,c.status].map(q).join(","));
-    (c.shifts||[]).forEach((s,i)=>lines.push(["","↳ ย้ายท่า "+(i+1),"","",s.order,s.pilot,s.berth,s.draught,"","","","","","","","","",""].map(q).join(",")));
+  for(const c of lastRows){
+    lines.push([c.date?beTab(c.date):"",c.job,c.vessel,c.from,c.eta,c.order,c.pilotIn,c.berth,c.draughtIn,c.loa,c.lbp,c.ng,c.agent,c.atd,c.paknam,c.pilotOut,c.draughtOut,c.remark,c.status].map(q).join(","));
+    (c.shifts||[]).forEach((s,i)=>lines.push(["","","↳ ย้ายท่า "+(i+1),"","",s.order,s.pilot,s.berth,s.draught,"","","","","","","","","",""].map(q).join(",")));
   }
-  try{await downloads.save({filename:"pilot-log-"+beTab(curDate)+".csv",data:new Blob(["﻿"+lines.join("\n")],{type:"text/csv"})})}catch(e){toast("ส่งออกไม่สำเร็จ")}
+  try{await downloads.save({filename:"pilot-log-"+(scope==="all"?"all":beTab(curDate))+".csv",data:new Blob(["﻿"+lines.join("\n")],{type:"text/csv"})})}catch(e){toast("ส่งออกไม่สำเร็จ")}
 };
 
 /* ---------- vessels ---------- */
