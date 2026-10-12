@@ -102,6 +102,8 @@ body.shift-plain{--pen-shift:var(--pen)}
 body.ink-black{--pen:var(--ink)}
 .inkseg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .inkdot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:-1px}
+.loam{color:var(--pen-red);margin-left:2px}.ft{opacity:.9}
+.lbl-m{color:var(--pen-red);font-family:var(--f-mono);margin-left:6px}
 .jobno{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
 .chip{display:inline-block;padding:1px 9px;border-radius:999px;font-size:12px;font-weight:500}
 .chip.ok{background:var(--ok-bg);color:var(--ok-ink)}
@@ -335,7 +337,7 @@ table.reg{border-collapse:collapse;width:100%;min-width:520px}
         <label class="f s2">Ship's Name<input id="fShip" placeholder="พิมพ์ชื่อเรือ"></label>
         <label class="f s2">Agent<input id="fAgent"></label>
         <label class="f">From<input id="fFrom" class="mono" placeholder="รหัสเขตท่า"></label>
-        <label class="f">LOA (ft)<input id="fLoa" class="mono" autocomplete="off"></label>
+        <label class="f"><span>LOA (ft)<span class="lbl-m" id="loaM"></span></span><input id="fLoa" class="mono" autocomplete="off"></label>
         <label class="f">LBP<input id="fLbp" class="mono" placeholder="รหัสเขตท่า"></label>
         <label class="f">Net/Gross<input id="fNg" class="mono" autocomplete="off"></label>
         <div id="newShipHint" class="hint warn s3" hidden>เรือนี้ยังไม่อยู่ในทะเบียน <button class="linkbtn" id="addShipFromForm" type="button">เพิ่มเข้าทะเบียนเรือ</button></div>
@@ -477,7 +479,7 @@ function renderLog(){
     const tr=el("tr",{class:"main"+alt+(showShifts?"":" grp-end"),"data-id":c.id,tabindex:0,onclick:()=>openEditor(c),onkeydown:e=>{if(e.key==="Enter")openEditor(c)}},
       cell(el("span",{class:"jobno"},hl(c.job||"")),""), ship, cell(c.from,"mono"),
       cell(c.eta,"mono div"), cell(c.order,"mono"), cell(pilotChip(c.pilotIn),"mono"), cell(c.berth,"mono"), cell(c.draughtIn,"mono"),
-      cell(c.loa,"mono div"), cell(c.lbp,"mono"), cell(c.ng,"mono"), cell(c.agent?hl(c.agent):""),
+      cell(loaEl(c.loa),"mono div"), cell(c.lbp,"mono"), cell(c.ng,"mono"), cell(c.agent?hl(c.agent):""),
       cell(c.atd,"mono div"), cell(c.paknam,"mono"), cell(pilotChip(c.pilotOut),"mono"), cell(c.draughtOut,"mono"),
       cell(c.remark?el("span",{class:"remark"},c.remark):"","div"), cell(statusChip(c.status)));
     body.append(tr);
@@ -537,6 +539,9 @@ function subscribeCalls(){
     err=>notice("โหลดข้อมูลไม่สำเร็จ ("+err.code+") ลองรีเฟรชหน้า"));
 }
 
+/* LOA: feet as entered, metres (ft ÷ 3.2808, same factor as the ×3.2808 calculator) in red */
+function loaMeters(v){const t=String(v||"").trim();if(!/^\d+(\.\d+)?$/.test(t))return null;return (parseFloat(t)/3.2808).toFixed(2)}
+function loaEl(v){if(!v)return "";const m=loaMeters(v);if(m==null)return String(v);return el("span",{},el("span",{class:"ft"},v+"′"),"/",el("span",{class:"loam"},m))}
 function moveTxt(s){return (s.fromBerth||s.berth)?(s.fromBerth||"…")+" → "+(s.berth||"…"):""}
 function moveEl(s){if(!s.fromBerth&&!s.berth)return "";return el("span",{class:"mv"},s.fromBerth||"…",el("span",{class:"ar","aria-label":"ไป"},"→"),s.berth||"…")}
 /* ---------- type-to-filter boxes (replace dropdowns) ---------- */
@@ -625,7 +630,7 @@ async function openEditor(c){
   $("fEta").value=v.eta||"";$("fOrder").value=v.order||"";$("etaSync").checked=(v.eta||"")===(v.order||"");$("fDraughtIn").value=v.draughtIn||"";
   $("fAtd").value=v.atd||"";$("fPaknam").value=v.paknam||"";$("fDraughtOut").value=v.draughtOut||"";$("fRemark").value=v.remark||"";
   $("fFrom").value=v.from||"";$("fBerth").value=v.berth||"";$("fPilotIn").value=v.pilotIn||"";$("fPilotOut").value=v.pilotOut||"";pop.hidden=true;
-  shifts=(v.shifts||[]).map(s=>({...s}));renderShifts();setStatus(v.status||"");checkShip();
+  showLoaM();shifts=(v.shifts||[]).map(s=>({...s}));renderShifts();setStatus(v.status||"");checkShip();
   $("scrim").hidden=false;$("sheet").hidden=false;placeSheet();$("fShip").focus();
   if(!v.job&&db){const j=await nextJob(v.date||curDate);
     if(editing===(c||null)&&!$("fJob").value){$("fJob").value=j.v;if(j.caret!=null){$("fJob").focus();$("fJob").setSelectionRange(j.caret,j.caret)}}}
@@ -634,6 +639,8 @@ function closeEditor(){pop.hidden=true;$("scrim").hidden=true;$("sheet").hidden=
 $("edClose").onclick=closeEditor;$("edCancel").onclick=closeEditor;$("scrim").onclick=closeEditor;
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("sheet").hidden)closeEditor()});
 $("addBtn").onclick=()=>openEditor(null);
+function showLoaM(){const m=loaMeters($("fLoa").value);$("loaM").textContent=m?"= "+m+" m":""}
+$("fLoa").addEventListener("input",showLoaM);$("fShip").addEventListener("input",showLoaM);
 /* ETA Bar <-> Order for Entering: typing in either fills the other (switch in the ขาเข้า header turns it off) */
 function linkEtaOrder(){const a=$("fEta"),b=$("fOrder"),sw=$("etaSync");
   const on=(src,dst)=>src.addEventListener("input",()=>{if(sw.checked)dst.value=src.value});
