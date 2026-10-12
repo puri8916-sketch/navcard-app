@@ -14,6 +14,7 @@ label.btn{display:inline-flex;align-items:center}
   --bg:#eef2f3; --surface:#ffffff; --ink:#132029; --muted:#5a6872; --line:#d3dce0; --hover:#e6eff1;
   --accent:#0a6672; --accent-ink:#ffffff; --accent-soft:#d5ecef;
   --ok-bg:#cff3dc; --ok-ink:#0f5c34; --warn-bg:#fdf0bd; --warn-ink:#6e5200; --cap-bg:#e9f7b5; --cap-ink:#a3221b; --danger:#b3261e;
+  --hl-y:#fff59a; --hl-p:#ffc6e0; --hl-g:#c9f2b5; --hl-b:#c4e4ff;
   --shadow:0 10px 40px rgb(10 30 40 / .18);
   --f-body:"IBM Plex Sans Thai",system-ui,"Noto Sans Thai",sans-serif;
   --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
@@ -22,11 +23,13 @@ label.btn{display:inline-flex;align-items:center}
   --bg:#0e171c; --surface:#15222a; --ink:#e3ecef; --muted:#93a4ad; --line:#2a3a43; --hover:#1c2d36;
   --accent:#4cc0cc; --accent-ink:#06252a; --accent-soft:#163a40;
   --ok-bg:#163f2a; --ok-ink:#8ee3ae; --warn-bg:#46390d; --warn-ink:#f5d76a; --cap-bg:#33400f; --cap-ink:#ff8a80; --danger:#ff8a80;
+  --hl-y:#5a5014; --hl-p:#5c2742; --hl-g:#26502c; --hl-b:#1f4466;
   --shadow:0 10px 40px rgb(0 0 0 / .5); color-scheme:dark }}
 :root[data-theme="dark"]{
   --bg:#0e171c; --surface:#15222a; --ink:#e3ecef; --muted:#93a4ad; --line:#2a3a43; --hover:#1c2d36;
   --accent:#4cc0cc; --accent-ink:#06252a; --accent-soft:#163a40;
   --ok-bg:#163f2a; --ok-ink:#8ee3ae; --warn-bg:#46390d; --warn-ink:#f5d76a; --cap-bg:#33400f; --cap-ink:#ff8a80; --danger:#ff8a80;
+  --hl-y:#5a5014; --hl-p:#5c2742; --hl-g:#26502c; --hl-b:#1f4466;
   --shadow:0 10px 40px rgb(0 0 0 / .5); color-scheme:dark }
 *{box-sizing:border-box}
 [hidden]{display:none!important}
@@ -79,6 +82,16 @@ table.log{border-collapse:separate;border-spacing:0;width:100%;min-width:1240px;
 .log tbody tr:is(.main,.shift) td:nth-child(1),.log thead tr:not(.grp) th:nth-child(1){position:sticky;left:0;z-index:1;min-width:92px}
 .log tbody tr:is(.main,.shift) td:nth-child(2),.log thead tr:not(.grp) th:nth-child(2){position:sticky;left:92px;z-index:1;box-shadow:inset -2px 0 0 var(--line)}
 .log thead th:nth-child(4),.log thead th:nth-child(5){min-width:84px}
+.log td[data-hl="y"]{background:var(--hl-y)}.log td[data-hl="p"]{background:var(--hl-p)}.log td[data-hl="g"]{background:var(--hl-g)}.log td[data-hl="b"]{background:var(--hl-b)}
+body.marking .log tbody td[data-k]{cursor:cell}
+body.marking .log tbody td[data-k]:hover{outline:2px solid var(--accent);outline-offset:-2px}
+.hlbar{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.btn[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn .swdot{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--hl-y);border:1px solid var(--line);margin-right:6px;vertical-align:-1px}
+.sw{width:24px;height:24px;border-radius:50%;border:1px solid var(--line);cursor:pointer;padding:0;display:grid;place-items:center}
+.sw[data-c="y"]{background:var(--hl-y)}.sw[data-c="p"]{background:var(--hl-p)}.sw[data-c="g"]{background:var(--hl-g)}.sw[data-c="b"]{background:var(--hl-b)}
+.sw[data-c="x"]{background:var(--surface);color:var(--muted);font-size:12px}
+.sw[aria-pressed="true"]{box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--accent)}
 .jobno{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
 .chip{display:inline-block;padding:1px 9px;border-radius:999px;font-size:12px;font-weight:500}
 .chip.ok{background:var(--ok-bg);color:var(--ok-ink)}
@@ -203,6 +216,17 @@ table.reg{border-collapse:collapse;width:100%;min-width:520px}
       <span class="stat">รอยืนยัน <b id="sWait">0</b></span>
       <span class="stat">ปิดการเงิน <b id="sOk">0</b></span>
       <div class="spacer"></div>
+      <div class="hlbar">
+        <button class="btn" id="hlToggle" type="button" aria-pressed="false"><span class="swdot"></span>มาร์กสี</button>
+        <span id="hlColors" class="hlbar" hidden>
+          <button class="sw" type="button" data-c="y" aria-pressed="true" aria-label="เหลือง" title="เหลือง"></button>
+          <button class="sw" type="button" data-c="p" aria-pressed="false" aria-label="ชมพู" title="ชมพู"></button>
+          <button class="sw" type="button" data-c="g" aria-pressed="false" aria-label="เขียว" title="เขียว"></button>
+          <button class="sw" type="button" data-c="b" aria-pressed="false" aria-label="ฟ้า" title="ฟ้า"></button>
+          <button class="sw" type="button" data-c="x" aria-pressed="false" aria-label="ลบสี" title="ลบสี">✕</button>
+          <span class="hint">คลิกช่องในตารางเพื่อมาร์ก · คลิกซ้ำเพื่อลบ</span>
+        </span>
+      </div>
       <button class="btn" id="exportBtn" hidden>ส่งออก CSV</button>
       <button class="btn primary" id="addBtn">+ เพิ่มเรือ</button>
     </div>
@@ -431,7 +455,7 @@ function renderLog(){
     const ship=el("td",{class:"ship"},hl(c.vessel||"—"));
     if(n){ship.append(el("button",{class:"shiftbtn","aria-expanded":expanded.has(c.id),title:"แสดง/ซ่อนการย้ายท่า",onclick:e=>{e.stopPropagation();expanded.has(c.id)?expanded.delete(c.id):expanded.add(c.id);renderLog()}},(expanded.has(c.id)?"▾":"▸")+" ย้ายท่า "+n))}
     const alt=(gi++%2)?" alt":"",showShifts=n&&expanded.has(c.id);
-    const tr=el("tr",{class:"main"+alt+(showShifts?"":" grp-end"),tabindex:0,onclick:()=>openEditor(c),onkeydown:e=>{if(e.key==="Enter")openEditor(c)}},
+    const tr=el("tr",{class:"main"+alt+(showShifts?"":" grp-end"),"data-id":c.id,tabindex:0,onclick:()=>openEditor(c),onkeydown:e=>{if(e.key==="Enter")openEditor(c)}},
       cell(el("span",{class:"jobno"},hl(c.job||"")),""), ship, cell(c.from,"mono"),
       cell(c.eta,"mono div"), cell(c.order,"mono"), cell(pilotChip(c.pilotIn),"mono"), cell(c.berth,"mono"), cell(c.draughtIn,"mono"),
       cell(c.loa,"mono div"), cell(c.lbp,"mono"), cell(c.ng,"mono"), cell(c.agent?hl(c.agent):""),
@@ -440,13 +464,41 @@ function renderLog(){
     body.append(tr);
     if(n&&expanded.has(c.id)){
       c.shifts.forEach((s,i)=>{
-        body.append(el("tr",{class:"shift"+alt+(i===c.shifts.length-1?" grp-end":"")},el("td"),el("td",{class:"ship"},"↳ ย้ายท่า "+(i+1)),el("td"),
+        body.append(el("tr",{class:"shift"+alt+(i===c.shifts.length-1?" grp-end":""),"data-id":c.id,"data-si":i},el("td"),el("td",{class:"ship"},"↳ ย้ายท่า "+(i+1)),el("td"),
           el("td",{class:"div"}),cell(s.order,"mono"),cell(pilotChip(s.pilot),"mono"),cell(moveEl(s)),cell(s.draught,"mono"),
           el("td",{class:"div"}),el("td"),el("td"),cell(s.agent?hl(s.agent):""),el("td",{class:"div"}),el("td"),el("td"),el("td"),el("td",{class:"div"}),el("td")));
       });
     }
   }
+  paintMarks(rows);
 }
+
+/* ---------- highlighter: colour individual cells like a marker pen ---------- */
+const CELL_KEYS=["job","vessel","from","eta","order","pilotIn","berth","draughtIn","loa","lbp","ng","agent","atd","paknam","pilotOut","draughtOut","remark","status"];
+let markMode=false,markColor="y";
+function paintMarks(rows){
+  const byId=new Map(rows.map(c=>[c.id,c]));
+  $("logBody").querySelectorAll("tr[data-id]").forEach(tr=>{
+    const c=byId.get(tr.dataset.id);if(!c)return;const pre=tr.dataset.si!=null?"s"+tr.dataset.si+":":"";
+    [...tr.children].forEach((td,j)=>{const k=pre+CELL_KEYS[j];td.dataset.k=k;const m=c.marks?.[k];if(m)td.dataset.hl=m;else delete td.dataset.hl});
+  });
+}
+function setMarkMode(on){markMode=on;$("hlToggle").setAttribute("aria-pressed",on);$("hlColors").hidden=!on;document.body.classList.toggle("marking",on)}
+$("hlToggle").onclick=()=>setMarkMode(!markMode);
+document.querySelectorAll("#hlColors [data-c]").forEach(b=>b.addEventListener("click",()=>{markColor=b.dataset.c;document.querySelectorAll("#hlColors [data-c]").forEach(x=>x.setAttribute("aria-pressed",x===b))}));
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&markMode&&$("sheet").hidden)setMarkMode(false)});
+$("logBody").addEventListener("click",async e=>{
+  if(!markMode)return;
+  const td=e.target.closest("td[data-k]");if(!td)return;
+  e.stopPropagation();e.preventDefault();
+  if(!canWrite||!db)return;
+  const id=td.parentElement.dataset.id,c=allCalls.find(x=>x.id===id);if(!c)return;
+  const k=td.dataset.k,marks={...(c.marks||{})};
+  if(markColor==="x"||marks[k]===markColor)delete marks[k];else marks[k]=markColor;
+  const {id:_omit,...rest}=c;
+  try{await db.collection("calls").doc(id).set({...rest,marks})}catch(err){toast("บันทึกสีไม่สำเร็จ ("+(err.code||"error")+")")}
+},true);
+
 $("q").addEventListener("input",()=>{searchQ=norm($("q").value);if(searchQ&&scope!=="all"){scope="all";setSeg("scopeSeg","all")}renderLog()});
 document.querySelectorAll("#fSeg button").forEach(b=>b.addEventListener("click",()=>{fStatus=b.dataset.v;setSeg("fSeg",fStatus);if(fStatus==="open"&&scope!=="all"){scope="all";setSeg("scopeSeg","all")}renderLog()}));
 document.querySelectorAll("#scopeSeg button").forEach(b=>b.addEventListener("click",()=>{scope=b.dataset.v;setSeg("scopeSeg",scope);renderLog()}));
@@ -606,7 +658,7 @@ $("edSave").onclick=async()=>{
   const data={date:editing?.date||curDate,by:beYY(editing?.date||curDate),fy:fyYY(editing?.date||curDate),job:g("fJob"),vessel,from:g("fFrom"),loa:g("fLoa"),lbp:g("fLbp"),ng:g("fNg"),agent:g("fAgent"),
     eta:g("fEta"),order:g("fOrder"),pilotIn:g("fPilotIn"),berth:g("fBerth"),draughtIn:g("fDraughtIn"),
     atd:g("fAtd"),paknam:g("fPaknam"),pilotOut:g("fPilotOut"),draughtOut:g("fDraughtOut"),remark:g("fRemark"),status,
-    shifts:shifts.filter(s=>s.order||s.pilot||s.fromBerth||s.berth||s.draught||s.agent),t:editing?.t||Date.now(),updated:Date.now()};
+    shifts:shifts.filter(s=>s.order||s.pilot||s.fromBerth||s.berth||s.draught||s.agent),t:editing?.t||Date.now(),updated:Date.now(),marks:Object.fromEntries(Object.entries(editing?.marks||{}).filter(([k])=>{const m=k.match(/^s(\d+):/);return !m||+m[1]<shifts.filter(s=>s.order||s.pilot||s.fromBerth||s.berth||s.draught||s.agent).length}))};
   $("edSave").disabled=true;
   try{
     if(editing)await db.collection("calls").doc(editing.id).set(data);
