@@ -94,7 +94,7 @@ def apply_theme(choice):
         st.markdown(_BASE_CSS % {"app": _DARK_CSS}, unsafe_allow_html=True)
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
-_PAGES = ["⚓ รวมการ์ด", "🧮 เครื่องคิดเลข ×3.2808"]
+_PAGES = ["⚓ รวมการ์ด", "🧮 เครื่องคิดเลข ×3.2808", "📒 บันทึกนำร่องประจำวัน"]
 
 with st.sidebar:
     st.markdown("### เมนู")
@@ -102,6 +102,31 @@ with st.sidebar:
     st.divider()
     _theme_choice = st.radio("โหมดการแสดงผล", _THEME_OPTIONS, key="theme_choice", index=0)
 apply_theme(_theme_choice)
+
+if _page == _PAGES[2]:
+    # Daily pilot log (replaces the per-day tabs of the Google Sheet "เล่มบันทึกข้อมูล").
+    # Data lives in this browser's localStorage; the page has its own backup/restore buttons.
+    import csv as _csv
+    _db_path = os.path.join(_HERE, "ship_database.csv")
+    _ship_db = []
+    if os.path.exists(_db_path):
+        with open(_db_path, encoding="utf-8-sig", newline="") as _f:
+            for _r in _csv.DictReader(_f):
+                if (_r.get("Ship's Name") or "").strip():
+                    _ship_db.append({"name": _r["Ship's Name"].strip(),
+                                     "loa": (_r.get("LOA") or "").strip(),
+                                     "agent": (_r.get("Agent") or "").strip()})
+    with open(os.path.join(_HERE, "pilot_log.html"), encoding="utf-8") as _f:
+        _log_html = _f.read()
+    _inject = "window.__SHIP_DB__=" + json.dumps(_ship_db, ensure_ascii=False).replace("</", "<\\/") + ";"
+    _log_theme = {_THEME_OPTIONS[1]: "light", _THEME_OPTIONS[2]: "dark"}.get(_theme_choice)
+    if _log_theme:
+        _inject += "window.__THEME__='" + _log_theme + "';"
+    _log_html = _log_html.replace("<script>", "<script>" + _inject + "</script>\n<script>", 1)
+    st.markdown("""<style>[data-testid="stMainBlockContainer"]{padding-top:2.5rem;max-width:100%}</style>""",
+                unsafe_allow_html=True)
+    components.html(_log_html, height=1100, scrolling=True)
+    st.stop()
 
 if _page == _PAGES[1]:
     st.title("🧮 เครื่องคิดเลข ×3.2808")

@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>บันทึกนำร่องสงขลา</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Thai:wght@400;500;600&display=swap">
+<style>
+body{margin:0}
+label.btn{display:inline-flex;align-items:center}
+/* Layout: harbour log tool — sticky bar with date stepper + tabs, one wide log table grouped ขาเข้า | ขาออก, slide-in editor sheet */
+:root{
+  --bg:#eef2f3; --surface:#ffffff; --ink:#132029; --muted:#5a6872; --line:#d3dce0; --hover:#e6eff1;
+  --accent:#0a6672; --accent-ink:#ffffff; --accent-soft:#d5ecef;
+  --ok-bg:#cff3dc; --ok-ink:#0f5c34; --warn-bg:#fdf0bd; --warn-ink:#6e5200; --cap-bg:#e9f7b5; --cap-ink:#a3221b; --danger:#b3261e;
+  --shadow:0 10px 40px rgb(10 30 40 / .18);
+  --f-body:"IBM Plex Sans Thai",system-ui,"Noto Sans Thai",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0e171c; --surface:#15222a; --ink:#e3ecef; --muted:#93a4ad; --line:#2a3a43; --hover:#1c2d36;
+  --accent:#4cc0cc; --accent-ink:#06252a; --accent-soft:#163a40;
+  --ok-bg:#163f2a; --ok-ink:#8ee3ae; --warn-bg:#46390d; --warn-ink:#f5d76a; --cap-bg:#33400f; --cap-ink:#ff8a80; --danger:#ff8a80;
+  --shadow:0 10px 40px rgb(0 0 0 / .5); color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#0e171c; --surface:#15222a; --ink:#e3ecef; --muted:#93a4ad; --line:#2a3a43; --hover:#1c2d36;
+  --accent:#4cc0cc; --accent-ink:#06252a; --accent-soft:#163a40;
+  --ok-bg:#163f2a; --ok-ink:#8ee3ae; --warn-bg:#46390d; --warn-ink:#f5d76a; --cap-bg:#33400f; --cap-ink:#ff8a80; --danger:#ff8a80;
+  --shadow:0 10px 40px rgb(0 0 0 / .5); color-scheme:dark }
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.5}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{padding-inline:16px;padding-block:0 48px;max-width:1600px;margin:0 auto}
+header.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--bg);border-bottom:1px solid var(--line);margin-inline:-16px;padding:10px 16px;display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px}
+.brand{display:flex;flex-direction:column;line-height:1.15}
+.brand b{font-size:16px;font-weight:600}
+.brand span{font-size:11px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;font-family:var(--f-mono)}
+nav.tabs{display:flex;gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:3px}
+nav.tabs button{border:0;background:none;padding:5px 12px;border-radius:6px;cursor:pointer;color:var(--muted)}
+nav.tabs button[aria-selected="true"]{background:var(--accent);color:var(--accent-ink)}
+.spacer{flex:1}
+.datebox{display:flex;align-items:center;gap:4px}
+.datebox .tab{font-family:var(--f-mono);font-size:15px;font-weight:500;padding:0 8px;min-width:88px;text-align:center}
+.ibtn{border:1px solid var(--line);background:var(--surface);border-radius:6px;width:30px;height:30px;cursor:pointer;display:grid;place-items:center}
+.ibtn:hover{background:var(--hover)}
+input[type=date]{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:3px 6px;height:30px}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:6px 12px;cursor:pointer;white-space:nowrap}
+.btn:hover{background:var(--hover)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:500}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.danger{color:var(--danger)}
+.btn.danger.armed{background:var(--danger);color:var(--surface);border-color:var(--danger)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.notice{margin-top:14px;padding:10px 12px;border-radius:8px;background:var(--warn-bg);color:var(--warn-ink)}
+.stats{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 10px;align-items:center}
+.stat{display:flex;align-items:baseline;gap:6px;padding:4px 10px;border-radius:999px;background:var(--surface);border:1px solid var(--line);font-size:13px;color:var(--muted)}
+.stat b{font-family:var(--f-mono);font-size:15px;color:var(--ink);font-variant-numeric:tabular-nums}
+.tablebox{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+table.log{border-collapse:collapse;width:100%;min-width:1380px;font-variant-numeric:tabular-nums}
+.log th,.log td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle;white-space:nowrap}
+.log thead th{font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.04em;text-transform:uppercase;background:var(--surface);position:sticky;top:0}
+.log thead tr.grp th{font-size:11px;text-align:center;border-bottom:2px solid var(--accent);color:var(--accent)}
+.log thead tr.grp th.blank{border-bottom-color:transparent}
+.log td.mono{font-family:var(--f-mono);font-size:13px}
+.log td.ship{font-weight:600;max-width:240px;white-space:normal}
+.log tbody tr.main{cursor:pointer}
+.log tbody tr.main:hover{background:var(--hover)}
+.log tbody tr.shift td{background:var(--bg);font-size:13px;border-bottom-style:dashed}
+.log tbody tr.shift td.ship{font-weight:400;color:var(--muted);padding-left:24px}
+.log .div{border-left:1px solid var(--line)}
+.jobno{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.chip{display:inline-block;padding:1px 9px;border-radius:999px;font-size:12px;font-weight:500}
+.chip.ok{background:var(--ok-bg);color:var(--ok-ink)}
+.chip.wait{background:var(--warn-bg);color:var(--warn-ink)}
+.chip.cap{background:var(--cap-bg);color:var(--cap-ink);font-family:var(--f-mono)}
+.shiftbtn{margin-left:6px;border:1px solid var(--accent);color:var(--accent);background:var(--accent-soft);border-radius:999px;padding:0 7px;font-size:11px;cursor:pointer;font-family:var(--f-mono)}
+.remark{max-width:220px;white-space:normal;font-size:12px;color:var(--muted)}
+.empty{padding:48px 16px;text-align:center;color:var(--muted)}
+.empty b{display:block;color:var(--ink);font-size:16px;margin-bottom:4px}
+.dash{color:var(--line)}
+/* editor sheet */
+.scrim{position:fixed;inset:0;background:rgb(0 0 0 / .35);z-index:40}
+.sheet{position:fixed;top:0;right:0;bottom:0;width:min(560px,100%);background:var(--surface);z-index:41;box-shadow:var(--shadow);display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.sheet header{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line)}
+.sheet header h2{margin:0;font-size:17px;font-weight:600;flex:1;text-wrap:balance}
+.sheet .body{overflow-y:auto;padding:16px 18px;display:flex;flex-direction:column;gap:18px}
+.sheet footer{display:flex;gap:8px;padding:12px 18px;border-top:1px solid var(--line);flex-wrap:wrap}
+fieldset{border:0;padding:0;margin:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px 12px}
+legend{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin-bottom:8px;padding:0}
+label.f{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted);min-width:0}
+label.f.wide{grid-column:1/-1}
+label.f input,label.f select{border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:6px 8px;color:var(--ink);font-size:14px;width:100%;min-width:0}
+label.f input.mono{font-family:var(--f-mono)}
+label.f input[readonly]{background:var(--surface);border-style:dashed}
+.hint{font-size:12px;color:var(--muted)}
+.hint.warn{color:var(--warn-ink);background:var(--warn-bg);padding:6px 8px;border-radius:6px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button{border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:4px 12px;cursor:pointer}
+.seg button[aria-pressed="true"].ok{background:var(--ok-bg);color:var(--ok-ink);border-color:transparent;font-weight:500}
+.seg button[aria-pressed="true"].wait{background:var(--warn-bg);color:var(--warn-ink);border-color:transparent;font-weight:500}
+.seg button[aria-pressed="true"].none{background:var(--hover);font-weight:500}
+.shiftcard{border:1px dashed var(--line);border-radius:8px;padding:10px;display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;position:relative}
+.shiftcard .lbl{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:600}
+.linkbtn{border:0;background:none;color:var(--accent);cursor:pointer;padding:0;font-size:12px;text-decoration:underline}
+.linkbtn.del{color:var(--danger)}
+/* vessels + settings */
+.panel{margin-top:16px;display:flex;flex-direction:column;gap:14px}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:end}
+.toolbar input{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:6px 8px;min-width:0}
+table.reg{border-collapse:collapse;width:100%;min-width:520px}
+.reg th,.reg td{padding:7px 10px;border-bottom:1px solid var(--line);text-align:left}
+.reg th{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;font-weight:600}
+.reg td.mono{font-family:var(--f-mono)}
+.reg tr:hover td{background:var(--hover)}
+.reg td.act{text-align:right;white-space:nowrap}
+.cfg{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.cfgcard{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.cfgcard h3{margin:0;font-size:14px;font-weight:600}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.tag{display:inline-flex;align-items:center;gap:4px;padding:2px 4px 2px 10px;border-radius:999px;background:var(--bg);border:1px solid var(--line);font-family:var(--f-mono);font-size:12px}
+.tag button{border:0;background:none;cursor:pointer;color:var(--muted);width:20px;height:20px;border-radius:50%}
+.tag button:hover{background:var(--hover);color:var(--danger)}
+.addrow{display:flex;gap:6px}
+.addrow input{flex:1;min-width:0;border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:5px 8px;font-family:var(--f-mono)}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:8px;z-index:60;font-size:13px}
+@media (prefers-reduced-motion:no-preference){.sheet{animation:slide .18s ease-out}@keyframes slide{from{transform:translateX(24px);opacity:.6}}}
+@media (max-width:640px){.brand span{display:none}.datebox .tab{min-width:72px}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="bar">
+    <div class="brand"><b>บันทึกนำร่องสงขลา</b><span>Songkhla Pilot Log · SGZ</span></div>
+    <nav class="tabs" role="tablist">
+      <button id="tab-log" role="tab" aria-selected="true" data-tab="log">บันทึกประจำวัน</button>
+      <button id="tab-ves" role="tab" aria-selected="false" data-tab="ves">ทะเบียนเรือ</button>
+      <button id="tab-cfg" role="tab" aria-selected="false" data-tab="cfg">ตั้งค่า</button>
+    </nav>
+    <div class="spacer"></div>
+    <div class="datebox" id="datebox">
+      <button class="ibtn" id="prevDay" aria-label="วันก่อนหน้า">‹</button>
+      <span class="tab" id="sheetTab">--</span>
+      <button class="ibtn" id="nextDay" aria-label="วันถัดไป">›</button>
+      <input type="date" id="datePick" aria-label="เลือกวันที่">
+      <button class="btn" id="todayBtn">วันนี้</button>
+    </div>
+  </header>
+
+  <div id="notice" class="notice" hidden></div>
+
+  <section id="view-log">
+    <div class="stats">
+      <span class="stat">เรือ <b id="sCount">0</b></span>
+      <span class="stat">ย้ายท่า <b id="sShift">0</b></span>
+      <span class="stat">รอยืนยัน <b id="sWait">0</b></span>
+      <span class="stat">ปิดการเงิน <b id="sOk">0</b></span>
+      <div class="spacer"></div>
+      <button class="btn" id="exportBtn" hidden>ส่งออก CSV</button>
+      <button class="btn primary" id="addBtn">+ เพิ่มเรือ</button>
+    </div>
+    <div class="tablebox">
+      <table class="log">
+        <thead>
+          <tr class="grp"><th class="blank" colspan="3"></th><th colspan="5">ขาเข้า</th><th class="blank" colspan="4"></th><th colspan="4">ขาออก</th><th class="blank" colspan="2"></th></tr>
+          <tr>
+            <th>No.</th><th>Ship's Name</th><th>From</th>
+            <th class="div">ETA Bar</th><th>Order for Entering</th><th>Pilot No.</th><th>Berth</th><th>Draught</th>
+            <th class="div">LOA</th><th>LBP</th><th>Net/Gross</th><th>Agent</th>
+            <th class="div">ATD Bar</th><th>Passing Paknam</th><th>Pilot No.</th><th>Draught</th>
+            <th class="div">Remark</th><th>ลำดับการปิด</th>
+          </tr>
+        </thead>
+        <tbody id="logBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="view-ves" hidden>
+    <div class="panel">
+      <div class="toolbar">
+        <input id="vSearch" placeholder="ค้นหาชื่อเรือ / agent" style="flex:1 1 220px">
+        <span class="hint" id="vCount"></span>
+      </div>
+      <div class="cfgcard">
+        <h3 id="vFormTitle">เพิ่มเรือใหม่</h3>
+        <div class="toolbar">
+          <label class="f" style="flex:2 1 200px">Ship's Name<input id="vName" autocomplete="off"></label>
+          <label class="f" style="flex:1 1 90px">LOA (ft)<input id="vLoa" class="mono" autocomplete="off"></label>
+          <label class="f" style="flex:1 1 140px">Agent<input id="vAgent" list="agentList" autocomplete="off"></label>
+          <button class="btn primary" id="vSave">บันทึก</button>
+          <button class="btn" id="vCancel" hidden>ยกเลิก</button>
+        </div>
+      </div>
+      <div class="tablebox"><table class="reg"><thead><tr><th>Ship's Name</th><th>LOA</th><th>Agent</th><th></th></tr></thead><tbody id="vBody"></tbody></table></div>
+    </div>
+  </section>
+
+  <section id="view-cfg" hidden>
+    <div class="panel">
+      <p class="hint" style="margin:0">รายการเหล่านี้คือ dropdown ในฟอร์มบันทึก แก้ไขได้ตลอด ข้อมูลที่บันทึกไปแล้วไม่เปลี่ยนตาม</p>
+      <div class="cfg" id="cfgBox"></div>
+      <div class="cfgcard">
+        <h3>สำรองข้อมูล</h3>
+        <span class="hint">ข้อมูลทั้งหมดเก็บในเบราว์เซอร์ของเครื่องนี้ ควรกดสำรองเก็บไว้เป็นระยะ (เช่น สัปดาห์ละครั้ง) ถ้าล้างประวัติเบราว์เซอร์หรือเปลี่ยนเครื่อง ให้กู้คืนจากไฟล์นี้</span>
+        <span class="hint" id="bkInfo"></span>
+        <div class="toolbar">
+          <button class="btn primary" id="bkSave">ดาวน์โหลดไฟล์สำรอง (.json)</button>
+          <label class="btn" for="bkFile">กู้คืนจากไฟล์…</label>
+          <input type="file" id="bkFile" accept=".json,application/json" hidden>
+        </div>
+        <div id="bkConfirm" class="hint warn" hidden></div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<datalist id="shipList"></datalist>
+<datalist id="agentList"></datalist>
+<datalist id="remarkList"></datalist>
+
+<div class="scrim" id="scrim" hidden></div>
+<aside class="sheet" id="sheet" hidden aria-modal="true" role="dialog" aria-labelledby="edTitle">
+  <header><h2 id="edTitle">เพิ่มเรือ</h2><button class="ibtn" id="edClose" aria-label="ปิด">✕</button></header>
+  <div class="body">
+    <fieldset>
+      <legend>เรือ</legend>
+      <label class="f">No.<input id="fJob" class="mono" autocomplete="off"></label>
+      <label class="f" style="grid-column:span 2">Ship's Name<input id="fShip" list="shipList" autocomplete="off"></label>
+      <label class="f">From<select id="fFrom"></select></label>
+      <label class="f">LOA (ft)<input id="fLoa" class="mono" autocomplete="off"></label>
+      <label class="f">LBP<input id="fLbp" class="mono" autocomplete="off"></label>
+      <label class="f">Net/Gross<input id="fNg" class="mono" autocomplete="off"></label>
+      <label class="f">Agent<input id="fAgent" list="agentList" autocomplete="off"></label>
+      <div id="newShipHint" class="hint warn" style="grid-column:1/-1" hidden>เรือนี้ยังไม่อยู่ในทะเบียน <button class="linkbtn" id="addShipFromForm" type="button">เพิ่มเข้าทะเบียนเรือ</button></div>
+    </fieldset>
+    <fieldset>
+      <legend>ขาเข้า</legend>
+      <label class="f">ETA Bar<input id="fEta" class="mono" inputmode="numeric" placeholder="hhmm" autocomplete="off"></label>
+      <label class="f">Order for Entering<input id="fOrder" class="mono" inputmode="numeric" placeholder="hhmm" autocomplete="off"></label>
+      <label class="f">Pilot No.<select id="fPilotIn"></select></label>
+      <label class="f">Berth<select id="fBerth"></select></label>
+      <label class="f">Draught<input id="fDraughtIn" class="mono" autocomplete="off"></label>
+    </fieldset>
+    <div>
+      <legend style="display:block">ย้ายท่า</legend>
+      <div id="shiftList" style="display:flex;flex-direction:column;gap:8px"></div>
+      <button class="btn" id="addShift" type="button" style="margin-top:8px">+ ย้ายท่า</button>
+    </div>
+    <fieldset>
+      <legend>ขาออก</legend>
+      <label class="f">ATD Bar<input id="fAtd" class="mono" inputmode="numeric" placeholder="hhmm" autocomplete="off"></label>
+      <label class="f">Passing Paknam<input id="fPaknam" class="mono" inputmode="numeric" placeholder="hhmm" autocomplete="off"></label>
+      <label class="f">Pilot No.<select id="fPilotOut"></select></label>
+      <label class="f">Draught<input id="fDraughtOut" class="mono" autocomplete="off"></label>
+    </fieldset>
+    <fieldset>
+      <legend>ปิดงาน</legend>
+      <label class="f wide">Remark<input id="fRemark" list="remarkList" autocomplete="off"></label>
+      <div class="wide" style="grid-column:1/-1"><button class="linkbtn" id="insOver" type="button">แทรก “เรือยาวเกินกำหนด” จาก LOA</button></div>
+      <div style="grid-column:1/-1;display:flex;flex-direction:column;gap:6px">
+        <span class="hint">ลำดับการปิด</span>
+        <div class="seg" id="fStatus">
+          <button type="button" class="none" data-v="">ยังไม่ระบุ</button>
+          <button type="button" class="wait" data-v="รอยืนยัน">รอยืนยัน</button>
+          <button type="button" class="ok" data-v="ปิดการเงิน">ปิดการเงิน</button>
+        </div>
+      </div>
+    </fieldset>
+  </div>
+  <footer>
+    <button class="btn primary" id="edSave">บันทึก</button>
+    <button class="btn" id="edCancel">ยกเลิก</button>
+    <div class="spacer"></div>
+    <button class="btn danger" id="edDelete" hidden>ลบรายการ</button>
+  </footer>
+</aside>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+const DEF = {
+  ports:["THZ08","THZ12","THZ14","THZ17","THZ21","THZ28","THARF","MTJDA","SGSIN","THERF","THMAT","IDBTH","THBKK","MYBTL"],
+  berths:["PSB-1","PSB-2","PSB-3","PSB-4","PSB-5","PSB-6","PTT-A","PTT-B","SHELL","DWP-1","DWP-2","DWP-3","MPP","RW","SIRICHON2","SOUTHERN","SAWAT","PRATEEP"],
+  pilots:["178","189","220","-CAP-"]
+};
+const CFG_META = [
+  {key:"pilots", title:"Pilot No.", hint:"-CAP- = นายเรือนำเอง"},
+  {key:"berths", title:"ท่าเรือ (Berth)"},
+  {key:"ports",  title:"From (รหัสท่าต้นทาง)"}
+];
+const $ = id => document.getElementById(id);
+let db=null, cfg={...DEF}, vessels=[], vByName=new Map(), calls=[], unsubCalls=null;
+let curDate=isoToday(), tab="log", editing=null, status="", shifts=[], expanded=new Set(), canWrite=true, downloads=null, vEditId=null, armedDel=false;
+
+function isoToday(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
+function shiftDate(iso,n){const [y,m,d]=iso.split("-").map(Number);const t=new Date(y,m-1,d+n);return t.getFullYear()+"-"+String(t.getMonth()+1).padStart(2,"0")+"-"+String(t.getDate()).padStart(2,"0")}
+function beTab(iso){const [y,m,d]=iso.split("-");return d+"-"+m+"-"+String((+y+543)%100).padStart(2,"0")}
+function beYY(iso){return String((+iso.slice(0,4)+543)%100).padStart(2,"0")}
+function norm(s){return String(s||"").trim().toUpperCase().replace(/\s+/g," ")}
+function slug(s){const x=norm(s).replace(/[^A-Z0-9._~:@+-]+/g,"-").replace(/^-+|-+$/g,"").slice(0,120);return x||("V"+Date.now())}
+function el(tag,attrs={},...kids){const e=document.createElement(tag);for(const[k,v]of Object.entries(attrs)){if(k==="class")e.className=v;else if(k.startsWith("on"))e.addEventListener(k.slice(2),v);else if(v!==undefined&&v!==null)e.setAttribute(k,v)}for(const k of kids.flat()){if(k==null)continue;e.append(k instanceof Node?k:document.createTextNode(String(k)))}return e}
+function cell(v,cls){const td=el("td",cls?{class:cls}:{});if(v===""||v==null)td.append(el("span",{class:"dash"},"–"));else td.append(v instanceof Node?v:String(v));return td}
+function pilotChip(p){if(!p)return "";return p==="-CAP-"?el("span",{class:"chip cap"},"-CAP-"):p}
+function statusChip(s){if(!s)return "";return el("span",{class:"chip "+(s==="ปิดการเงิน"?"ok":"wait")},s)}
+let toastT;function toast(msg){const t=$("toast");t.textContent=msg;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>t.hidden=true,2400)}
+function notice(msg){const n=$("notice");n.textContent=msg||"";n.hidden=!msg}
+
+/* ---------- tabs & date ---------- */
+document.querySelectorAll("nav.tabs button").forEach(b=>b.addEventListener("click",()=>setTab(b.dataset.tab)));
+function setTab(t){tab=t;document.querySelectorAll("nav.tabs button").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===t));
+  $("view-log").hidden=t!=="log";$("view-ves").hidden=t!=="ves";$("view-cfg").hidden=t!=="cfg";$("datebox").style.visibility=t==="log"?"visible":"hidden";
+  try{localStorage.setItem("pl.tab",t)}catch(e){}}
+$("prevDay").onclick=()=>setDate(shiftDate(curDate,-1));
+$("nextDay").onclick=()=>setDate(shiftDate(curDate,1));
+$("todayBtn").onclick=()=>setDate(isoToday());
+$("datePick").onchange=e=>{if(e.target.value)setDate(e.target.value)};
+function setDate(iso){curDate=iso;$("datePick").value=iso;$("sheetTab").textContent=beTab(iso);expanded.clear();subscribeCalls()}
+
+/* ---------- daily log ---------- */
+function renderLog(){
+  const body=$("logBody");body.replaceChildren();
+  const rows=[...calls].sort((a,b)=>(a.t||0)-(b.t||0));
+  $("sCount").textContent=rows.length;
+  $("sShift").textContent=rows.reduce((n,c)=>n+(c.shifts?.length||0),0);
+  $("sWait").textContent=rows.filter(c=>c.status==="รอยืนยัน").length;
+  $("sOk").textContent=rows.filter(c=>c.status==="ปิดการเงิน").length;
+  if(!rows.length){
+    body.append(el("tr",{},el("td",{colspan:18,class:"empty"},el("b",{},"ยังไม่มีเรือในแท็บ "+beTab(curDate)),db?"กด “+ เพิ่มเรือ” เพื่อบันทึกลำแรกของวัน":"กำลังเชื่อมต่อฐานข้อมูล…")));
+    return;
+  }
+  for(const c of rows){
+    const n=c.shifts?.length||0;
+    const ship=el("td",{class:"ship"},c.vessel||"—");
+    if(n){ship.append(el("button",{class:"shiftbtn","aria-expanded":expanded.has(c.id),title:"แสดง/ซ่อนการย้ายท่า",onclick:e=>{e.stopPropagation();expanded.has(c.id)?expanded.delete(c.id):expanded.add(c.id);renderLog()}},(expanded.has(c.id)?"▾":"▸")+" ย้ายท่า "+n))}
+    const tr=el("tr",{class:"main",tabindex:0,onclick:()=>openEditor(c),onkeydown:e=>{if(e.key==="Enter")openEditor(c)}},
+      cell(el("span",{class:"jobno"},c.job||""),""), ship, cell(c.from,"mono"),
+      cell(c.eta,"mono div"), cell(c.order,"mono"), cell(pilotChip(c.pilotIn),"mono"), cell(c.berth,"mono"), cell(c.draughtIn,"mono"),
+      cell(c.loa,"mono div"), cell(c.lbp,"mono"), cell(c.ng,"mono"), cell(c.agent),
+      cell(c.atd,"mono div"), cell(c.paknam,"mono"), cell(pilotChip(c.pilotOut),"mono"), cell(c.draughtOut,"mono"),
+      cell(c.remark?el("span",{class:"remark"},c.remark):"","div"), cell(statusChip(c.status)));
+    body.append(tr);
+    if(n&&expanded.has(c.id)){
+      c.shifts.forEach((s,i)=>{
+        body.append(el("tr",{class:"shift"},el("td"),el("td",{class:"ship"},"↳ ย้ายท่าครั้งที่ "+(i+1)),el("td"),
+          el("td",{class:"div"}),cell(s.order,"mono"),cell(pilotChip(s.pilot),"mono"),cell(s.berth,"mono"),cell(s.draught,"mono"),
+          el("td",{class:"div"}),el("td"),el("td"),el("td"),el("td",{class:"div"}),el("td"),el("td"),el("td"),el("td",{class:"div"}),el("td")));
+      });
+    }
+  }
+}
+
+function subscribeCalls(){
+  if(unsubCalls){unsubCalls();unsubCalls=null}
+  calls=[];renderLog();
+  if(!db)return;
+  const d=curDate;
+  unsubCalls=db.collection("calls").where("date","==",d).onSnapshot(snap=>{
+    if(d!==curDate)return;
+    calls=snap.docs.map(x=>({id:x.id,...x.data()}));renderLog();
+  },err=>notice("โหลดข้อมูลวันนี้ไม่สำเร็จ ("+err.code+") ลองรีเฟรชหน้า"));
+}
+
+/* ---------- editor ---------- */
+function fillSelect(sel,list,val){sel.replaceChildren(el("option",{value:""},"—"));const all=[...list];if(val&&!all.includes(val))all.push(val);for(const v of all)sel.append(el("option",{value:v},v));sel.value=val||""}
+function setStatus(v){status=v;document.querySelectorAll("#fStatus button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.v===v))}
+document.querySelectorAll("#fStatus button").forEach(b=>b.addEventListener("click",()=>setStatus(b.dataset.v)));
+
+async function nextJob(){
+  const yy=beYY(curDate);
+  try{const snap=await db.collection("calls").where("by","==",yy).get();
+    let max=0;snap.docs.forEach(d=>{const m=String(d.data().job||"").match(/(\d+)\s*$/);if(m&&String(d.data().job).includes("/"+yy))max=Math.max(max,+m[1])});
+    return "SGZ/"+yy+"-"+String(max+1).padStart(3,"0");
+  }catch(e){return "SGZ/"+yy+"-"}
+}
+
+async function openEditor(c){
+  editing=c||null;armedDel=false;$("edDelete").classList.remove("armed");$("edDelete").textContent="ลบรายการ";
+  $("edTitle").textContent=c?(c.vessel||"แก้ไขรายการ"):"เพิ่มเรือ · แท็บ "+beTab(curDate);
+  $("edDelete").hidden=!c||!canWrite;$("edSave").disabled=!canWrite;
+  const v=c||{};
+  $("fJob").value=v.job||"";$("fShip").value=v.vessel||"";$("fLoa").value=v.loa||"";$("fLbp").value=v.lbp||"";$("fNg").value=v.ng||"";$("fAgent").value=v.agent||"";
+  $("fEta").value=v.eta||"";$("fOrder").value=v.order||"";$("fDraughtIn").value=v.draughtIn||"";
+  $("fAtd").value=v.atd||"";$("fPaknam").value=v.paknam||"";$("fDraughtOut").value=v.draughtOut||"";$("fRemark").value=v.remark||"";
+  fillSelect($("fFrom"),cfg.ports,v.from);fillSelect($("fBerth"),cfg.berths,v.berth);fillSelect($("fPilotIn"),cfg.pilots,v.pilotIn);fillSelect($("fPilotOut"),cfg.pilots,v.pilotOut);
+  shifts=(v.shifts||[]).map(s=>({...s}));renderShifts();setStatus(v.status||"");checkShip();
+  $("scrim").hidden=false;$("sheet").hidden=false;$("fShip").focus();
+  if(!c&&db){const j=await nextJob();if(!editing&&!$("fJob").value)$("fJob").value=j}
+}
+function closeEditor(){$("scrim").hidden=true;$("sheet").hidden=true;editing=null}
+$("edClose").onclick=closeEditor;$("edCancel").onclick=closeEditor;$("scrim").onclick=closeEditor;
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("sheet").hidden)closeEditor()});
+$("addBtn").onclick=()=>openEditor(null);
+
+function checkShip(){const v=vByName.get(norm($("fShip").value));$("newShipHint").hidden=!$("fShip").value.trim()||!!v||!db}
+$("fShip").addEventListener("input",()=>{
+  const v=vByName.get(norm($("fShip").value));
+  if(v){$("fLoa").value=v.loa||"";$("fAgent").value=v.agent||""}
+  checkShip();
+});
+$("addShipFromForm").onclick=async()=>{
+  const name=$("fShip").value.trim();if(!name)return;
+  try{await db.collection("vessels").doc(slug(name)).set({name,loa:$("fLoa").value.trim(),agent:$("fAgent").value.trim()});toast("เพิ่ม "+name+" เข้าทะเบียนแล้ว")}catch(e){toast("เพิ่มเรือไม่สำเร็จ: "+e.code)}
+};
+$("insOver").onclick=()=>{
+  const ft=parseFloat($("fLoa").value);
+  $("fRemark").value=isFinite(ft)?`เรือยาวเกินกำหนด ${(ft*0.3048).toFixed(2)} เมตร (${ft} ฟุต)`:"เรือยาวเกินกำหนด เมตร( ฟุต)";
+};
+
+function renderShifts(){
+  const box=$("shiftList");box.replaceChildren();
+  if(!shifts.length){box.append(el("p",{class:"hint",style:"margin:0"},"ไม่มีการย้ายท่า แถวจะถูกซ่อนในตาราง"));return}
+  shifts.forEach((s,i)=>{
+    const pi=el("select",{id:"sp"+i,"aria-label":"Pilot"}),be=el("select",{id:"sb"+i,"aria-label":"ย้ายไปท่า"});
+    fillSelect(pi,cfg.pilots,s.pilot);fillSelect(be,cfg.berths,s.berth);
+    pi.onchange=()=>s.pilot=pi.value;be.onchange=()=>s.berth=be.value;
+    const or=el("input",{id:"so"+i,class:"mono",inputmode:"numeric",placeholder:"hhmm",value:s.order||""});or.oninput=()=>s.order=or.value.trim();
+    const dr=el("input",{id:"sd"+i,class:"mono",value:s.draught||""});dr.oninput=()=>s.draught=dr.value.trim();
+    box.append(el("div",{class:"shiftcard"},
+      el("div",{class:"lbl"},"ย้ายท่าครั้งที่ "+(i+1),el("button",{type:"button",class:"linkbtn del",onclick:()=>{shifts.splice(i,1);renderShifts()}},"ลบ")),
+      el("label",{class:"f"},"Order",or),el("label",{class:"f"},"Pilot No.",pi),el("label",{class:"f"},"ไปท่า",be),el("label",{class:"f"},"Draught",dr)));
+  });
+}
+$("addShift").onclick=()=>{shifts.push({order:"",pilot:"",berth:"",draught:""});renderShifts()};
+
+$("edSave").onclick=async()=>{
+  if(!db)return;
+  const vessel=$("fShip").value.trim();
+  if(!vessel){toast("กรอกชื่อเรือก่อนบันทึก");$("fShip").focus();return}
+  const g=id=>$(id).value.trim();
+  const data={date:editing?.date||curDate,by:beYY(editing?.date||curDate),job:g("fJob"),vessel,from:g("fFrom"),loa:g("fLoa"),lbp:g("fLbp"),ng:g("fNg"),agent:g("fAgent"),
+    eta:g("fEta"),order:g("fOrder"),pilotIn:g("fPilotIn"),berth:g("fBerth"),draughtIn:g("fDraughtIn"),
+    atd:g("fAtd"),paknam:g("fPaknam"),pilotOut:g("fPilotOut"),draughtOut:g("fDraughtOut"),remark:g("fRemark"),status,
+    shifts:shifts.filter(s=>s.order||s.pilot||s.berth||s.draught),t:editing?.t||Date.now(),updated:Date.now()};
+  $("edSave").disabled=true;
+  try{
+    if(editing)await db.collection("calls").doc(editing.id).set(data);
+    else await db.collection("calls").add(data);
+    closeEditor();toast("บันทึก "+vessel+" แล้ว");
+  }catch(e){toast(e.code==="quota_exceeded"?"ฐานข้อมูลเต็ม ลบรายการเก่าก่อน":"บันทึกไม่สำเร็จ ("+e.code+") ลองอีกครั้ง")}
+  finally{$("edSave").disabled=!canWrite}
+};
+$("edDelete").onclick=async()=>{
+  if(!editing)return;
+  if(!armedDel){armedDel=true;$("edDelete").classList.add("armed");$("edDelete").textContent="กดอีกครั้งเพื่อยืนยันลบ";return}
+  try{await db.collection("calls").doc(editing.id).delete();closeEditor();toast("ลบรายการแล้ว")}catch(e){toast("ลบไม่สำเร็จ ("+e.code+")")}
+};
+
+/* ---------- export ---------- */
+$("exportBtn").onclick=async()=>{
+  const H=["No.","Ship's Name","From","ETA Bar","Order for Entering","Pilot No.","Berth","Draught","LOA","LBP","Net/Gross","Agent","ATD Bar","Passing Paknam","Pilot No.","Draught","Remark","ลำดับการปิด"];
+  const q=v=>{v=String(v??"");return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
+  const lines=[H.map(q).join(",")];
+  for(const c of [...calls].sort((a,b)=>(a.t||0)-(b.t||0))){
+    lines.push([c.job,c.vessel,c.from,c.eta,c.order,c.pilotIn,c.berth,c.draughtIn,c.loa,c.lbp,c.ng,c.agent,c.atd,c.paknam,c.pilotOut,c.draughtOut,c.remark,c.status].map(q).join(","));
+    (c.shifts||[]).forEach((s,i)=>lines.push(["","↳ ย้ายท่า "+(i+1),"","",s.order,s.pilot,s.berth,s.draught,"","","","","","","","","",""].map(q).join(",")));
+  }
+  try{await downloads.save({filename:"pilot-log-"+beTab(curDate)+".csv",data:new Blob(["﻿"+lines.join("\n")],{type:"text/csv"})})}catch(e){toast("ส่งออกไม่สำเร็จ")}
+};
+
+/* ---------- vessels ---------- */
+function rebuildVessels(){
+  vByName=new Map(vessels.map(v=>[norm(v.name),v]));
+  $("shipList").replaceChildren(...vessels.map(v=>el("option",{value:v.name},`${v.loa||""} · ${v.agent||""}`)));
+  const agents=[...new Set(vessels.map(v=>(v.agent||"").trim()).filter(Boolean))].sort();
+  $("agentList").replaceChildren(...agents.map(a=>el("option",{value:a})));
+  renderVessels();if(!$("sheet").hidden)checkShip();
+}
+function renderVessels(){
+  const q=norm($("vSearch").value);
+  const list=vessels.filter(v=>!q||norm(v.name).includes(q)||norm(v.agent).includes(q)).sort((a,b)=>norm(a.name).localeCompare(norm(b.name)));
+  $("vCount").textContent=list.length+" / "+vessels.length+" ลำ";
+  const body=$("vBody");body.replaceChildren();
+  if(!vessels.length){body.append(el("tr",{},el("td",{colspan:4,class:"empty"},el("b",{},"ทะเบียนเรือว่าง"),"เพิ่มเรือลำแรกด้วยฟอร์มด้านบน")));return}
+  for(const v of list){
+    const act=el("td",{class:"act"});
+    if(canWrite){
+      act.append(el("button",{class:"linkbtn",onclick:()=>{vEditId=v.id;$("vName").value=v.name;$("vLoa").value=v.loa||"";$("vAgent").value=v.agent||"";$("vFormTitle").textContent="แก้ไข "+v.name;$("vCancel").hidden=false;$("vName").focus()}},"แก้ไข")," ");
+      const del=el("button",{class:"linkbtn del"},"ลบ");let armed=false;
+      del.onclick=async()=>{if(!armed){armed=true;del.textContent="ยืนยันลบ?";setTimeout(()=>{armed=false;del.textContent="ลบ"},3000);return}
+        try{await db.collection("vessels").doc(v.id).delete();toast("ลบ "+v.name+" แล้ว")}catch(e){toast("ลบไม่สำเร็จ ("+e.code+")")}};
+      act.append(del);
+    }
+    body.append(el("tr",{},el("td",{},v.name),el("td",{class:"mono"},v.loa||""),el("td",{},v.agent||""),act));
+  }
+}
+$("vSearch").addEventListener("input",renderVessels);
+function resetVForm(){vEditId=null;$("vName").value="";$("vLoa").value="";$("vAgent").value="";$("vFormTitle").textContent="เพิ่มเรือใหม่";$("vCancel").hidden=true}
+$("vCancel").onclick=resetVForm;
+$("vSave").onclick=async()=>{
+  const name=$("vName").value.trim();if(!name){toast("กรอกชื่อเรือ");return}
+  const id=vEditId||slug(name);
+  if(!vEditId&&vByName.has(norm(name))){toast(name+" มีในทะเบียนแล้ว");return}
+  try{await db.collection("vessels").doc(id).set({name,loa:$("vLoa").value.trim(),agent:$("vAgent").value.trim()});toast("บันทึก "+name+" แล้ว");resetVForm()}catch(e){toast("บันทึกไม่สำเร็จ ("+e.code+")")}
+};
+
+/* ---------- settings ---------- */
+function renderCfg(){
+  const box=$("cfgBox");box.replaceChildren();
+  for(const m of CFG_META){
+    const list=cfg[m.key]||[];
+    const inp=el("input",{id:"cfgIn-"+m.key,placeholder:"เพิ่ม…","aria-label":"เพิ่ม "+m.title});
+    const add=async()=>{const v=inp.value.trim().toUpperCase()==="-CAP-"?"-CAP-":inp.value.trim();if(!v||list.includes(v))return;await saveCfg(m.key,[...list,v]);inp.value=""};
+    inp.onkeydown=e=>{if(e.key==="Enter")add()};
+    box.append(el("div",{class:"cfgcard"},el("h3",{},m.title),m.hint?el("span",{class:"hint"},m.hint):null,
+      el("div",{class:"chips"},list.map(v=>el("span",{class:"tag"},v,canWrite?el("button",{"aria-label":"ลบ "+v,onclick:()=>saveCfg(m.key,list.filter(x=>x!==v))},"×"):null))),
+      canWrite?el("div",{class:"addrow"},inp,el("button",{class:"btn",onclick:add},"เพิ่ม")):null));
+  }
+}
+async function saveCfg(key,list){
+  const next={ports:cfg.ports,berths:cfg.berths,pilots:cfg.pilots,[key]:list};
+  try{await db.doc("config/lists").set(next)}catch(e){toast("บันทึกตั้งค่าไม่สำเร็จ ("+e.code+")")}
+}
+
+/* ---------- local storage db (same API the page uses) ---------- */
+const LS_KEY="pilotlog_v1";
+function lsLoad(){try{return JSON.parse(localStorage.getItem(LS_KEY)||"null")}catch(e){return null}}
+let STORE=lsLoad()||{};
+function normStore(){for(const k of ["calls","vessels","config"])STORE[k]=STORE[k]||{};}
+normStore();
+if(!Object.keys(STORE.vessels).length&&Array.isArray(window.__SHIP_DB__)){
+  for(const v of window.__SHIP_DB__)STORE.vessels[slug(v.name)]={name:v.name,loa:v.loa||"",agent:v.agent||""};
+  try{localStorage.setItem(LS_KEY,JSON.stringify(STORE))}catch(e){}
+}
+const listeners=new Set();
+function emit(){listeners.forEach(l=>{try{l()}catch(e){console.error(e)}})}
+function persist(){try{localStorage.setItem(LS_KEY,JSON.stringify(STORE))}catch(e){notice("บันทึกลงเบราว์เซอร์ไม่สำเร็จ (พื้นที่เต็มหรือถูกปิดกั้น) กรุณาดาวน์โหลดไฟล์สำรองทันที");throw {code:"storage"}}emit()}
+function docsOf(col,f){return Object.entries(STORE[col]||{}).filter(([,d])=>!f||d[f[0]]===f[2]).map(([id,d])=>({id,exists:true,data:()=>d}))}
+function docRef(col,id){return{id,
+  set:async d=>{STORE[col][id]=JSON.parse(JSON.stringify(d));persist()},
+  delete:async()=>{delete STORE[col][id];persist()},
+  onSnapshot(next){const l=()=>{const d=STORE[col][id];next({exists:!!d,data:()=>d})};listeners.add(l);setTimeout(l,0);return()=>listeners.delete(l)}}}
+function query(col,f){return{
+  where:(a,op,b)=>query(col,[a,op,b]),
+  get:async()=>({docs:docsOf(col,f)}),
+  onSnapshot(next){const l=()=>next({docs:docsOf(col,f)});listeners.add(l);setTimeout(l,0);return()=>listeners.delete(l)},
+  doc:id=>docRef(col,id),
+  add:async d=>{const id="c"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);STORE[col][id]=JSON.parse(JSON.stringify(d));persist();return docRef(col,id)}}}
+const localDb={collection:c=>query(c),doc:p=>{const [c,id]=p.split("/");return docRef(c==="config"?"config":c,id)}};
+window.addEventListener("storage",e=>{if(e.key===LS_KEY){STORE=lsLoad()||{};normStore();emit()}});
+
+function saveFile(name,blob){
+  try{const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),5000)}
+  catch(e){toast("ดาวน์โหลดไม่สำเร็จ")}
+}
+downloads={save:async({filename,data})=>saveFile(filename,data)};
+
+/* ---------- backup ---------- */
+function bkInfo(){$("bkInfo").textContent=`ตอนนี้มี ${Object.keys(STORE.calls).length} รายการบันทึก · ${Object.keys(STORE.vessels).length} ลำในทะเบียน`}
+$("bkSave").onclick=()=>{
+  const d=new Date(),stamp=d.getFullYear()+String(d.getMonth()+1).padStart(2,"0")+String(d.getDate()).padStart(2,"0");
+  saveFile("pilot-log-backup-"+stamp+".json",new Blob([JSON.stringify({app:"pilotlog",v:1,saved:d.toISOString(),data:STORE},null,1)],{type:"application/json"}));
+};
+$("bkFile").onchange=async e=>{
+  const f=e.target.files[0];e.target.value="";if(!f)return;
+  let parsed;try{parsed=JSON.parse(await f.text());if(parsed.app!=="pilotlog"||!parsed.data)throw 0}catch(_){toast("ไฟล์นี้ไม่ใช่ไฟล์สำรองของบันทึกนำร่อง");return}
+  const box=$("bkConfirm");box.replaceChildren();
+  const n=Object.keys(parsed.data.calls||{}).length,m=Object.keys(parsed.data.vessels||{}).length;
+  box.append(`ไฟล์นี้มี ${n} รายการบันทึก · ${m} ลำ ข้อมูลปัจจุบันในเครื่องจะถูกแทนที่ทั้งหมด `,
+    el("button",{class:"btn danger armed",onclick:()=>{STORE=parsed.data;normStore();try{persist();toast("กู้คืนข้อมูลแล้ว")}catch(_){}box.hidden=true}},"แทนที่ข้อมูล"),
+    " ",el("button",{class:"btn",onclick:()=>box.hidden=true},"ยกเลิก"));
+  box.hidden=false;
+};
+listeners.add(bkInfo);
+
+/* ---------- boot ---------- */
+(function init(){
+  if(window.__THEME__)document.documentElement.setAttribute("data-theme",window.__THEME__);
+  let t="log";try{t=localStorage.getItem("pl.tab")||"log"}catch(e){}
+  setTab(t);setDate(curDate);renderCfg();renderVessels();bkInfo();
+  $("remarkList").append(el("option",{value:"เรือยาวเกินกำหนด เมตร( ฟุต)"}));
+  db=localDb;subscribeCalls();
+  db.collection("vessels").onSnapshot(s=>{vessels=s.docs.map(x=>({id:x.id,...x.data()}));rebuildVessels()});
+  db.doc("config/lists").onSnapshot(s=>{const d=s.exists?s.data():{};cfg={ports:d.ports||DEF.ports,berths:d.berths||DEF.berths,pilots:d.pilots||DEF.pilots};renderCfg()});
+  $("exportBtn").hidden=false;
+})();
+</script>
+
+</body>
+</html>
