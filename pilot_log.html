@@ -29,6 +29,7 @@ label.btn{display:inline-flex;align-items:center}
   --ok-bg:#163f2a; --ok-ink:#8ee3ae; --warn-bg:#46390d; --warn-ink:#f5d76a; --cap-bg:#33400f; --cap-ink:#ff8a80; --danger:#ff8a80;
   --shadow:0 10px 40px rgb(0 0 0 / .5); color-scheme:dark }
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.5}
 button,input,select{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
@@ -227,7 +228,7 @@ table.reg{border-collapse:collapse;width:100%;min-width:520px}
   <div class="body">
     <fieldset>
       <legend>เรือ</legend>
-      <label class="f">No.<input id="fJob" class="mono" autocomplete="off"></label>
+      <label class="f">No. (เลขการ์ด)<input id="fJob" class="mono" placeholder="SGZ40/70" autocomplete="off"></label>
       <label class="f" style="grid-column:span 2">Ship's Name<input id="fShip" list="shipList" autocomplete="off"></label>
       <label class="f">From<select id="fFrom"></select></label>
       <label class="f">LOA (ft)<input id="fLoa" class="mono" autocomplete="off"></label>
@@ -367,12 +368,13 @@ function fillSelect(sel,list,val){sel.replaceChildren(el("option",{value:""},"�
 function setStatus(v){status=v;document.querySelectorAll("#fStatus button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.v===v))}
 document.querySelectorAll("#fStatus button").forEach(b=>b.addEventListener("click",()=>setStatus(b.dataset.v)));
 
-async function nextJob(){
-  const yy=beYY(curDate);
-  try{const snap=await db.collection("calls").where("by","==",yy).get();
-    let max=0;snap.docs.forEach(d=>{const m=String(d.data().job||"").match(/(\d+)\s*$/);if(m&&String(d.data().job).includes("/"+yy))max=Math.max(max,+m[1])});
-    return "SGZ/"+yy+"-"+String(max+1).padStart(3,"0");
-  }catch(e){return "SGZ/"+yy+"-"}
+function fyYY(iso){const y=+iso.slice(0,4)+543+(+iso.slice(5,7)>=10?1:0);return String(y%100).padStart(2,"0")}
+async function nextJob(date){
+  const fy=fyYY(date);
+  try{const snap=await db.collection("calls").where("fy","==",fy).get();
+    let max=0;snap.docs.forEach(d=>{const m=String(d.data().job||"").match(/^SGZ\s*(\d+)\s*\//i);if(m)max=Math.max(max,+m[1])});
+    return max?{v:"SGZ"+(max+1)+"/"+fy,caret:null}:{v:"SGZ/"+fy,caret:3};
+  }catch(e){return {v:"SGZ/"+fy,caret:3}}
 }
 
 async function openEditor(c){
@@ -386,7 +388,8 @@ async function openEditor(c){
   fillSelect($("fFrom"),cfg.ports,v.from);fillSelect($("fBerth"),cfg.berths,v.berth);fillSelect($("fPilotIn"),cfg.pilots,v.pilotIn);fillSelect($("fPilotOut"),cfg.pilots,v.pilotOut);
   shifts=(v.shifts||[]).map(s=>({...s}));renderShifts();setStatus(v.status||"");checkShip();
   $("scrim").hidden=false;$("sheet").hidden=false;$("fShip").focus();
-  if(!c&&db){const j=await nextJob();if(!editing&&!$("fJob").value)$("fJob").value=j}
+  if(!v.job&&db){const j=await nextJob(v.date||curDate);
+    if(editing===(c||null)&&!$("fJob").value){$("fJob").value=j.v;if(j.caret!=null){$("fJob").focus();$("fJob").setSelectionRange(j.caret,j.caret)}}}
 }
 function closeEditor(){$("scrim").hidden=true;$("sheet").hidden=true;editing=null}
 $("edClose").onclick=closeEditor;$("edCancel").onclick=closeEditor;$("scrim").onclick=closeEditor;
@@ -429,7 +432,7 @@ $("edSave").onclick=async()=>{
   const vessel=$("fShip").value.trim();
   if(!vessel){toast("กรอกชื่อเรือก่อนบันทึก");$("fShip").focus();return}
   const g=id=>$(id).value.trim();
-  const data={date:editing?.date||curDate,by:beYY(editing?.date||curDate),job:g("fJob"),vessel,from:g("fFrom"),loa:g("fLoa"),lbp:g("fLbp"),ng:g("fNg"),agent:g("fAgent"),
+  const data={date:editing?.date||curDate,by:beYY(editing?.date||curDate),fy:fyYY(editing?.date||curDate),job:g("fJob"),vessel,from:g("fFrom"),loa:g("fLoa"),lbp:g("fLbp"),ng:g("fNg"),agent:g("fAgent"),
     eta:g("fEta"),order:g("fOrder"),pilotIn:g("fPilotIn"),berth:g("fBerth"),draughtIn:g("fDraughtIn"),
     atd:g("fAtd"),paknam:g("fPaknam"),pilotOut:g("fPilotOut"),draughtOut:g("fDraughtOut"),remark:g("fRemark"),status,
     shifts:shifts.filter(s=>s.order||s.pilot||s.berth||s.draught),t:editing?.t||Date.now(),updated:Date.now()};
