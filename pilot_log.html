@@ -285,7 +285,7 @@ table.reg{border-collapse:collapse;width:100%;min-width:520px}
         <label class="f s2">Agent<input id="fAgent"></label>
         <label class="f">From<input id="fFrom" class="mono" placeholder="รหัสท่า"></label>
         <label class="f">LOA (ft)<input id="fLoa" class="mono" autocomplete="off"></label>
-        <label class="f">LBP<input id="fLbp" class="mono" autocomplete="off"></label>
+        <label class="f">LBP<input id="fLbp" class="mono" placeholder="รหัสท่า"></label>
         <label class="f">Net/Gross<input id="fNg" class="mono" autocomplete="off"></label>
         <div id="newShipHint" class="hint warn s3" hidden>เรือนี้ยังไม่อยู่ในทะเบียน <button class="linkbtn" id="addShipFromForm" type="button">เพิ่มเข้าทะเบียนเรือ</button></div>
       </div>
@@ -348,7 +348,7 @@ const DEF = {
 const CFG_META = [
   {key:"pilots", title:"Pilot No.", hint:"-CAP- = นายเรือนำเอง"},
   {key:"berths", title:"ท่าเรือ (Berth)"},
-  {key:"ports",  title:"From (รหัสท่าต้นทาง)"}
+  {key:"ports",  title:"รหัสท่า (From / LBP)"}
 ];
 const $ = id => document.getElementById(id);
 let db=null, cfg={...DEF}, vessels=[], vByName=new Map(), calls=[], allCalls=[], lastRows=[], unsubCalls=null, searchQ="", fStatus="all", scope="day";
@@ -553,7 +553,7 @@ function linkEtaOrder(){const a=$("fEta"),b=$("fOrder"),sw=$("etaSync");
   sw.addEventListener("change",()=>{if(sw.checked){const v=a.value||b.value;a.value=v;b.value=v}});}
 linkEtaOrder();
 
-combo($("fShip"),shipOpts);combo($("fAgent"),agentOpts);combo($("fFrom"),portOpts,{upper:true});combo($("fBerth"),berthOpts,{upper:true});
+combo($("fShip"),shipOpts);combo($("fAgent"),agentOpts);combo($("fFrom"),portOpts,{upper:true});combo($("fLbp"),portOpts,{upper:true});combo($("fBerth"),berthOpts,{upper:true});
 combo($("fPilotIn"),pilotOpts);combo($("fPilotOut"),pilotOpts);combo($("fRemark"),remarkOpts);combo($("vAgent"),agentOpts);
 function closePop(){pop.hidden=true}
 
