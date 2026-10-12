@@ -133,6 +133,8 @@ label.f input:focus,.srow input:focus{border-color:var(--accent);outline:none;bo
 .srow .x:hover{color:var(--danger);background:var(--hover)}
 .linkbtn{border:0;background:none;color:var(--accent);cursor:pointer;padding:0;font-size:12px;text-decoration:underline}
 .linkbtn.del{color:var(--danger)}
+.sync{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:400;letter-spacing:0;text-transform:none;color:var(--muted);cursor:pointer}
+.sync input{accent-color:var(--accent);margin:0}
 .btn.sm{padding:3px 10px;font-size:12px;text-transform:none;letter-spacing:0}
 .stbox{display:flex;flex-direction:column;gap:2px;font-size:11.5px;color:var(--muted)}
 @media (max-width:760px){
@@ -290,7 +292,7 @@ table.reg{border-collapse:collapse;width:100%;min-width:520px}
     </section>
     <div class="two">
       <section class="blk">
-        <h3 class="lg">ขาเข้า</h3>
+        <h3 class="lg">ขาเข้า<span class="spacer"></span><label class="sync"><input type="checkbox" id="etaSync" checked> ETA Bar = Order</label></h3>
         <div class="g g3">
           <label class="f">ETA Bar<input id="fEta" class="mono" inputmode="numeric" placeholder="hhmm" autocomplete="off"></label>
           <label class="f">Order for Entering<input id="fOrder" class="mono" inputmode="numeric" placeholder="hhmm" autocomplete="off"></label>
@@ -532,7 +534,7 @@ async function openEditor(c){
   $("edDelete").hidden=!c||!canWrite;$("edSave").disabled=!canWrite;
   const v=c||{};
   $("fJob").value=v.job||"";$("fShip").value=v.vessel||"";$("fLoa").value=v.loa||"";$("fLbp").value=v.lbp||"";$("fNg").value=v.ng||"";$("fAgent").value=v.agent||"";
-  $("fEta").value=v.eta||"";$("fOrder").value=v.order||"";$("fDraughtIn").value=v.draughtIn||"";
+  $("fEta").value=v.eta||"";$("fOrder").value=v.order||"";$("etaSync").checked=(v.eta||"")===(v.order||"");$("fDraughtIn").value=v.draughtIn||"";
   $("fAtd").value=v.atd||"";$("fPaknam").value=v.paknam||"";$("fDraughtOut").value=v.draughtOut||"";$("fRemark").value=v.remark||"";
   $("fFrom").value=v.from||"";$("fBerth").value=v.berth||"";$("fPilotIn").value=v.pilotIn||"";$("fPilotOut").value=v.pilotOut||"";pop.hidden=true;
   shifts=(v.shifts||[]).map(s=>({...s}));renderShifts();setStatus(v.status||"");checkShip();
@@ -544,6 +546,13 @@ function closeEditor(){pop.hidden=true;$("scrim").hidden=true;$("sheet").hidden=
 $("edClose").onclick=closeEditor;$("edCancel").onclick=closeEditor;$("scrim").onclick=closeEditor;
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("sheet").hidden)closeEditor()});
 $("addBtn").onclick=()=>openEditor(null);
+/* ETA Bar <-> Order for Entering: typing in either fills the other (switch in the ขาเข้า header turns it off) */
+function linkEtaOrder(){const a=$("fEta"),b=$("fOrder"),sw=$("etaSync");
+  const on=(src,dst)=>src.addEventListener("input",()=>{if(sw.checked)dst.value=src.value});
+  on(a,b);on(b,a);
+  sw.addEventListener("change",()=>{if(sw.checked){const v=a.value||b.value;a.value=v;b.value=v}});}
+linkEtaOrder();
+
 combo($("fShip"),shipOpts);combo($("fAgent"),agentOpts);combo($("fFrom"),portOpts,{upper:true});combo($("fBerth"),berthOpts,{upper:true});
 combo($("fPilotIn"),pilotOpts);combo($("fPilotOut"),pilotOpts);combo($("fRemark"),remarkOpts);combo($("vAgent"),agentOpts);
 function closePop(){pop.hidden=true}
