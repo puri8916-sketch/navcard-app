@@ -14,7 +14,7 @@ label.btn{display:inline-flex;align-items:center}
   --bg:#eef2f3; --surface:#ffffff; --ink:#132029; --muted:#5a6872; --line:#d3dce0; --hover:#e6eff1;
   --accent:#0a6672; --accent-ink:#ffffff; --accent-soft:#d5ecef;
   --ok-bg:#cff3dc; --ok-ink:#0f5c34; --warn-bg:#fdf0bd; --warn-ink:#6e5200; --cap-bg:#e9f7b5; --cap-ink:#a3221b; --danger:#b3261e;
-  --pen-blue:#1c3fa6; --pen:var(--pen-blue);
+  --pen-blue:#1c3fa6; --pen:var(--pen-blue); --pen-red:#c2261e;
   --hl-y:#fff59a; --hl-p:#ffc6e0; --hl-g:#c9f2b5; --hl-b:#c4e4ff;
   --shadow:0 10px 40px rgb(10 30 40 / .18);
   --f-body:"IBM Plex Sans Thai",system-ui,"Noto Sans Thai",sans-serif;
@@ -24,14 +24,14 @@ label.btn{display:inline-flex;align-items:center}
   --bg:#0e171c; --surface:#15222a; --ink:#e3ecef; --muted:#93a4ad; --line:#2a3a43; --hover:#1c2d36;
   --accent:#4cc0cc; --accent-ink:#06252a; --accent-soft:#163a40;
   --ok-bg:#163f2a; --ok-ink:#8ee3ae; --warn-bg:#46390d; --warn-ink:#f5d76a; --cap-bg:#33400f; --cap-ink:#ff8a80; --danger:#ff8a80;
-  --pen-blue:#8eb2ff; --pen:var(--pen-blue);
+  --pen-blue:#8eb2ff; --pen:var(--pen-blue); --pen-red:#ff8f87;
   --hl-y:#5a5014; --hl-p:#5c2742; --hl-g:#26502c; --hl-b:#1f4466;
   --shadow:0 10px 40px rgb(0 0 0 / .5); color-scheme:dark }}
 :root[data-theme="dark"]{
   --bg:#0e171c; --surface:#15222a; --ink:#e3ecef; --muted:#93a4ad; --line:#2a3a43; --hover:#1c2d36;
   --accent:#4cc0cc; --accent-ink:#06252a; --accent-soft:#163a40;
   --ok-bg:#163f2a; --ok-ink:#8ee3ae; --warn-bg:#46390d; --warn-ink:#f5d76a; --cap-bg:#33400f; --cap-ink:#ff8a80; --danger:#ff8a80;
-  --pen-blue:#8eb2ff; --pen:var(--pen-blue);
+  --pen-blue:#8eb2ff; --pen:var(--pen-blue); --pen-red:#ff8f87;
   --hl-y:#5a5014; --hl-p:#5c2742; --hl-g:#26502c; --hl-b:#1f4466;
   --shadow:0 10px 40px rgb(0 0 0 / .5); color-scheme:dark }
 *{box-sizing:border-box}
@@ -96,7 +96,9 @@ body.marking .log tbody td[data-k]:hover{outline:2px solid var(--accent);outline
 .sw[data-c="x"]{background:var(--surface);color:var(--muted);font-size:12px}
 .sw[aria-pressed="true"]{box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--accent)}
 .log tbody tr:is(.main,.shift) td,.log tbody tr:is(.main,.shift) td .jobno,.log .mv .ar{color:var(--pen)}
-.log tbody tr.shift td.ship{color:var(--muted)}
+.log tbody tr.shift td,.log tbody tr.shift .mv .ar{color:var(--pen-shift,var(--pen-red))}
+.log tbody tr.shift td.ship{color:var(--pen-shift,var(--pen-red));opacity:.8}
+body.shift-plain{--pen-shift:var(--pen)}
 body.ink-black{--pen:var(--ink)}
 .inkseg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .inkdot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:-1px}
@@ -301,6 +303,7 @@ table.reg{border-collapse:collapse;width:100%;min-width:520px}
           <button type="button" data-v="blue" aria-pressed="true"><span class="inkdot" style="background:var(--pen-blue)"></span>น้ำเงิน (ปากกา)</button>
           <button type="button" data-v="black" aria-pressed="false"><span class="inkdot" style="background:var(--ink)"></span>ดำ</button>
         </div>
+        <label class="sync" style="font-size:13px"><input type="checkbox" id="shiftRed" checked> แถวย้ายท่าเป็น<span style="color:var(--pen-red);font-weight:600">สีแดง</span></label>
       </div>
       <div class="cfgcard">
         <h3>สำรองข้อมูล</h3>
@@ -493,6 +496,9 @@ function renderLog(){
 function setInk(v){document.body.classList.toggle("ink-black",v==="black");document.querySelectorAll("#inkSeg button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.v===v));try{localStorage.setItem("pl.ink",v)}catch(e){}}
 document.querySelectorAll("#inkSeg button").forEach(b=>b.addEventListener("click",()=>setInk(b.dataset.v)));
 try{setInk(localStorage.getItem("pl.ink")||"blue")}catch(e){setInk("blue")}
+function setShiftRed(on){document.body.classList.toggle("shift-plain",!on);$("shiftRed").checked=on;try{localStorage.setItem("pl.shiftRed",on?"1":"0")}catch(e){}}
+$("shiftRed").addEventListener("change",e=>setShiftRed(e.target.checked));
+try{setShiftRed(localStorage.getItem("pl.shiftRed")!=="0")}catch(e){setShiftRed(true)}
 
 /* ---------- highlighter: colour individual cells like a marker pen ---------- */
 const CELL_KEYS=["job","vessel","from","eta","order","pilotIn","berth","draughtIn","loa","lbp","ng","agent","atd","paknam","pilotOut","draughtOut","remark","status"];
