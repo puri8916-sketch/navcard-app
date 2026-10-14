@@ -135,6 +135,7 @@ label.f input.lm{color:var(--pen-red)}
 .pdfbar #pdfMsg{color:var(--accent);font-weight:500}
 .log td.ctr{text-align:center}
 .log tbody tr:is(.main,.shift) td:nth-child(n+4):nth-child(-n+15),.log thead tr:not(.grp) th:nth-child(n+4):nth-child(-n+15){text-align:center}
+.log td .invtime{color:var(--pen-red)}
 .invtag{display:block;color:var(--pen-red);font-family:var(--f-body);font-size:13px;font-weight:600;line-height:1.2;margin-top:1px}
 .jobno{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
 .chip{display:inline-block;padding:1px 9px;border-radius:999px;font-size:12px;font-weight:500}
@@ -775,7 +776,7 @@ async function buildPdfBlob(rows,title,sub,onPage){
             if(c.loaM){const w1=g.measureText(ft+"/").width/S;g.fillText(ft?"/":"",(lx+g.measureText(ft).width/S)*S,cy*S);g.fillStyle=PDF_C.red;g.fillText(fit(c.loaM,(cc[1]-5-w1)*S),(lx+w1)*S,cy*S)}return}
           if(!isS&&k==="closeNo"){const v=c.closeNo||(c.status==="ปิดการเงิน"?"ปิดเงิน":"");if(v)txt(v,xs[i],cy,cc[1],{...o,mono:!!c.closeNo});return}
           if(!isS&&(k==="eta"||k==="atd")){const t=timeOf(c[k]),inv=k==="eta"?invIn(c):invOut(c);
-            if(inv){if(t)txt(t,xs[i],cy-4,cc[1],o);txt(INV_TXT,xs[i],cy+4.4,cc[1],{c:PDF_C.red,pt:7.2,mono:false,w:600,align:"center"})}else if(t)txt(t,xs[i],cy,cc[1],o);return}
+            if(inv){if(t)txt(t,xs[i],cy-4,cc[1],{...o,c:PDF_C.red});txt(INV_TXT,xs[i],cy+4.4,cc[1],{c:PDF_C.red,pt:7.2,mono:false,w:600,align:"center"})}else if(t)txt(t,xs[i],cy,cc[1],o);return}
           if(!isS&&k==="order"&&invIn(c)){txt("-",xs[i],cy,cc[1],{...o,align:"center"});return}
           if(!isS&&k==="vessel")o.w=600;
           if(!isS&&(k==="pilotIn"||k==="pilotOut")&&c[k]==="-CAP-")o.c=PDF_C.red;
@@ -1018,7 +1019,7 @@ function invSplit(v){v=String(v||"");const m=v.match(/\s*(แยก.*|\/i\s*)$/i
 function timeOf(v){return invSplit(v).t}
 function invIn(c){return !!c.invIn||invSplit(c.eta).inv||invSplit(c.order).inv}
 function invOut(c){return !!c.invOut||invSplit(c.atd).inv}
-function timeInv(t,inv){if(!t&&!inv)return "";const s=el("span",{},t||"");if(inv)s.append(el("span",{class:"invtag"},INV_TXT));return s}
+function timeInv(t,inv){if(!t&&!inv)return "";const s=el("span",inv?{class:"invtime"}:{},t||"");if(inv)s.append(el("span",{class:"invtag"},INV_TXT));return s}
 function moveTxt(s){return (s.fromBerth||s.berth)?(s.fromBerth||"…")+" → "+(s.berth||"…"):""}
 function moveEl(s){if(!s.fromBerth&&!s.berth)return "";return el("span",{class:"mv"},s.fromBerth||"…",el("span",{class:"ar","aria-label":"ไป"},"→"),s.berth||"…")}
 /* ---------- type-to-filter boxes (replace dropdowns) ---------- */
