@@ -229,6 +229,9 @@ table.reg{border-collapse:collapse;width:100%;min-width:520px}
 .tag{display:inline-flex;align-items:center;gap:4px;padding:2px 4px 2px 10px;border-radius:999px;background:var(--bg);border:1px solid var(--line);font-family:var(--f-mono);font-size:12px}
 .tag button{border:0;background:none;cursor:pointer;color:var(--muted);width:20px;height:20px;border-radius:50%}
 .tag button:hover{background:var(--hover);color:var(--danger)}
+.chips.sortable .tag{cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}
+.chips.sortable .tag.drag{cursor:grabbing;border-color:var(--accent);background:var(--surface);box-shadow:0 2px 8px rgb(0 0 0/.18);opacity:.85}
+.sorthint{font-size:12px;color:var(--muted)}
 .addrow{display:flex;gap:6px}
 .addrow input{flex:1;min-width:0;border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:5px 8px;font-family:var(--f-mono)}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:8px;z-index:60;font-size:13px}
@@ -1266,9 +1269,26 @@ function renderCfg(){
     const add=async()=>{const v=inp.value.trim().toUpperCase()==="-CAP-"?"-CAP-":inp.value.trim();if(!v||list.includes(v))return;await saveCfg(m.key,[...list,v]);inp.value=""};
     inp.onkeydown=e=>{if(e.key==="Enter")add()};
     box.append(el("div",{class:"cfgcard"},el("h3",{},m.title),m.hint?el("span",{class:"hint"},m.hint):null,
-      el("div",{class:"chips"},list.map(v=>el("span",{class:"tag"},v,canWrite?el("button",{"aria-label":"ลบ "+v,onclick:()=>saveCfg(m.key,list.filter(x=>x!==v))},"×"):null))),
+      sortChips(el("div",{class:"chips"+(canWrite?" sortable":"")},list.map(v=>el("span",{class:"tag","data-v":v},v,canWrite?el("button",{"aria-label":"ลบ "+v,onclick:()=>saveCfg(m.key,list.filter(x=>x!==v))},"×"):null))),m.key),
+      canWrite&&list.length>1?el("span",{class:"sorthint"},"ลากเพื่อเรียงลำดับ (ลำดับนี้ใช้ในช่องเลือกตอนบันทึก)"):null,
       canWrite?el("div",{class:"addrow"},inp,el("button",{class:"btn",onclick:add},"เพิ่ม")):null));
   }
+}
+function sortChips(box,key){
+  if(!canWrite)return box;
+  box.addEventListener("pointerdown",e=>{
+    const t=e.target.closest(".tag");if(!t||e.target.closest("button")||e.button>0)return;
+    e.preventDefault();const before=[...box.children].map(x=>x.dataset.v).join("\n");let moved=false;
+    t.setPointerCapture(e.pointerId);
+    const mv=ev=>{const o=document.elementFromPoint(ev.clientX,ev.clientY)?.closest(".tag");
+      if(!o||o===t||o.parentElement!==box){if(!moved)return;}else{const r=o.getBoundingClientRect(),after=ev.clientX>r.left+r.width/2;
+        if(after?o.nextSibling!==t:o.previousSibling!==t)box.insertBefore(t,after?o.nextSibling:o)}
+      if(!moved){moved=true;t.classList.add("drag")}};
+    const up=()=>{t.removeEventListener("pointermove",mv);t.removeEventListener("pointerup",up);t.removeEventListener("pointercancel",up);t.classList.remove("drag");
+      const now=[...box.children].map(x=>x.dataset.v);if(now.join("\n")!==before)saveCfg(key,now)};
+    t.addEventListener("pointermove",mv);t.addEventListener("pointerup",up);t.addEventListener("pointercancel",up);
+  });
+  return box;
 }
 async function saveCfg(key,list){
   const next={ports:cfg.ports,berths:cfg.berths,pilots:cfg.pilots,[key]:list};
