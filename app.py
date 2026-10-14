@@ -81,16 +81,16 @@ _LIGHT_CSS = """
     background-color: #ffffff !important; color: #31333f !important; }
 """
 
-_THEME_OPTIONS = ["🖥️ ตามระบบ", "☀️ สว่าง", "🌙 มืด"]
+_THEME_OPTIONS = ["☀️ สว่าง", "🌙 มืด"]
 
 
 def apply_theme(choice):
     """Native Streamlit theme can't be switched per-session from code, so
     'สว่าง'/'มืด' are applied with CSS; 'ตามระบบ' leaves Streamlit's own
     theme untouched (it follows the browser/OS setting)."""
-    if choice == _THEME_OPTIONS[1]:
+    if choice == _THEME_OPTIONS[0]:
         st.markdown(_BASE_CSS % {"app": _LIGHT_CSS}, unsafe_allow_html=True)
-    elif choice == _THEME_OPTIONS[2]:
+    elif choice == _THEME_OPTIONS[1]:
         st.markdown(_BASE_CSS % {"app": _DARK_CSS}, unsafe_allow_html=True)
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -156,7 +156,7 @@ if _page == _P_LOG:
     with open(os.path.join(_HERE, "pilot_log.html"), encoding="utf-8") as _f:
         _log_html = _f.read()
     _inject = "window.__SHIP_DB__=" + json.dumps(_ship_db, ensure_ascii=False).replace("</", "<\\/") + ";"
-    _log_theme = {_THEME_OPTIONS[1]: "light", _THEME_OPTIONS[2]: "dark"}.get(_theme_choice)
+    _log_theme = {_THEME_OPTIONS[0]: "light", _THEME_OPTIONS[1]: "dark"}.get(_theme_choice)
     if _log_theme:
         _inject += "window.__THEME__='" + _log_theme + "';"
     _log_html = _log_html.replace("<script>", "<script>" + _inject + "</script>\n" + _sync_script() + "<script>", 1)
@@ -175,7 +175,7 @@ if _page == _P_CALC:
     _defaults = nc.load_default_ships(os.path.join(_HERE, "ships.csv"))
     _calc_html = _calc_html.replace(
         "<script>", "<script>window.__DEFAULT_SHIPS__=" + json.dumps(_defaults, ensure_ascii=False).replace("</", "<\\/") + ";</script>\n<script>", 1)
-    _calc_theme = {_THEME_OPTIONS[1]: "light", _THEME_OPTIONS[2]: "dark"}.get(_theme_choice)
+    _calc_theme = {_THEME_OPTIONS[0]: "light", _THEME_OPTIONS[1]: "dark"}.get(_theme_choice)
     if _calc_theme:
         _calc_html = _calc_html.replace(
             "<script>",
