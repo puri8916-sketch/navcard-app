@@ -130,7 +130,7 @@ label.f input.lm{color:var(--pen-red)}
 .pdfbar label{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)}
 .pdfbar input[type=month]{border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:4px 8px;font-family:var(--f-mono)}
 .pdfbar #pdfMsg{color:var(--accent);font-weight:500}
-.invtag{display:block;color:var(--pen-red);font-family:var(--f-body);font-size:11px;font-weight:500;line-height:1.15;margin-top:1px}
+.invtag{display:block;color:var(--pen-red);font-family:var(--f-body);font-size:13px;font-weight:600;line-height:1.2;margin-top:1px}
 .jobno{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
 .chip{display:inline-block;padding:1px 9px;border-radius:999px;font-size:12px;font-weight:500}
 .chip.ok{background:var(--ok-bg);color:var(--ok-ink)}
@@ -533,7 +533,7 @@ function renderLog(){
     const alt=(gi++%2)?" alt":"",showShifts=n&&!collapsed.has(c.id);
     const tr=el("tr",{class:"main"+alt+(showShifts?"":" grp-end"),"data-id":c.id,tabindex:0,onkeydown:e=>{if(e.key==="Enter"&&e.target===e.currentTarget)openEditor(c)}},
       cell(el("span",{},el("button",{class:"edbtn",type:"button",title:"เปิดฟอร์มแก้ไข","aria-label":"เปิดฟอร์มแก้ไข "+(c.vessel||""),onclick:e=>{e.stopPropagation();openEditor(c)}},"✎"),el("span",{class:"jobno"},hl(c.job||"")),closeF&&c.date?el("span",{class:"dsub"},beTab(c.date)):null),""), ship, cell(c.from,"mono"),
-      cell(timeInv(timeOf(c.eta),invIn(c)),"mono div"), cell(timeOf(c.order),"mono"), cell(pilotChip(c.pilotIn),"mono"), cell(c.berth,"mono"), cell(c.draughtIn,"mono"),
+      cell(timeInv(timeOf(c.eta),invIn(c)),"mono div"), cell(invIn(c)?"-":timeOf(c.order),"mono"), cell(pilotChip(c.pilotIn),"mono"), cell(c.berth,"mono"), cell(c.draughtIn,"mono"),
       cell(loaEl(c),"mono div"), cell(c.lbp,"mono"), cell(c.agent?hl(c.agent):""),
       cell(timeInv(timeOf(c.atd),invOut(c)),"mono div"), cell(pilotChip(c.pilotOut),"mono"), cell(c.draughtOut,"mono"), cell(c.agentOut?hl(c.agentOut):""),
       cell(c.remark?el("span",{class:"remark"},c.remark):"","div"), cell(closeCell(c,rows,ri)));
@@ -704,7 +704,7 @@ async function buildPdfBlob(rows,title,sub,onPage){
   const items=[];let lastD=null;
   for(const c of rows){
     if(c.date!==lastD){lastD=c.date;items.push({k:"d",c,h:DROW})}
-    const g=[{k:"m",c,h:(invIn(c)||invOut(c))?ROW+7:ROW}];(c.shifts||[]).forEach((s,i)=>g.push({k:"s",c,s,i,h:SROW}));items.push({k:"g",g,h:g.reduce((n,r)=>n+r.h,0),c});
+    const g=[{k:"m",c,h:(invIn(c)||invOut(c))?ROW+8:ROW}];(c.shifts||[]).forEach((s,i)=>g.push({k:"s",c,s,i,h:SROW}));items.push({k:"g",g,h:g.reduce((n,r)=>n+r.h,0),c});
   }
   const cap=PH-TOP-GH-HH-FOOT-M;const pages=[];let cur=[],used=0,curDate=null;
   const newPage=()=>{pages.push(cur);cur=[];used=0};
@@ -742,7 +742,7 @@ async function buildPdfBlob(rows,title,sub,onPage){
         y+=it.h;line(M,y,M+TW,y,PDF_C.grid);continue}
       for(const r of it.g){
         const c=r.c,isS=r.k==="s",col=isS?PDF_C.red:PDF_C.ink;
-        const val=k=>{if(!isS){if(k==="loa")return null;return (k==="order"?timeOf(c[k]):c[k])||""}
+        const val=k=>{if(!isS){if(k==="loa")return null;return (k==="order"?(invIn(c)?"-":timeOf(c[k])):c[k])||""}
           const s=r.s;return {job:"",vessel:"↳ ย้ายท่า "+(r.i+1),order:s.order,pilotIn:s.pilot,berth:moveTxt(s),draughtIn:s.draught,agent:s.agent}[k]||""};
         PDF_COLS.forEach((cc,i)=>{
           const k=cc[2],mk=(isS?"s"+r.i+":":"")+(k==="closeNo"?"status":k),m=c.marks?.[mk];
@@ -753,7 +753,7 @@ async function buildPdfBlob(rows,title,sub,onPage){
             if(c.loaM){const w1=g.measureText(ft+"/").width/S;g.fillText(ft?"/":"",(xs[i]+2.5+g.measureText(ft).width/S)*S,cy*S);g.fillStyle=PDF_C.red;g.fillText(fit(c.loaM,(cc[1]-5-w1)*S),(xs[i]+2.5+w1)*S,cy*S)}return}
           if(!isS&&k==="closeNo"){const v=c.closeNo||(c.status==="ปิดการเงิน"?"ปิดเงิน":c.status||"");if(v)txt(v,xs[i],cy,cc[1],{...o,mono:!!c.closeNo});return}
           if(!isS&&(k==="eta"||k==="atd")){const t=timeOf(c[k]),inv=k==="eta"?invIn(c):invOut(c);
-            if(inv){if(t)txt(t,xs[i],cy-3.6,cc[1],o);txt(INV_TXT,xs[i],cy+4.4,cc[1],{c:PDF_C.red,pt:6.2,mono:false,w:500})}else if(t)txt(t,xs[i],cy,cc[1],o);return}
+            if(inv){if(t)txt(t,xs[i],cy-4,cc[1],o);txt(INV_TXT,xs[i],cy+4.4,cc[1],{c:PDF_C.red,pt:7.2,mono:false,w:600})}else if(t)txt(t,xs[i],cy,cc[1],o);return}
           if(!isS&&k==="vessel")o.w=600;
           if(!isS&&(k==="pilotIn"||k==="pilotOut")&&c[k]==="-CAP-")o.c=PDF_C.red;
           if(isS&&k==="vessel"){o.mono=false;o.c=PDF_C.red}
@@ -1025,7 +1025,7 @@ $("exportBtn").onclick=async()=>{
   const q=v=>{v=String(v??"");return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
   const lines=[H.map(q).join(",")];
   for(const c of lastRows){
-    lines.push([c.date?beTab(c.date):"",c.job,c.vessel,c.from,timeOf(c.eta),timeOf(c.order),c.pilotIn,c.berth,c.draughtIn,c.loa+(c.loaM?"/"+c.loaM:""),c.lbp,c.agent,timeOf(c.atd),c.pilotOut,c.draughtOut,c.agentOut||"",c.remark,c.closeNo||"",c.status,invIn(c)?"ใช่":"",invOut(c)?"ใช่":""].map(q).join(","));
+    lines.push([c.date?beTab(c.date):"",c.job,c.vessel,c.from,timeOf(c.eta),invIn(c)?"-":timeOf(c.order),c.pilotIn,c.berth,c.draughtIn,c.loa+(c.loaM?"/"+c.loaM:""),c.lbp,c.agent,timeOf(c.atd),c.pilotOut,c.draughtOut,c.agentOut||"",c.remark,c.closeNo||"",c.status,invIn(c)?"ใช่":"",invOut(c)?"ใช่":""].map(q).join(","));
     (c.shifts||[]).forEach((s,i)=>lines.push(["","","↳ ย้ายท่า "+(i+1),"","",s.order,s.pilot,moveTxt(s),s.draught,"","",s.agent||"","","","","","","","",""].map(q).join(",")));
   }
   try{await downloads.save({filename:"pilot-log-"+(scope==="all"?"all":beTab(curDate))+".csv",data:new Blob(["﻿"+lines.join("\n")],{type:"text/csv"})})}catch(e){toast("ส่งออกไม่สำเร็จ")}
