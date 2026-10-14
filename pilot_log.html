@@ -487,11 +487,7 @@ table.reg{border-collapse:collapse;width:100%;min-width:520px}
 <div class="toast" id="toast" hidden></div>
 
 <script>
-const DEF = {
-  ports:["THZ08","THZ12","THZ14","THZ17","THZ21","THZ28","THARF","MTJDA","SGSIN","THERF","THMAT","IDBTH","THBKK","MYBTL"],
-  berths:["PSB-1","PSB-2","PSB-3","PSB-4","PSB-5","PSB-6","PTT-A","PTT-B","SHELL","DWP-1","DWP-2","DWP-3","MPP","RW","SIRICHON2","SOUTHERN","SAWAT","PRATEEP"],
-  pilots:["178","189","220","-CAP-"]
-};
+const DEF = {ports:[],berths:[],pilots:[]};   // lists start empty; each port keeps its own in its sheet
 const CFG_META = [
   {key:"pilots", title:"Pilot No.", hint:"-CAP- = นายเรือนำเอง"},
   {key:"berths", title:"ท่าเรือ (Berth)"},

@@ -11,6 +11,7 @@
   let S = { cols: {}, meta: {}, outbox: [], since: 0, migrated: {}, url: "" };
   const L = new Set(), SL = new Set();
   let status = "local", lastErr = "", busy = false, again = false, started = false, kickT = null, readyRes;
+  let fullPending = true;   // first sync after each page load reads the whole sheet, so rows deleted in the sheet disappear here too
   const ready = new Promise(r => (readyRes = r));
 
   function getCfg() {
@@ -68,7 +69,7 @@
     busy = true;
     if (S.url !== c.url) {   // different sheet → drop the other sheet's cached data, then full download
       if (S.url) { S.cols = {}; S.meta = {}; emit(); }
-      S.since = 0; S.url = c.url; save();
+      S.since = 0; S.url = c.url; fullPending = true; save();
     }
     setStatus("syncing", "");
     try {
@@ -78,7 +79,8 @@
         S.outbox = S.outbox.filter(o => ops.indexOf(o) < 0);
         save();
       }
-      const j = await api("GET", "action=load&since=" + encodeURIComponent(S.since));
+      const full = fullPending || !S.since;
+      const j = await api("GET", "action=load&since=" + encodeURIComponent(full ? 0 : S.since));
       let changed = false;
       for (const d of j.docs) {
         if (S.outbox.some(o => o.col === d.col && o.id === d.id)) continue;   // our newer edit is still on its way
@@ -87,6 +89,14 @@
         m[d.id] = d.updated;
         if (d.deleted) { if (col(d.col)[d.id] !== undefined) { delete col(d.col)[d.id]; changed = true; } }
         else if (JSON.stringify(col(d.col)[d.id]) !== JSON.stringify(d.doc)) { col(d.col)[d.id] = d.doc; changed = true; }
+      }
+      if (full) {   // drop local docs whose row no longer exists in the sheet (unless our own edit is still queued)
+        const seen = new Set(j.docs.map(d => d.col + "\u0000" + d.id));
+        for (const c in S.cols) for (const id of Object.keys(S.cols[c])) {
+          if (seen.has(c + "\u0000" + id) || S.outbox.some(o => o.col === c && o.id === id)) continue;
+          delete S.cols[c][id]; delete meta(c)[id]; changed = true;
+        }
+        fullPending = false;
       }
       S.since = Math.max(S.since, j.now || 0);
       save();
@@ -125,6 +135,7 @@
       if (started) return ready;
       started = true; kick(0);
       setInterval(() => { if (document.visibilityState !== "hidden") cycle(); }, window.__SYNC_POLL__ || 15000);
+      setInterval(() => { fullPending = true; }, 5 * 60 * 1000);   // re-read the whole sheet every 5 minutes as well
       document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") cycle(); });
       window.addEventListener("online", () => cycle());
       window.addEventListener("storage", e => { if (e.key === CACHE) { load(); emit(); } });
