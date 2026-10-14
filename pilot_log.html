@@ -152,7 +152,8 @@ body.rowdrag,body.rowdrag *{cursor:grabbing!important;user-select:none!important
 .log tbody tr.shift td .captime{color:var(--pen-green)}
 label.f input.capt{color:var(--pen-green)}
 .shiftbtn{margin-left:6px;border:1px solid var(--accent);color:var(--accent);background:var(--accent-soft);border-radius:999px;padding:0 7px;font-size:11px;cursor:pointer;font-family:var(--f-mono)}
-.remark{display:block;min-width:170px;max-width:260px;white-space:normal;font-size:12px;color:var(--muted)}
+.remark{display:block;min-width:170px;max-width:260px;white-space:normal;font-size:12px;color:var(--pen-red)}
+#fRemark,td[data-f="remark"] .cin{color:var(--pen-red)}
 .empty{padding:48px 16px;text-align:center;color:var(--muted)}
 .empty b{display:block;color:var(--ink);font-size:16px;margin-bottom:4px}
 .dash{color:var(--muted);opacity:.45}
@@ -834,6 +835,7 @@ async function buildPdfBlob(rows,title,sub,onPage){
           if(!isS&&(k==="eta"||k==="atd")){const t=timeOf(c[k]),inv=k==="eta"?invIn(c):invOut(c);
             if(inv){if(t)txt(t,xs[i],cy-4,cc[1],{...o,c:PDF_C.green});txt(INV_TXT,xs[i],cy+4.4,cc[1],{c:PDF_C.red,pt:7.2,mono:false,w:600,align:"center"})}else if(t)txt(t,xs[i],cy,cc[1],o);return}
           if(!isS&&k==="order"&&invIn(c)){txt("-",xs[i],cy,cc[1],{...o,align:"center"});return}
+          if(k==="remark")o.c=PDF_C.red;
           if(!isS&&k==="vessel")o.w=600;
           {const ct=k==="pilotIn"?(isS?(r.s.pilot==="-CAP-"&&r.s.capTime):(c.pilotIn==="-CAP-"&&c.capIn)):k==="pilotOut"&&!isS?(c.pilotOut==="-CAP-"&&c.capOut):"";
             if(ct){let pt=6.5;font(pt,400,mono);while(pt>4.6&&g.measureText(ct).width>(cc[1]-2)*S){pt-=.2;font(pt,400,mono)}g.fillStyle=PDF_C.green;g.textBaseline="middle";g.textAlign="center";g.fillText(ct,(xs[i]+cc[1]/2)*S,(cy-4)*S);
@@ -1091,7 +1093,7 @@ const agentOpts=()=>[...new Set(vessels.map(v=>(v.agent||"").trim()).filter(Bool
 const portOpts=()=>cfg.ports.map(v=>({v}));
 const berthOpts=()=>cfg.berths.map(v=>({v}));
 const pilotOpts=()=>cfg.pilots.map(v=>v==="-CAP-"?{v,keys:"000 CAP",meta:"นายเรือนำเอง"}:{v});
-const remarkOpts=()=>[{v:"เรือยาวเกินกำหนด เมตร( ฟุต)"}];
+const remarkOpts=()=>[{v:"ทำเที่ยวครบ"},{v:"เรือยาวเกินกำหนด เมตร( ฟุต)"}];
 function combo(inp,getOpts,o={}){
   inp.setAttribute("autocomplete","off");inp.setAttribute("role","combobox");inp.setAttribute("aria-autocomplete","list");
   const st={items:[],act:-1};let quiet=false;
@@ -1416,7 +1418,7 @@ listeners.add(bkInfo);
   if(window.__THEME__)document.documentElement.setAttribute("data-theme",window.__THEME__);
   let t="log";try{t=localStorage.getItem("pl.tab")||"log"}catch(e){}
   setTab(t);setDate(curDate);renderCfg();renderVessels();bkInfo();
-  $("remarkList").append(el("option",{value:"เรือยาวเกินกำหนด เมตร( ฟุต)"}));
+  $("remarkList").append(el("option",{value:"ทำเที่ยวครบ"}),el("option",{value:"เรือยาวเกินกำหนด เมตร( ฟุต)"}));
   SS.onStatus(renderSync);
   { const c=SS.config(); if(c.url)$("syncUrl").value=c.url; }
   SS.start().then(()=>{
