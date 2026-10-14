@@ -14,7 +14,7 @@ label.btn{display:inline-flex;align-items:center}
   --bg:#eef2f3; --surface:#ffffff; --ink:#132029; --muted:#5a6872; --line:#d3dce0; --hover:#e6eff1;
   --accent:#0a6672; --accent-ink:#ffffff; --accent-soft:#d5ecef;
   --ok-bg:#cff3dc; --ok-ink:#0f5c34; --warn-bg:#fdf0bd; --warn-ink:#6e5200; --cap-bg:#e9f7b5; --cap-ink:#a3221b; --danger:#b3261e;
-  --pen-blue:#1c3fa6; --pen:var(--pen-blue); --pen-red:#c2261e;
+  --pen-blue:#1c3fa6; --pen:var(--pen-blue); --pen-red:#c2261e; --pen-green:#16612a;
   --hl-y:#fff59a; --hl-p:#ffc6e0; --hl-g:#c9f2b5; --hl-b:#c4e4ff;
   --shadow:0 10px 40px rgb(10 30 40 / .18);
   --f-body:"IBM Plex Sans Thai",system-ui,"Noto Sans Thai",sans-serif;
@@ -24,14 +24,14 @@ label.btn{display:inline-flex;align-items:center}
   --bg:#0e171c; --surface:#15222a; --ink:#e3ecef; --muted:#93a4ad; --line:#2a3a43; --hover:#1c2d36;
   --accent:#4cc0cc; --accent-ink:#06252a; --accent-soft:#163a40;
   --ok-bg:#163f2a; --ok-ink:#8ee3ae; --warn-bg:#46390d; --warn-ink:#f5d76a; --cap-bg:#33400f; --cap-ink:#ff8a80; --danger:#ff8a80;
-  --pen-blue:#8eb2ff; --pen:var(--pen-blue); --pen-red:#ff8f87;
+  --pen-blue:#8eb2ff; --pen:var(--pen-blue); --pen-red:#ff8f87; --pen-green:#6fd08c;
   --hl-y:#5a5014; --hl-p:#5c2742; --hl-g:#26502c; --hl-b:#1f4466;
   --shadow:0 10px 40px rgb(0 0 0 / .5); color-scheme:dark }}
 :root[data-theme="dark"]{
   --bg:#0e171c; --surface:#15222a; --ink:#e3ecef; --muted:#93a4ad; --line:#2a3a43; --hover:#1c2d36;
   --accent:#4cc0cc; --accent-ink:#06252a; --accent-soft:#163a40;
   --ok-bg:#163f2a; --ok-ink:#8ee3ae; --warn-bg:#46390d; --warn-ink:#f5d76a; --cap-bg:#33400f; --cap-ink:#ff8a80; --danger:#ff8a80;
-  --pen-blue:#8eb2ff; --pen:var(--pen-blue); --pen-red:#ff8f87;
+  --pen-blue:#8eb2ff; --pen:var(--pen-blue); --pen-red:#ff8f87; --pen-green:#6fd08c;
   --hl-y:#5a5014; --hl-p:#5c2742; --hl-g:#26502c; --hl-b:#1f4466;
   --shadow:0 10px 40px rgb(0 0 0 / .5); color-scheme:dark }
 *{box-sizing:border-box}
@@ -142,6 +142,9 @@ label.f input.lm{color:var(--pen-red)}
 .chip.ok{background:var(--ok-bg);color:var(--ok-ink)}
 .chip.wait{background:var(--warn-bg);color:var(--warn-ink)}
 .chip.cap{background:var(--cap-bg);color:var(--cap-ink);font-family:var(--f-mono)}
+.captime{display:block;color:var(--pen-green);font-family:var(--f-mono);font-size:12.5px;font-weight:600;line-height:1.2;margin-bottom:2px;white-space:nowrap}
+.log tbody tr.shift td .captime{color:var(--pen-green)}
+label.f input.capt{color:var(--pen-green);font-weight:600}
 .shiftbtn{margin-left:6px;border:1px solid var(--accent);color:var(--accent);background:var(--accent-soft);border-radius:999px;padding:0 7px;font-size:11px;cursor:pointer;font-family:var(--f-mono)}
 .remark{display:block;min-width:170px;max-width:260px;white-space:normal;font-size:12px;color:var(--muted)}
 .empty{padding:48px 16px;text-align:center;color:var(--muted)}
@@ -428,6 +431,7 @@ table.reg{border-collapse:collapse;width:100%;min-width:520px}
           <label class="f">ETA Bar<input id="fEta" class="mono" inputmode="numeric" placeholder="hhmm" autocomplete="off"></label>
           <label class="f">Order for Entering<input id="fOrder" class="mono" inputmode="numeric" placeholder="hhmm" autocomplete="off"></label>
           <label class="f">Pilot No.<input id="fPilotIn" class="mono" placeholder="เลข"></label>
+          <label class="f" id="capInF" hidden>เวลา -CAP-<input id="fCapIn" class="mono capt" placeholder="วัน-เดือน-เวลา" autocomplete="off"></label>
           <label class="f">Berth<input id="fBerth" class="mono" placeholder="ชื่อท่า"></label>
           <label class="f">Draught<input id="fDraughtIn" class="mono" autocomplete="off"></label>
         </div>
@@ -437,6 +441,7 @@ table.reg{border-collapse:collapse;width:100%;min-width:520px}
         <div class="g g3">
           <label class="f">ATD Bar<input id="fAtd" class="mono" inputmode="numeric" placeholder="hhmm" autocomplete="off"></label>
           <label class="f">Pilot No.<input id="fPilotOut" class="mono" placeholder="เลข"></label>
+          <label class="f" id="capOutF" hidden>เวลา -CAP-<input id="fCapOut" class="mono capt" placeholder="วัน-เดือน-เวลา" autocomplete="off"></label>
           <label class="f">Draught<input id="fDraughtOut" class="mono" autocomplete="off"></label>
           <label class="f s2">Agent<input id="fAgentOut"></label>
         </div>
@@ -494,6 +499,9 @@ function slug(s){const x=norm(s).replace(/[^A-Z0-9._~:@+-]+/g,"-").replace(/^-+|
 function el(tag,attrs={},...kids){const e=document.createElement(tag);for(const[k,v]of Object.entries(attrs)){if(k==="class")e.className=v;else if(k.startsWith("on"))e.addEventListener(k.slice(2),v);else if(v!==undefined&&v!==null)e.setAttribute(k,v)}for(const k of kids.flat()){if(k==null)continue;e.append(k instanceof Node?k:document.createTextNode(String(k)))}return e}
 function cell(v,cls){const td=el("td",cls?{class:cls}:{});if(v===""||v==null){td.classList.add("ctr");td.append(el("span",{class:"dash"},"–"))}else{if(v==="-")td.classList.add("ctr");td.append(v instanceof Node?v:String(v))}return td}
 function pilotChip(p){if(!p)return "";return p==="-CAP-"?el("span",{class:"chip cap"},"-CAP-"):p}
+function capSplit(v){v=String(v||"").trim();const m=v.match(/^(?:-?CAP-?|000)(?=\s|$)\s*(.*)$/i);return m?{p:"-CAP-",t:m[1].trim()}:{p:v,t:""}}
+function capRaw(p,t){return p==="-CAP-"&&t?"-CAP- "+t:(p||"")}
+function capCell(p,t){return p==="-CAP-"&&t?el("span",{},el("span",{class:"captime"},t),el("span",{class:"chip cap"},"-CAP-")):pilotChip(p)}
 function statusChip(s){if(s!=="ปิดการเงิน")return "";return el("span",{class:"chip "+(s==="ปิดการเงิน"?"ok":"wait")},s)}
 let toastT;function toast(msg){const t=$("toast");t.textContent=msg;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>t.hidden=true,2400)}
 function notice(msg){const n=$("notice");n.textContent=msg||"";n.hidden=!msg}
@@ -556,15 +564,15 @@ function renderLog(){
     const alt=(gi++%2)?" alt":"",showShifts=n&&!collapsed.has(c.id);
     const tr=el("tr",{class:"main"+alt+(showShifts?"":" grp-end"),"data-id":c.id,tabindex:0,onkeydown:e=>{if(e.key==="Enter"&&e.target===e.currentTarget)openEditor(c)}},
       cell(el("span",{},el("button",{class:"edbtn",type:"button",title:"เปิดฟอร์มแก้ไข","aria-label":"เปิดฟอร์มแก้ไข "+(c.vessel||""),onclick:e=>{e.stopPropagation();openEditor(c)}},"✎"),el("span",{class:"jobno"},hl(c.job||"")),closeF&&c.date?el("span",{class:"dsub"},beTab(c.date)):null),""), ship, cell(c.from,"mono"),
-      cell(timeInv(timeOf(c.eta),invIn(c)),"mono div"), cell(invIn(c)?"-":timeOf(c.order),"mono"+(invIn(c)?" ctr":"")), cell(pilotChip(c.pilotIn),"mono"), cell(c.berth,"mono"), cell(c.draughtIn,"mono"),
+      cell(timeInv(timeOf(c.eta),invIn(c)),"mono div"), cell(invIn(c)?"-":timeOf(c.order),"mono"+(invIn(c)?" ctr":"")), cell(capCell(c.pilotIn,c.capIn),"mono"), cell(c.berth,"mono"), cell(c.draughtIn,"mono"),
       cell(loaEl(c),"mono div"), cell(c.lbp,"mono"), cell(c.agent?hl(c.agent):""),
-      cell(timeInv(timeOf(c.atd),invOut(c)),"mono div"), cell(pilotChip(c.pilotOut),"mono"), cell(c.draughtOut,"mono"), cell(c.agentOut?hl(c.agentOut):""),
+      cell(timeInv(timeOf(c.atd),invOut(c)),"mono div"), cell(capCell(c.pilotOut,c.capOut),"mono"), cell(c.draughtOut,"mono"), cell(c.agentOut?hl(c.agentOut):""),
       cell(c.remark?el("span",{class:"remark"},c.remark):"","div"), cell(closeCell(c,rows,ri)));
     body.append(tr);
     if(n&&!collapsed.has(c.id)){
       c.shifts.forEach((s,i)=>{
         body.append(el("tr",{class:"shift"+alt+(i===c.shifts.length-1?" grp-end":""),"data-id":c.id,"data-si":i},el("td"),el("td",{class:"ship"},"↳ ย้ายท่า "+(i+1)),el("td"),
-          el("td",{class:"div"}),cell(s.order,"mono"),cell(pilotChip(s.pilot),"mono"),cell(moveEl(s)),cell(s.draught,"mono"),
+          el("td",{class:"div"}),cell(s.order,"mono"),cell(capCell(s.pilot,s.capTime),"mono"),cell(moveEl(s)),cell(s.draught,"mono"),
           el("td",{class:"div"}),el("td"),cell(s.agent?hl(s.agent):""),el("td",{class:"div"}),el("td"),el("td"),el("td"),el("td",{class:"div"}),el("td")));
       });
     }
@@ -630,7 +638,9 @@ const F_OPTS=()=>({vessel:[shipOpts],from:[portOpts,1],lbp:[portOpts,1],pilotIn:
 const F_UPPER=new Set(["from","lbp","berth"]);
 let pendingEdit=null,editingCell=null;
 function rawVal(c,si,f){
-  if(si!=null){const s=(c.shifts||[])[si]||{};if(f==="move")return (s.fromBerth||s.berth)?(s.fromBerth||"")+" > "+(s.berth||""):"";return s[f]||""}
+  if(si!=null){const s=(c.shifts||[])[si]||{};if(f==="move")return (s.fromBerth||s.berth)?(s.fromBerth||"")+" > "+(s.berth||""):"";if(f==="pilot")return capRaw(s.pilot,s.capTime);return s[f]||""}
+  if(f==="pilotIn")return capRaw(c.pilotIn,c.capIn);
+  if(f==="pilotOut")return capRaw(c.pilotOut,c.capOut);
   if(f==="loa")return c.loa?c.loa+(c.loaM?"/"+c.loaM:""):"";
   if(f==="eta")return timeOf(c.eta)+(invIn(c)?INV_TXT:"");
   if(f==="order")return timeOf(c.order);
@@ -678,7 +688,7 @@ function startEdit(td){
 async function commitCell(c,si,f,v){
   const {id,...d}=c,doc=JSON.parse(JSON.stringify(d));
   if(si!=null){const s=(doc.shifts||[])[si];if(!s)return;
-    if(f==="move"){const m=v.split(/\s*(?:→|>)\s*/);s.fromBerth=(m.length>1?m[0]:"").toUpperCase();s.berth=(m.length>1?m[1]:m[0]).toUpperCase()}else s[f]=v}
+    if(f==="move"){const m=v.split(/\s*(?:→|>)\s*/);s.fromBerth=(m.length>1?m[0]:"").toUpperCase();s.berth=(m.length>1?m[1]:m[0]).toUpperCase()}else if(f==="pilot"){const p=capSplit(v);s.pilot=p.p;s.capTime=p.t}else s[f]=v}
   else if(f==="loa"){const [a,b]=v.split("/");doc.loa=(a||"").trim();doc.loaM=(b||"").trim()}
   else{
     if(f==="eta"||f==="order"){const pv=invSplit(v),same=timeOf(c.eta)===timeOf(c.order);
@@ -686,6 +696,7 @@ async function commitCell(c,si,f,v){
       if(f==="eta"){doc.invIn=pv.inv;if(same)doc.order=pv.t}else{doc.invIn=pv.inv||invIn(c);if(same)doc.eta=pv.t}
       v=pv.t}
     if(f==="atd"){const pv=invSplit(v);doc.invOut=pv.inv;v=pv.t}
+    if(f==="pilotIn"||f==="pilotOut"){const p=capSplit(v);doc[f==="pilotIn"?"capIn":"capOut"]=p.t;v=p.p}
     if(f==="vessel"){const r=vByName.get(norm(v));if(r){if(r.loa)doc.loa=r.loa;if(r.agent)doc.agent=r.agent}}
     doc[f]=v;
   }
@@ -713,10 +724,10 @@ $("pdfBtn").onclick=()=>{const b=$("pdfBar");b.hidden=!b.hidden;if(!b.hidden){co
 $("pdfClose").onclick=()=>{$("pdfBar").hidden=true};
 $("pdfFrom").addEventListener("input",pdfInfo);$("pdfTo").addEventListener("input",pdfInfo);
 
-const PDF_COLS=[["No.",46,"job"],["Ship's Name",92,"vessel"],["From",34,"from"],["ETA Bar",48,"eta"],["Order for\nEntering",48,"order"],["Pilot\nNo.",28,"pilotIn"],["Berth",62,"berth"],["Draught",30,"draughtIn"],
-  ["LOA",54,"loa"],["LBP",32,"lbp"],["Agent",50,"agent"],["ATD Bar",48,"atd"],["Pilot\nNo.",28,"pilotOut"],["Draught",30,"draughtOut"],["Agent",46,"agentOut"],["Remark",52,"remark"],["ลำดับ\nการปิด",38,"closeNo"]];
+const PDF_COLS=[["No.",46,"job"],["Ship's Name",92,"vessel"],["From",34,"from"],["ETA Bar",48,"eta"],["Order for\nEntering",48,"order"],["Pilot\nNo.",34,"pilotIn"],["Berth",62,"berth"],["Draught",30,"draughtIn"],
+  ["LOA",54,"loa"],["LBP",32,"lbp"],["Agent",50,"agent"],["ATD Bar",48,"atd"],["Pilot\nNo.",34,"pilotOut"],["Draught",30,"draughtOut"],["Agent",46,"agentOut"],["Remark",52,"remark"],["ลำดับ\nการปิด",38,"closeNo"]];
 (()=>{const t=PDF_COLS.reduce((s,c)=>s+c[1],0);PDF_COLS.forEach(c=>c[1]=c[1]*794/t)})();
-const PDF_C={ink:"#1c3fa6",red:"#c2261e",text:"#132029",muted:"#5a6872",grid:"#c3ced3",gridDark:"#7d8f97",head:"#e8f2f3",date:"#eef1f2",accent:"#0a6672",
+const PDF_C={ink:"#1c3fa6",red:"#c2261e",green:"#16612a",text:"#132029",muted:"#5a6872",grid:"#c3ced3",gridDark:"#7d8f97",head:"#e8f2f3",date:"#eef1f2",accent:"#0a6672",
   hl:{y:"#fff59a",p:"#ffc6e0",g:"#c9f2b5",b:"#c4e4ff"}};
 async function buildPdfBlob(rows,title,sub,onPage){
   const S=2.5,PW=842,PH=595,M=24,TOP=M+34,FOOT=16,ROW=15,SROW=13,DROW=14,GH=11,HH=20;
@@ -727,7 +738,7 @@ async function buildPdfBlob(rows,title,sub,onPage){
   const items=[];let lastD=null;
   for(const c of rows){
     if(c.date!==lastD){lastD=c.date;items.push({k:"d",c,h:DROW})}
-    const g=[{k:"m",c,h:(invIn(c)||invOut(c))?ROW+8:ROW}];(c.shifts||[]).forEach((s,i)=>g.push({k:"s",c,s,i,h:SROW}));items.push({k:"g",g,h:g.reduce((n,r)=>n+r.h,0),c});
+    const g=[{k:"m",c,h:(invIn(c)||invOut(c)||(c.pilotIn==="-CAP-"&&c.capIn)||(c.pilotOut==="-CAP-"&&c.capOut))?ROW+8:ROW}];(c.shifts||[]).forEach((s,i)=>g.push({k:"s",c,s,i,h:SROW+(s.pilot==="-CAP-"&&s.capTime?8:0)}));items.push({k:"g",g,h:g.reduce((n,r)=>n+r.h,0),c});
   }
   const cap=PH-TOP-GH-HH-FOOT-M;const pages=[];let cur=[],used=0,curDate=null;
   const newPage=()=>{pages.push(cur);cur=[];used=0};
@@ -779,6 +790,9 @@ async function buildPdfBlob(rows,title,sub,onPage){
             if(inv){if(t)txt(t,xs[i],cy-4,cc[1],{...o,c:PDF_C.red});txt(INV_TXT,xs[i],cy+4.4,cc[1],{c:PDF_C.red,pt:7.2,mono:false,w:600,align:"center"})}else if(t)txt(t,xs[i],cy,cc[1],o);return}
           if(!isS&&k==="order"&&invIn(c)){txt("-",xs[i],cy,cc[1],{...o,align:"center"});return}
           if(!isS&&k==="vessel")o.w=600;
+          {const ct=k==="pilotIn"?(isS?(r.s.pilot==="-CAP-"&&r.s.capTime):(c.pilotIn==="-CAP-"&&c.capIn)):k==="pilotOut"&&!isS?(c.pilotOut==="-CAP-"&&c.capOut):"";
+            if(ct){let pt=6.5;font(pt,600,mono);while(pt>4.6&&g.measureText(ct).width>(cc[1]-2)*S){pt-=.2;font(pt,600,mono)}g.fillStyle=PDF_C.green;g.textBaseline="middle";g.textAlign="center";g.fillText(ct,(xs[i]+cc[1]/2)*S,(cy-4)*S);
+              txt("-CAP-",xs[i],cy+4.4,cc[1],{...o,c:PDF_C.red,pt:7});return}}
           if(!isS&&(k==="pilotIn"||k==="pilotOut")&&c[k]==="-CAP-")o.c=PDF_C.red;
           if(isS&&k==="vessel"){o.mono=false;o.c=PDF_C.red}
           const v=val(k);if(v)txt(v,xs[i],cy,cc[1],v==="-"?{...o,align:"center"}:o);
@@ -1107,7 +1121,7 @@ async function openEditor(c){
   $("fJob").value=v.job||"";$("fShip").value=v.vessel||"";$("fLoa").value=v.loa||"";$("fLbp").value=v.lbp||"";$("fAgent").value=v.agent||"";
   $("fEta").value=timeOf(v.eta);$("fOrder").value=timeOf(v.order);$("etaSync").checked=timeOf(v.eta)===timeOf(v.order);$("invIn").checked=invIn(v);$("invOut").checked=invOut(v);$("fDraughtIn").value=v.draughtIn||"";
   $("fAtd").value=timeOf(v.atd);$("fDraughtOut").value=v.draughtOut||"";$("fAgentOut").value=v.agentOut||"";$("fRemark").value=v.remark||"";
-  $("fFrom").value=v.from||"";$("fBerth").value=v.berth||"";$("fPilotIn").value=v.pilotIn||"";$("fPilotOut").value=v.pilotOut||"";pop.hidden=true;
+  $("fFrom").value=v.from||"";$("fBerth").value=v.berth||"";$("fPilotIn").value=v.pilotIn||"";$("fPilotOut").value=v.pilotOut||"";$("fCapIn").value=v.capIn||"";$("fCapOut").value=v.capOut||"";capToggle();pop.hidden=true;
   $("fLoaM").value=v.loaM||"";shifts=(v.shifts||[]).map(s=>({...s}));renderShifts();setStatus(v.status==="ปิดการเงิน"?"ปิดการเงิน":"");$("fCloseNo").value=v.closeNo||"";checkShip();
   $("scrim").hidden=false;$("sheet").hidden=false;placeSheet();$("fShip").focus();
   if(!v.job&&db){const j=await nextJob(v.date||curDate);
@@ -1128,7 +1142,10 @@ function linkEtaOrder(){const a=$("fEta"),b=$("fOrder"),sw=$("etaSync");
 linkEtaOrder();
 
 combo($("fShip"),shipOpts);combo($("fAgent"),agentOpts);combo($("fFrom"),portOpts,{upper:true});combo($("fLbp"),portOpts,{upper:true});combo($("fBerth"),berthOpts,{upper:true});
-combo($("fPilotIn"),pilotOpts);combo($("fPilotOut"),pilotOpts);combo($("fAgentOut"),agentOpts);combo($("fRemark"),remarkOpts);combo($("vAgent"),agentOpts);
+combo($("fPilotIn"),pilotOpts);combo($("fPilotOut"),pilotOpts);
+function capToggle(e){[["fPilotIn","capInF","fCapIn"],["fPilotOut","capOutF","fCapOut"]].forEach(([a,b,t])=>{const p=capSplit($(a).value);if(e?.type!=="input"&&p.p==="-CAP-"&&p.t&&$(a).value.trim()!=="-CAP-"){$(t).value=p.t;$(a).value="-CAP-"}$(b).hidden=p.p!=="-CAP-"})}
+["fPilotIn","fPilotOut"].forEach(id=>{$(id).addEventListener("input",capToggle);$(id).addEventListener("change",capToggle)});
+combo($("fAgentOut"),agentOpts);combo($("fRemark"),remarkOpts);combo($("vAgent"),agentOpts);
 function closePop(){pop.hidden=true}
 
 function checkShip(){const v=vByName.get(norm($("fShip").value));$("newShipHint").hidden=!$("fShip").value.trim()||!!v||!db}
@@ -1152,7 +1169,7 @@ function renderShifts(){
   box.append(el("div",{class:"srow head","aria-hidden":"true"},el("span"),el("span",{},"Order"),el("span",{},"Pilot No."),el("span",{},"จากท่า"),el("span"),el("span",{},"ไปท่า"),el("span",{},"Draught"),el("span",{},"Agent"),el("span")));
   shifts.forEach((s,i)=>{
     const or=el("input",{id:"so"+i,class:"mono","aria-label":"Order ครั้งที่ "+(i+1),placeholder:"Order",autocomplete:"off",value:s.order||""});or.oninput=()=>s.order=or.value.trim();
-    const pi=el("input",{id:"sp"+i,class:"mono","aria-label":"Pilot No.",placeholder:"Pilot",value:s.pilot||""});combo(pi,pilotOpts);pi.oninput=()=>s.pilot=pi.value.trim();
+    const pi=el("input",{id:"sp"+i,class:"mono","aria-label":"Pilot No.",placeholder:"Pilot",title:"-CAP- ใส่เวลาต่อท้ายได้ เช่น -CAP- 14-10-0700",value:capRaw(s.pilot,s.capTime)});combo(pi,pilotOpts);pi.oninput=()=>{const p=capSplit(pi.value);s.pilot=p.p;s.capTime=p.t};
     const fb=el("input",{id:"sf"+i,class:"mono","aria-label":"จากท่า",placeholder:"จากท่า",value:s.fromBerth||""});combo(fb,berthOpts,{upper:true});fb.oninput=()=>s.fromBerth=fb.value.trim();
     const be=el("input",{id:"sb"+i,class:"mono","aria-label":"ไปท่า",placeholder:"ไปท่า",value:s.berth||""});combo(be,berthOpts,{upper:true});be.oninput=()=>s.berth=be.value.trim();
     const dr=el("input",{id:"sd"+i,class:"mono","aria-label":"Draught",placeholder:"Draught",autocomplete:"off",value:s.draught||""});dr.oninput=()=>s.draught=dr.value.trim();
@@ -1168,9 +1185,10 @@ $("edSave").onclick=async()=>{
   const vessel=$("fShip").value.trim();
   if(!vessel){toast("กรอกชื่อเรือก่อนบันทึก");$("fShip").focus();return}
   const g=id=>$(id).value.trim();
+  const pIn=capSplit(g("fPilotIn")),pOut=capSplit(g("fPilotOut"));
   const data={date:editing?.date||curDate,by:beYY(editing?.date||curDate),fy:fyYY(editing?.date||curDate),job:g("fJob"),vessel,from:g("fFrom"),loa:g("fLoa"),loaM:g("fLoaM"),lbp:g("fLbp"),ng:editing?.ng||"",agent:g("fAgent"),
-    eta:timeOf(g("fEta")),order:timeOf(g("fOrder")),invIn:$("invIn").checked||invSplit(g("fEta")).inv||invSplit(g("fOrder")).inv,pilotIn:g("fPilotIn"),berth:g("fBerth"),draughtIn:g("fDraughtIn"),
-    atd:timeOf(g("fAtd")),invOut:$("invOut").checked||invSplit(g("fAtd")).inv,paknam:editing?.paknam||"",pilotOut:g("fPilotOut"),draughtOut:g("fDraughtOut"),agentOut:g("fAgentOut"),remark:g("fRemark"),status,closeNo:g("fCloseNo"),cnAt:g("fCloseNo")!==(editing?.closeNo||"")?(g("fCloseNo")?Date.now():0):(editing?.cnAt||0),
+    eta:timeOf(g("fEta")),order:timeOf(g("fOrder")),invIn:$("invIn").checked||invSplit(g("fEta")).inv||invSplit(g("fOrder")).inv,pilotIn:pIn.p,capIn:pIn.p==="-CAP-"?(pIn.t||g("fCapIn")):"",berth:g("fBerth"),draughtIn:g("fDraughtIn"),
+    atd:timeOf(g("fAtd")),invOut:$("invOut").checked||invSplit(g("fAtd")).inv,paknam:editing?.paknam||"",pilotOut:pOut.p,capOut:pOut.p==="-CAP-"?(pOut.t||g("fCapOut")):"",draughtOut:g("fDraughtOut"),agentOut:g("fAgentOut"),remark:g("fRemark"),status,closeNo:g("fCloseNo"),cnAt:g("fCloseNo")!==(editing?.closeNo||"")?(g("fCloseNo")?Date.now():0):(editing?.cnAt||0),
     shifts:shifts.filter(s=>s.order||s.pilot||s.fromBerth||s.berth||s.draught||s.agent),t:editing?.t||Date.now(),updated:Date.now(),marks:Object.fromEntries(Object.entries(editing?.marks||{}).filter(([k])=>{const m=k.match(/^s(\d+):/);return !m||+m[1]<shifts.filter(s=>s.order||s.pilot||s.fromBerth||s.berth||s.draught||s.agent).length}))};
   $("edSave").disabled=true;
   try{
@@ -1194,8 +1212,8 @@ $("exportBtn").onclick=async()=>{
   let f=$("csvFrom").value,t=$("csvTo").value;if(!f||!t){toast("เลือกเดือนก่อน");return}if(f>t)[f,t]=[t,f];
   const rows=ymRangeCalls(f,t);if(!rows.length){toast("ไม่มีข้อมูลในช่วงนี้");return}
   for(const c of rows){
-    lines.push([c.date?beTab(c.date):"",c.job,c.vessel,c.from,timeOf(c.eta),invIn(c)?"-":timeOf(c.order),c.pilotIn,c.berth,c.draughtIn,c.loa+(c.loaM?"/"+c.loaM:""),c.lbp,c.agent,timeOf(c.atd),c.pilotOut,c.draughtOut,c.agentOut||"",c.remark,c.closeNo||"",c.status==="ปิดการเงิน"?c.status:"",invIn(c)?"ใช่":"",invOut(c)?"ใช่":""].map(q).join(","));
-    (c.shifts||[]).forEach((s,i)=>lines.push(["","","↳ ย้ายท่า "+(i+1),"","",s.order,s.pilot,moveTxt(s),s.draught,"","",s.agent||"","","","","","","","",""].map(q).join(",")));
+    lines.push([c.date?beTab(c.date):"",c.job,c.vessel,c.from,timeOf(c.eta),invIn(c)?"-":timeOf(c.order),capRaw(c.pilotIn,c.capIn),c.berth,c.draughtIn,c.loa+(c.loaM?"/"+c.loaM:""),c.lbp,c.agent,timeOf(c.atd),capRaw(c.pilotOut,c.capOut),c.draughtOut,c.agentOut||"",c.remark,c.closeNo||"",c.status==="ปิดการเงิน"?c.status:"",invIn(c)?"ใช่":"",invOut(c)?"ใช่":""].map(q).join(","));
+    (c.shifts||[]).forEach((s,i)=>lines.push(["","","↳ ย้ายท่า "+(i+1),"","",s.order,capRaw(s.pilot,s.capTime),moveTxt(s),s.draught,"","",s.agent||"","","","","","","","",""].map(q).join(",")));
   }
   try{await downloads.save({filename:"บันทึกเรือประจำเดือน "+(f===t?ymLabel(f):ymLabel(f)+" - "+ymLabel(t))+".csv",data:new Blob(["﻿"+lines.join("\n")],{type:"text/csv"})})}catch(e){if(e?.code!=="declined")toast("ส่งออกไม่สำเร็จ")}
 };
