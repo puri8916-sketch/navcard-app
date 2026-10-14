@@ -126,13 +126,17 @@ label.f input.lm{color:var(--pen-red)}
 .syncchip[data-st="online"]{color:var(--ok-ink);background:var(--ok-bg);border-color:transparent}
 .syncchip[data-st="offline"],.syncchip[data-st="error"]{color:var(--warn-ink);background:var(--warn-bg);border-color:transparent}
 #syncCard label.f{max-width:560px}
+.pdfbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin:-2px 0 12px;padding:10px 12px;background:var(--surface);border:1px solid var(--accent);border-radius:10px;box-shadow:0 0 0 3px var(--accent-soft)}
+.pdfbar label{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)}
+.pdfbar input[type=month]{border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:4px 8px;font-family:var(--f-mono)}
+.pdfbar #pdfMsg{color:var(--accent);font-weight:500}
 .jobno{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
 .chip{display:inline-block;padding:1px 9px;border-radius:999px;font-size:12px;font-weight:500}
 .chip.ok{background:var(--ok-bg);color:var(--ok-ink)}
 .chip.wait{background:var(--warn-bg);color:var(--warn-ink)}
 .chip.cap{background:var(--cap-bg);color:var(--cap-ink);font-family:var(--f-mono)}
 .shiftbtn{margin-left:6px;border:1px solid var(--accent);color:var(--accent);background:var(--accent-soft);border-radius:999px;padding:0 7px;font-size:11px;cursor:pointer;font-family:var(--f-mono)}
-.remark{max-width:220px;white-space:normal;font-size:12px;color:var(--muted)}
+.remark{display:block;min-width:170px;max-width:260px;white-space:normal;font-size:12px;color:var(--muted)}
 .empty{padding:48px 16px;text-align:center;color:var(--muted)}
 .empty b{display:block;color:var(--ink);font-size:16px;margin-bottom:4px}
 .dash{color:var(--muted);opacity:.45}
@@ -262,8 +266,18 @@ table.reg{border-collapse:collapse;width:100%;min-width:520px}
           <span class="hint">คลิกช่องในตารางเพื่อมาร์ก · คลิกซ้ำเพื่อลบ</span>
         </span>
       </div>
+      <button class="btn" id="pdfBtn" type="button" hidden>PDF</button>
       <button class="btn" id="exportBtn" hidden>ส่งออก CSV</button>
       <button class="btn primary" id="addBtn">+ เพิ่มเรือ</button>
+    </div>
+    <div class="pdfbar" id="pdfBar" hidden>
+      <b>ดาวน์โหลด PDF บันทึกประจำวัน</b>
+      <label for="pdfFrom">จากเดือน <input type="month" id="pdfFrom"></label>
+      <label for="pdfTo">ถึงเดือน <input type="month" id="pdfTo"></label>
+      <button class="btn primary" id="pdfGo" type="button">สร้าง PDF</button>
+      <button class="linkbtn" id="pdfClose" type="button">ปิด</button>
+      <span class="hint" id="pdfInfo"></span>
+      <span class="hint" id="pdfMsg" role="status"></span>
     </div>
     <div class="filters">
       <input id="q" type="search" placeholder="ค้นหาชื่อเรือ / เลขการ์ด / Agent" aria-label="ค้นหาประวัติเรือ" autocomplete="off">
@@ -654,6 +668,131 @@ $("logBody").addEventListener("click",e=>{
   const tr=e.target.closest("tr[data-id]");if(tr&&!canWrite){const c=allCalls.find(x=>x.id===tr.dataset.id);if(c)openEditor(c)}
 });
 
+/* ---------- PDF export: month range → A4 landscape pages drawn on canvas (Thai text via the page's web fonts) ---------- */
+const TH_MON=["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน","กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
+function ymLabel(ym){const [y,m]=ym.split("-").map(Number);return TH_MON[m-1]+" "+(y+543)}
+function ymRangeCalls(from,to){if(from>to)[from,to]=[to,from];return allCalls.filter(c=>c.date&&c.date.slice(0,7)>=from&&c.date.slice(0,7)<=to).sort((a,b)=>a.date.localeCompare(b.date)||(a.t||0)-(b.t||0))}
+function pdfInfo(){
+  const f=$("pdfFrom").value,t=$("pdfTo").value;if(!f||!t){$("pdfInfo").textContent="";return}
+  const rows=ymRangeCalls(f,t),sh=rows.reduce((n,c)=>n+(c.shifts?.length||0),0);
+  $("pdfInfo").textContent=(f===t?ymLabel(f):ymLabel(f<t?f:t)+" – "+ymLabel(f<t?t:f))+` · เรือ ${rows.length} ลำ · ย้ายท่า ${sh} ครั้ง`;
+  $("pdfGo").disabled=!rows.length;
+}
+$("pdfBtn").onclick=()=>{const b=$("pdfBar");b.hidden=!b.hidden;if(!b.hidden){const ym=curDate.slice(0,7);if(!$("pdfFrom").value)$("pdfFrom").value=ym;if(!$("pdfTo").value)$("pdfTo").value=ym;$("pdfMsg").textContent="";pdfInfo()}};
+$("pdfClose").onclick=()=>{$("pdfBar").hidden=true};
+$("pdfFrom").addEventListener("input",pdfInfo);$("pdfTo").addEventListener("input",pdfInfo);
+
+const PDF_COLS=[["No.",46,"job"],["Ship's Name",92,"vessel"],["From",34,"from"],["ETA Bar",48,"eta"],["Order for\nEntering",48,"order"],["Pilot\nNo.",28,"pilotIn"],["Berth",62,"berth"],["Draught",30,"draughtIn"],
+  ["LOA",54,"loa"],["LBP",32,"lbp"],["Net/\nGross",26,"ng"],["Agent",50,"agent"],["ATD Bar",48,"atd"],["Passing\nPaknam",48,"paknam"],["Pilot\nNo.",28,"pilotOut"],["Draught",30,"draughtOut"],["Remark",52,"remark"],["ลำดับ\nการปิด",38,"closeNo"]];
+const PDF_C={ink:"#1c3fa6",red:"#c2261e",text:"#132029",muted:"#5a6872",grid:"#c3ced3",gridDark:"#7d8f97",head:"#e8f2f3",date:"#eef1f2",accent:"#0a6672",
+  hl:{y:"#fff59a",p:"#ffc6e0",g:"#c9f2b5",b:"#c4e4ff"}};
+async function buildPdfBlob(rows,title,sub,onPage){
+  const S=2.5,PW=842,PH=595,M=24,TOP=M+34,FOOT=16,ROW=15,SROW=13,DROW=14,GH=11,HH=20;
+  const fam='"IBM Plex Sans Thai","Noto Sans Thai",Tahoma,sans-serif',mono='"IBM Plex Mono",ui-monospace,monospace';
+  try{await document.fonts.ready}catch(e){}
+  const xs=[];let x=M;for(const c of PDF_COLS){xs.push(x);x+=c[1]}const TW=x-M;
+  // 1) plan pages
+  const items=[];let lastD=null;
+  for(const c of rows){
+    if(c.date!==lastD){lastD=c.date;items.push({k:"d",c,h:DROW})}
+    const g=[{k:"m",c,h:ROW}];(c.shifts||[]).forEach((s,i)=>g.push({k:"s",c,s,i,h:SROW}));items.push({k:"g",g,h:g.reduce((n,r)=>n+r.h,0),c});
+  }
+  const cap=PH-TOP-GH-HH-FOOT-M;const pages=[];let cur=[],used=0,curDate=null;
+  const newPage=()=>{pages.push(cur);cur=[];used=0};
+  for(const it of items){
+    if(it.k==="d"){if(used+DROW+ROW>cap&&cur.length)newPage();cur.push(it);used+=DROW;curDate=it.c.date;continue}
+    if(used+it.h>cap&&cur.length){newPage();cur.push({k:"d",c:it.c,h:DROW,cont:true});used+=DROW}
+    if(it.h>cap){for(const r of it.g){if(used+r.h>cap){newPage();cur.push({k:"d",c:it.c,h:DROW,cont:true});used+=DROW}cur.push({k:"g",g:[r],h:r.h,c:it.c});used+=r.h}}
+    else{cur.push(it);used+=it.h}
+  }
+  if(cur.length)pages.push(cur);
+  // 2) draw
+  const cv=document.createElement("canvas");cv.width=Math.round(PW*S);cv.height=Math.round(PH*S);const g=cv.getContext("2d");
+  const font=(pt,w,f)=>{g.font=`${w||400} ${pt*S}px ${f||fam}`};
+  const fit=(t,w)=>{t=String(t??"");if(g.measureText(t).width<=w)return t;while(t.length&&g.measureText(t+"…").width>w)t=t.slice(0,-1);return t+"…"};
+  const line=(x1,y1,x2,y2,c,w)=>{g.strokeStyle=c;g.lineWidth=(w||.5)*S;g.beginPath();g.moveTo(x1*S,y1*S);g.lineTo(x2*S,y2*S);g.stroke()};
+  const txt=(t,x,y,w,o)=>{o=o||{};let pt=o.pt||7.5;font(pt,o.w,o.mono?mono:fam);while(pt>5.9&&g.measureText(String(t??"")).width>(w-5)*S){pt-=.3;font(pt,o.w,o.mono?mono:fam)}g.fillStyle=o.c||PDF_C.ink;g.textBaseline="middle";g.textAlign=o.align||"left";
+    const s=fit(t,(w-5)*S);g.fillText(s,(o.align==="center"?x+w/2:x+2.5)*S,y*S)};
+  const printed=(()=>{const d=new Date();return beTab(d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"))+" "+String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0")})();
+  const jpegs=[];
+  for(let pi=0;pi<pages.length;pi++){
+    g.fillStyle="#fff";g.fillRect(0,0,cv.width,cv.height);
+    font(15,600);g.fillStyle=PDF_C.text;g.textBaseline="alphabetic";g.textAlign="left";g.fillText(title,M*S,(M+12)*S);
+    font(8.5);g.fillStyle=PDF_C.muted;g.fillText(sub,M*S,(M+26)*S);
+    // header
+    let y=TOP;g.fillStyle=PDF_C.head;g.fillRect(M*S,y*S,TW*S,(GH+HH)*S);
+    const grp=[[3,5,"ขาเข้า"],[12,4,"ขาออก"]];
+    for(const [a,n,l] of grp){const gx=xs[a],gw=PDF_COLS.slice(a,a+n).reduce((s,c)=>s+c[1],0);txt(l,gx,y+GH/2,gw,{pt:7,w:600,c:PDF_C.accent,align:"center"});line(gx,y+GH,gx+gw,y+GH,PDF_C.accent,1)}
+    y+=GH;
+    PDF_COLS.forEach((c,i)=>{const ls=c[0].split("\n");ls.forEach((l,k)=>txt(l,xs[i],y+HH/2+(k-(ls.length-1)/2)*7.5,c[1],{pt:6.5,w:600,c:PDF_C.muted}))});
+    y+=HH;line(M,y,M+TW,y,PDF_C.gridDark,.8);
+    const top=TOP;
+    for(const it of pages[pi]){
+      if(it.k==="d"){g.fillStyle=PDF_C.date;g.fillRect(M*S,y*S,TW*S,it.h*S);
+        const n=rows.filter(r=>r.date===it.c.date).length;txt(beTab(it.c.date)+(it.cont?" (ต่อ)":"")+` · ${n} ลำ`,M,y+it.h/2,200,{pt:7.5,w:600,c:PDF_C.text,mono:false});
+        y+=it.h;line(M,y,M+TW,y,PDF_C.grid);continue}
+      for(const r of it.g){
+        const c=r.c,isS=r.k==="s",col=isS?PDF_C.red:PDF_C.ink;
+        const val=k=>{if(!isS){if(k==="loa")return null;return c[k]||""}
+          const s=r.s;return {job:"",vessel:"↳ ย้ายท่า "+(r.i+1),order:s.order,pilotIn:s.pilot,berth:moveTxt(s),draughtIn:s.draught,agent:s.agent}[k]||""};
+        PDF_COLS.forEach((cc,i)=>{
+          const k=cc[2],mk=(isS?"s"+r.i+":":"")+(k==="closeNo"?"status":k),m=c.marks?.[mk];
+          if(m&&PDF_C.hl[m]){g.fillStyle=PDF_C.hl[m];g.fillRect(xs[i]*S,y*S,cc[1]*S,r.h*S)}
+          const cy=y+r.h/2,o={c:col,pt:isS?7:7.5,mono:!["vessel","agent","remark"].includes(k)};
+          if(!isS&&k==="loa"){if(!c.loa&&!c.loaM)return;{let pt=7.5;font(pt,400,mono);while(pt>5.9&&g.measureText(String(c.loa||"")+"′/"+(c.loaM||"")).width>(cc[1]-5)*S){pt-=.3;font(pt,400,mono)}}const ft=(/^\d+(\.\d+)?$/.test(String(c.loa||"").trim())?c.loa+"′":c.loa||"");
+            g.textBaseline="middle";g.textAlign="left";g.fillStyle=PDF_C.ink;g.fillText(fit(ft,(cc[1]-5)*S),(xs[i]+2.5)*S,cy*S);
+            if(c.loaM){const w1=g.measureText(ft+"/").width/S;g.fillText(ft?"/":"",(xs[i]+2.5+g.measureText(ft).width/S)*S,cy*S);g.fillStyle=PDF_C.red;g.fillText(fit(c.loaM,(cc[1]-5-w1)*S),(xs[i]+2.5+w1)*S,cy*S)}return}
+          if(!isS&&k==="closeNo"){const v=c.closeNo||(c.status==="ปิดการเงิน"?"ปิดเงิน":c.status||"");if(v)txt(v,xs[i],cy,cc[1],{...o,mono:!!c.closeNo});return}
+          if(!isS&&k==="vessel")o.w=600;
+          if(!isS&&(k==="pilotIn"||k==="pilotOut")&&c[k]==="-CAP-")o.c=PDF_C.red;
+          if(isS&&k==="vessel"){o.mono=false;o.c=PDF_C.red}
+          const v=val(k);if(v)txt(v,xs[i],cy,cc[1],o);
+        });
+        y+=r.h;line(M,y,M+TW,y,isS?"#e3c9c7":PDF_C.grid,.4);
+      }
+      line(M,y,M+TW,y,PDF_C.gridDark,.6);
+    }
+    // verticals + frame
+    [0,3,8,12,16].forEach(i=>line(xs[i],top,xs[i],y,PDF_C.gridDark,.7));
+    PDF_COLS.forEach((c,i)=>{if(i&&![3,8,12,16].includes(i))line(xs[i],top+GH,xs[i],y,PDF_C.grid,.4)});
+    line(M+TW,top,M+TW,y,PDF_C.gridDark,.7);line(M,top,M+TW,top,PDF_C.gridDark,.7);
+    // footer
+    font(7);g.fillStyle=PDF_C.muted;g.textBaseline="alphabetic";g.textAlign="left";g.fillText("บันทึกนำร่องสงขลา · "+sub.split(" · ")[0]+" · พิมพ์ "+printed,M*S,(PH-M+4)*S);
+    g.textAlign="right";g.fillText(`หน้า ${pi+1} / ${pages.length}`,(PW-M)*S,(PH-M+4)*S);
+    const b64=cv.toDataURL("image/jpeg",.9).split(",")[1],bin=atob(b64),u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);
+    jpegs.push({u,w:cv.width,h:cv.height});
+    if(onPage)onPage(pi+1,pages.length);await new Promise(r=>setTimeout(r));
+  }
+  // 3) write a minimal PDF (one full-page JPEG per page)
+  const enc=new TextEncoder(),chunks=[],offs=[];let len=0;
+  const push=x=>{const b=typeof x==="string"?enc.encode(x):x;chunks.push(b);len+=b.length};
+  const obj=(id,body)=>{offs[id]=len;push(id+" 0 obj\n"+body+"\nendobj\n")};
+  push("%PDF-1.4\n");
+  obj(1,"<< /Type /Catalog /Pages 2 0 R >>");
+  obj(2,`<< /Type /Pages /Kids [${jpegs.map((_,i)=>(3+3*i)+" 0 R").join(" ")}] /Count ${jpegs.length} >>`);
+  jpegs.forEach((p,i)=>{const pid=3+3*i,cs=`q ${PW} 0 0 ${PH} 0 0 cm /Im0 Do Q`;
+    obj(pid,`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PW} ${PH}] /Resources << /XObject << /Im0 ${pid+2} 0 R >> >> /Contents ${pid+1} 0 R >>`);
+    obj(pid+1,`<< /Length ${cs.length} >>\nstream\n${cs}\nendstream`);
+    offs[pid+2]=len;push(`${pid+2} 0 obj\n<< /Type /XObject /Subtype /Image /Width ${p.w} /Height ${p.h} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${p.u.length} >>\nstream\n`);push(p.u);push("\nendstream\nendobj\n");
+  });
+  const total=3+3*jpegs.length,xref=len;let xr=`xref\n0 ${total}\n0000000000 65535 f \n`;for(let id=1;id<total;id++)xr+=String(offs[id]).padStart(10,"0")+" 00000 n \n";
+  push(xr+`trailer\n<< /Size ${total} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`);
+  return new Blob(chunks,{type:"application/pdf"});
+}
+$("pdfGo").onclick=async()=>{
+  let f=$("pdfFrom").value,t=$("pdfTo").value;if(!f||!t)return;if(f>t)[f,t]=[t,f];
+  const rows=ymRangeCalls(f,t);if(!rows.length){$("pdfMsg").textContent="ไม่มีข้อมูลในช่วงนี้";return}
+  const sh=rows.reduce((n,c)=>n+(c.shifts?.length||0),0),range=f===t?ymLabel(f):ymLabel(f)+" – "+ymLabel(t);
+  $("pdfGo").disabled=true;$("pdfMsg").textContent="กำลังสร้าง PDF…";
+  try{
+    const blob=await buildPdfBlob(rows,"บันทึกนำร่องสงขลา",`${range} · เรือ ${rows.length} ลำ · ย้ายท่า ${sh} ครั้ง`,(i,n)=>{$("pdfMsg").textContent=`กำลังสร้าง PDF… หน้า ${i}/${n}`});
+    const name=`pilot-log_${+f.slice(0,4)+543}-${f.slice(5)}`+(f===t?"":`_to_${+t.slice(0,4)+543}-${t.slice(5)}`)+".pdf";
+    await downloads.save({filename:name,data:blob});
+    $("pdfMsg").textContent=`ดาวน์โหลดแล้ว: ${name}`;
+  }catch(e){$("pdfMsg").textContent=e?.code==="declined"?"ยกเลิกการดาวน์โหลด":"สร้าง PDF ไม่สำเร็จ ("+(e?.code||e?.message||"error")+")"}
+  finally{$("pdfGo").disabled=false}
+};
+
 /* ---------- highlighter: colour individual cells like a marker pen ---------- */
 const CELL_KEYS=["job","vessel","from","eta","order","pilotIn","berth","draughtIn","loa","lbp","ng","agent","atd","paknam","pilotOut","draughtOut","remark","status"];
 let markMode=false,markColor="y";
@@ -1010,7 +1149,7 @@ listeners.add(bkInfo);
   db=localDb;subscribeCalls();
   db.collection("vessels").onSnapshot(s=>{vessels=s.docs.map(x=>({id:x.id,...x.data()}));rebuildVessels()});
   db.doc("config/lists").onSnapshot(s=>{const d=s.exists?s.data():{};cfg={ports:d.ports||DEF.ports,berths:d.berths||DEF.berths,pilots:d.pilots||DEF.pilots};renderCfg()});
-  $("exportBtn").hidden=false;
+  $("exportBtn").hidden=false;$("pdfBtn").hidden=false;
 })();
 </script>
 
