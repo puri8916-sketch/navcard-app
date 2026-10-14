@@ -3,43 +3,62 @@
 <head><meta charset="utf-8"></head>
 <body style="margin:0">
 <script>
-  // Minimal Streamlit component (no build step): reads the calculator's ship
-  // memory from this browser's localStorage and sends it to Python.
-  const SHIPS_KEY = 'calc3_2808_ships';
+  // Minimal Streamlit component (no build step): sends the calculator's ship lengths to Python.
+  // Source order: old per-browser memory < shared sync cache < fresh copy from the Google Sheet (when connected).
+  const OLD_KEY = 'calc3_2808_ships', CACHE = 'navsync_v1', CFG = 'navsync_cfg';
 
   function post(type, extra) {
     window.parent.postMessage(Object.assign({ isStreamlitMessage: true, type: type }, extra || {}), '*');
   }
+  function readJSON(k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } }
 
-  function readStore() {
+  function readLocal() {
+    const ships = {};
     try {
-      const raw = localStorage.getItem(SHIPS_KEY);
-      const ships = raw ? JSON.parse(raw) : {};
-      return { ships: (ships && typeof ships === 'object') ? ships : {} };
+      const old = readJSON(OLD_KEY);
+      if (old && typeof old === 'object') Object.assign(ships, old);
+      const c = readJSON(CACHE);
+      if (c && c.cols && c.cols.calcShips) Object.assign(ships, c.cols.calcShips);
+      return { ships: ships };
     } catch (err) {
-      return { ships: {}, error: String(err) };
+      return { ships: ships, error: String(err) };
     }
+  }
+
+  async function readSheet() {
+    const cfg = readJSON(CFG);
+    if (!cfg || !cfg.url) return null;
+    const sep = cfg.url.indexOf('?') >= 0 ? '&' : '?';
+    const r = await fetch(cfg.url + sep + 'action=load&since=0&key=' + encodeURIComponent(cfg.key || ''));
+    const j = await r.json();
+    if (!j.ok) return null;
+    const ships = readLocal().ships;
+    for (const d of j.docs) {
+      if (d.col !== 'calcShips') continue;
+      if (d.deleted) delete ships[d.id]; else ships[d.id] = d.doc;
+    }
+    return { ships: ships, source: 'sheet' };
   }
 
   let lastSent = null;
-  function sendIfChanged() {
-    const store = readStore();
+  function send(store) {
     const s = JSON.stringify(store);
-    if (s !== lastSent) {
-      lastSent = s;
-      post('streamlit:setComponentValue', { value: store, dataType: 'json' });
-    }
+    if (s !== lastSent) { lastSent = s; post('streamlit:setComponentValue', { value: store, dataType: 'json' }); }
+  }
+  let fetched = null;
+  async function refresh() {
+    send(fetched || readLocal());
+    if (fetched) return;
+    try { const r = await readSheet(); if (r) { fetched = r; send(r); } } catch (e) { /* offline: keep local copy */ }
   }
 
   window.addEventListener('message', function (event) {
-    if (event.data && event.data.type === 'streamlit:render') {
-      sendIfChanged();
-    }
+    if (event.data && event.data.type === 'streamlit:render') refresh();
   });
 
   post('streamlit:componentReady', { apiVersion: 1 });
   post('streamlit:setFrameHeight', { height: 0 });
-  sendIfChanged();
+  refresh();
 </script>
 </body>
 </html>

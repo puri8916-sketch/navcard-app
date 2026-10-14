@@ -94,6 +94,25 @@ def apply_theme(choice):
         st.markdown(_BASE_CSS % {"app": _DARK_CSS}, unsafe_allow_html=True)
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
+
+
+def _sync_script():
+    """<script> tags that give a page the shared Google Sheet sync client (sync_client.js).
+    The sheet URL/key can come from Streamlit secrets ([sync] url=..., key=...) or be typed
+    in once per device under บันทึกประจำวัน › ตั้งค่า."""
+    cfg = {}
+    try:
+        sec = st.secrets.get("sync", {})
+        if sec.get("url"):
+            cfg = {"url": str(sec.get("url")), "key": str(sec.get("key", ""))}
+    except Exception:
+        pass
+    with open(os.path.join(_HERE, "sync_client.js"), encoding="utf-8") as f:
+        js = f.read()
+    return ("<script>window.__SYNC__=" + json.dumps(cfg, ensure_ascii=False).replace("</", "<\\/") + ";</script>\n"
+            "<script>" + js + "</script>\n")
+
+
 _PAGES = ["⚓ รวมการ์ด", "🧮 เครื่องคิดเลข ×3.2808", "📒 บันทึกนำร่องประจำวัน"]
 
 with st.sidebar:
@@ -122,7 +141,7 @@ if _page == _PAGES[2]:
     _log_theme = {_THEME_OPTIONS[1]: "light", _THEME_OPTIONS[2]: "dark"}.get(_theme_choice)
     if _log_theme:
         _inject += "window.__THEME__='" + _log_theme + "';"
-    _log_html = _log_html.replace("<script>", "<script>" + _inject + "</script>\n<script>", 1)
+    _log_html = _log_html.replace("<script>", "<script>" + _inject + "</script>\n" + _sync_script() + "<script>", 1)
     st.markdown("""<style>[data-testid="stMainBlockContainer"]{padding-top:2.5rem;max-width:100%}</style>""",
                 unsafe_allow_html=True)
     components.html(_log_html, height=1100, scrolling=True)
@@ -131,7 +150,7 @@ if _page == _PAGES[2]:
 if _page == _PAGES[1]:
     st.title("🧮 เครื่องคิดเลข ×3.2808")
     st.caption("ความยาวเรือที่บันทึกที่นี่จะถูกใช้ในเมนู ⚓ รวมการ์ด โดยอัตโนมัติ "
-               "(จำไว้ในเบราว์เซอร์เครื่องนี้ — กด “นำเข้าจาก CSV เก่า” เพื่อใส่ข้อมูลเดิมครั้งเดียว)")
+               "(ถ้าเชื่อมต่อ Google Sheet ในเมนู 📒 › ตั้งค่า แล้ว จะใช้ข้อมูลเดียวกันทุกเครื่อง)")
     with open(os.path.join(_HERE, "calc_3_2808.html"), encoding="utf-8") as _f:
         _calc_html = _f.read()
     # follow the app's theme choice (the calculator keeps its own ☀️/🌙 button too)
@@ -145,6 +164,7 @@ if _page == _PAGES[1]:
             "<script>try{localStorage.setItem('calc3_2808_theme','" + _calc_theme + "');}catch(e){}</script>\n<script>", 1)
     _l, _m, _r = st.columns([1, 2, 1])
     with _m:
+        _calc_html = _calc_html.replace("<script>", _sync_script() + "<script>", 1)
         components.html(_calc_html, height=900, scrolling=True)
     st.stop()   # the card-merger UI below is only for the first page
 
@@ -157,6 +177,9 @@ _store = _ship_store(key="ship_store", default=None)
 _ship_memory = {k: v["value"] for k, v in nc.load_default_ships(os.path.join(_HERE, "ships.csv")).items()}
 _ship_memory = {k: float(v) for k, v in _ship_memory.items()}
 _ship_memory.update(nc.ship_memory_from_store(_store))
+for _nm, _d in ((_store or {}).get("ships") or {}).items():   # ships removed in the calculator
+    if isinstance(_d, dict) and _d.get("hidden"):
+        _ship_memory.pop(_nm, None)
 
 st.caption("อัปโหลดไฟล์ zip (NavigationCard PDFs + ReportCardIsClosedDaily.xlsx + CSV ตัวเลข) "
            "ระบบจะตรวจสอบความครบถ้วนและรวมเป็น PDF เดียว")

@@ -122,6 +122,10 @@ label.f input.lm{color:var(--pen-red)}
 .cin.mono{font-family:var(--f-mono)}
 .edbtn{border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:5px;width:22px;height:22px;padding:0;cursor:pointer;margin-right:6px;font-size:12px;vertical-align:middle}
 .edbtn:hover,.edbtn:focus-visible{color:var(--accent);border-color:var(--accent)}
+.syncchip{border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:999px;padding:3px 10px;font-size:12px;cursor:pointer;white-space:nowrap}
+.syncchip[data-st="online"]{color:var(--ok-ink);background:var(--ok-bg);border-color:transparent}
+.syncchip[data-st="offline"],.syncchip[data-st="error"]{color:var(--warn-ink);background:var(--warn-bg);border-color:transparent}
+#syncCard label.f{max-width:560px}
 .jobno{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
 .chip{display:inline-block;padding:1px 9px;border-radius:999px;font-size:12px;font-weight:500}
 .chip.ok{background:var(--ok-bg);color:var(--ok-ink)}
@@ -222,6 +226,7 @@ table.reg{border-collapse:collapse;width:100%;min-width:520px}
 <div class="wrap">
   <header class="bar">
     <div class="brand"><b>บันทึกนำร่องสงขลา</b><span>Songkhla Pilot Log · SGZ</span></div>
+    <button class="syncchip" id="syncChip" type="button" data-st="local">เก็บในเครื่องนี้</button>
     <nav class="tabs" role="tablist">
       <button id="tab-log" role="tab" aria-selected="true" data-tab="log">บันทึกประจำวัน</button>
       <button id="tab-ves" role="tab" aria-selected="false" data-tab="ves">ทะเบียนเรือ</button>
@@ -317,6 +322,19 @@ table.reg{border-collapse:collapse;width:100%;min-width:520px}
     <div class="panel">
       <p class="hint" style="margin:0">รายการเหล่านี้คือ dropdown ในฟอร์มบันทึก แก้ไขได้ตลอด ข้อมูลที่บันทึกไปแล้วไม่เปลี่ยนตาม</p>
       <div class="cfg" id="cfgBox"></div>
+      <div class="cfgcard" id="syncCard">
+        <h3>เชื่อมต่อ Google Sheet</h3>
+        <span class="hint">ใช้ข้อมูลชุดเดียวกันทุกเครื่อง (บันทึกประจำวัน + ความยาวเรือในเครื่องคิดเลข) ตั้งครั้งเดียวต่อเครื่อง วิธีติดตั้งสคริปต์ดูใน README</span>
+        <span class="hint" id="syncState"></span>
+        <label class="f">Web app URL<input id="syncUrl" class="mono" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off"></label>
+        <label class="f">รหัสเข้าใช้<input id="syncKey" type="password" autocomplete="off"></label>
+        <div class="toolbar">
+          <button class="btn primary" id="syncSave" type="button">ทดสอบและเชื่อมต่อ</button>
+          <button class="btn" id="syncNow" type="button" hidden>ซิงก์ตอนนี้</button>
+          <button class="btn danger" id="syncOff" type="button" hidden>ยกเลิกการเชื่อมต่อ</button>
+        </div>
+        <span class="hint" id="syncMsg" role="status"></span>
+      </div>
       <div class="cfgcard">
         <h3>สีตัวอักษรในตาราง</h3>
         <span class="hint">ตั้งค่าเฉพาะเบราว์เซอร์เครื่องนี้</span>
@@ -328,7 +346,7 @@ table.reg{border-collapse:collapse;width:100%;min-width:520px}
       </div>
       <div class="cfgcard">
         <h3>สำรองข้อมูล</h3>
-        <span class="hint">ข้อมูลทั้งหมดเก็บในเบราว์เซอร์ของเครื่องนี้ ควรกดสำรองเก็บไว้เป็นระยะ (เช่น สัปดาห์ละครั้ง) ถ้าล้างประวัติเบราว์เซอร์หรือเปลี่ยนเครื่อง ให้กู้คืนจากไฟล์นี้</span>
+        <span class="hint">ดาวน์โหลดข้อมูลทั้งหมดเก็บไว้เป็นไฟล์ ถ้ายังไม่ได้เชื่อมต่อ Google Sheet ข้อมูลจะอยู่เฉพาะเบราว์เซอร์นี้ ควรสำรองเป็นระยะ</span>
         <span class="hint" id="bkInfo"></span>
         <div class="toolbar">
           <button class="btn primary" id="bkSave">ดาวน์โหลดไฟล์สำรอง (.json)</button>
@@ -906,32 +924,50 @@ async function saveCfg(key,list){
   try{await db.doc("config/lists").set(next)}catch(e){toast("บันทึกตั้งค่าไม่สำเร็จ ("+e.code+")")}
 }
 
-/* ---------- local storage db (same API the page uses) ---------- */
-const LS_KEY="pilotlog_v1";
-function lsLoad(){try{return JSON.parse(localStorage.getItem(LS_KEY)||"null")}catch(e){return null}}
-let STORE=lsLoad()||{};
-function normStore(){for(const k of ["calls","vessels","config"])STORE[k]=STORE[k]||{};}
-normStore();
-if(!Object.keys(STORE.vessels).length&&Array.isArray(window.__SHIP_DB__)){
-  for(const v of window.__SHIP_DB__)STORE.vessels[slug(v.name)]={name:v.name,loa:v.loa||"",agent:v.agent||""};
-  try{localStorage.setItem(LS_KEY,JSON.stringify(STORE))}catch(e){}
-}
+/* ---------- data store: this browser, synced to Google Sheet when connected (sync_client.js) ---------- */
+const SS=window.SyncStore||null;
+if(!SS)notice("โหลดตัวซิงก์ข้อมูลไม่สำเร็จ ลองรีเฟรชหน้า");
+SS.migrate("pilotlog_v1",(old,add)=>{for(const c of ["calls","vessels","config"])for(const [id,d] of Object.entries(old[c]||{}))add(c,id,d)});
+const STORE={get calls(){return SS.all("calls")},get vessels(){return SS.all("vessels")},get config(){return SS.all("config")}};
 const listeners=new Set();
 function emit(){listeners.forEach(l=>{try{l()}catch(e){console.error(e)}})}
-function persist(){try{localStorage.setItem(LS_KEY,JSON.stringify(STORE))}catch(e){notice("บันทึกลงเบราว์เซอร์ไม่สำเร็จ (พื้นที่เต็มหรือถูกปิดกั้น) กรุณาดาวน์โหลดไฟล์สำรองทันที");throw {code:"storage"}}emit()}
-function docsOf(col,f){return Object.entries(STORE[col]||{}).filter(([,d])=>!f||d[f[0]]===f[2]).map(([id,d])=>({id,exists:true,data:()=>d}))}
+SS.on(emit);
+function docsOf(col,f){return Object.entries(SS.all(col)).filter(([,d])=>!f||d[f[0]]===f[2]).map(([id,d])=>({id,exists:true,data:()=>d}))}
 function docRef(col,id){return{id,
-  set:async d=>{STORE[col][id]=JSON.parse(JSON.stringify(d));persist()},
-  delete:async()=>{delete STORE[col][id];persist()},
-  onSnapshot(next){const l=()=>{const d=STORE[col][id];next({exists:!!d,data:()=>d})};listeners.add(l);setTimeout(l,0);return()=>listeners.delete(l)}}}
+  set:async d=>SS.put(col,id,d),
+  delete:async()=>SS.del(col,id),
+  onSnapshot(next){const l=()=>{const d=SS.all(col)[id];next({exists:!!d,data:()=>d})};listeners.add(l);setTimeout(l,0);return()=>listeners.delete(l)}}}
 function query(col,f){return{
   where:(a,op,b)=>query(col,[a,op,b]),
   get:async()=>({docs:docsOf(col,f)}),
   onSnapshot(next){const l=()=>next({docs:docsOf(col,f)});listeners.add(l);setTimeout(l,0);return()=>listeners.delete(l)},
   doc:id=>docRef(col,id),
-  add:async d=>{const id="c"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);STORE[col][id]=JSON.parse(JSON.stringify(d));persist();return docRef(col,id)}}}
-const localDb={collection:c=>query(c),doc:p=>{const [c,id]=p.split("/");return docRef(c==="config"?"config":c,id)}};
-window.addEventListener("storage",e=>{if(e.key===LS_KEY){STORE=lsLoad()||{};normStore();emit()}});
+  add:async d=>{const id="c"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);SS.put(col,id,d);return docRef(col,id)}}}
+const localDb={collection:c=>query(c),doc:p=>{const [c,id]=p.split("/");return docRef(c,id)}};
+
+/* ---------- sync status + connection settings ---------- */
+function renderSync(st,err,pend){
+  const chip=$("syncChip"),n=pend||0;
+  const txt={local:"เก็บในเครื่องนี้",syncing:"⟳ กำลังซิงก์",online:"☁ ซิงก์แล้ว",offline:"⚠ ออฟไลน์",error:"⚠ ซิงก์ไม่ได้"}[st]||st;
+  chip.textContent=txt+(n&&st!=="online"?` · รอส่ง ${n}`:"");chip.dataset.st=st;chip.title=err||"";
+  const c=SS.config();
+  $("syncState").textContent=c.url?(st==="online"?"เชื่อมต่อแล้ว ข้อมูลตรงกันทุกเครื่องที่ใช้รหัสเดียวกัน":st==="error"?"เชื่อมต่อไม่ได้: "+err:st==="offline"?"ออฟไลน์อยู่ จะส่งข้อมูลเมื่อกลับมาออนไลน์":"กำลังซิงก์…"):"ยังไม่ได้เชื่อมต่อ ข้อมูลเก็บเฉพาะเบราว์เซอร์นี้";
+  $("syncOff").hidden=!c.url;$("syncNow").hidden=!c.url;
+}
+$("syncChip").onclick=()=>setTab("cfg");
+$("syncSave").onclick=async()=>{
+  const url=$("syncUrl").value.trim(),key=$("syncKey").value.trim(),msg=$("syncMsg");
+  if(!/^https?:\/\/.+\/exec(\?.*)?$/.test(url)){msg.textContent="URL ต้องเป็น Web app ของ Apps Script ที่ลงท้ายด้วย /exec";return}
+  if(!key){msg.textContent="กรอกรหัสเข้าใช้ (ตัวเดียวกับใน KEYS ของสคริปต์)";return}
+  msg.textContent="กำลังทดสอบ…";$("syncSave").disabled=true;
+  try{const j=await SS.test(url,key);const n=j.counts||{};
+    SS.setConfig(url,key);msg.textContent=`เชื่อมต่อสำเร็จ ในชีตมี ${n.calls||0} รายการบันทึก · ${n.vessels||0} ลำ · ความยาวเรือ ${n.calcShips||0} ลำ กำลังซิงก์ข้อมูลในเครื่องนี้ขึ้นไป`;$("syncKey").value="";
+  }catch(e){msg.textContent="เชื่อมต่อไม่สำเร็จ: "+e.message}finally{$("syncSave").disabled=false}
+};
+$("syncNow").onclick=()=>SS.syncNow();
+let offArmed=false;
+$("syncOff").onclick=()=>{if(!offArmed){offArmed=true;$("syncOff").textContent="กดอีกครั้งเพื่อยืนยัน";setTimeout(()=>{offArmed=false;$("syncOff").textContent="ยกเลิกการเชื่อมต่อ"},3000);return}
+  SS.setConfig("");$("syncUrl").value="";$("syncMsg").textContent="ยกเลิกการเชื่อมต่อแล้ว ข้อมูลที่มีอยู่ยังเก็บไว้ในเครื่องนี้";offArmed=false;$("syncOff").textContent="ยกเลิกการเชื่อมต่อ"};
 
 function saveFile(name,blob){
   try{const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),5000)}
@@ -943,15 +979,15 @@ downloads={save:async({filename,data})=>saveFile(filename,data)};
 function bkInfo(){$("bkInfo").textContent=`ตอนนี้มี ${Object.keys(STORE.calls).length} รายการบันทึก · ${Object.keys(STORE.vessels).length} ลำในทะเบียน`}
 $("bkSave").onclick=()=>{
   const d=new Date(),stamp=d.getFullYear()+String(d.getMonth()+1).padStart(2,"0")+String(d.getDate()).padStart(2,"0");
-  saveFile("pilot-log-backup-"+stamp+".json",new Blob([JSON.stringify({app:"pilotlog",v:1,saved:d.toISOString(),data:STORE},null,1)],{type:"application/json"}));
+  saveFile("pilot-log-backup-"+stamp+".json",new Blob([JSON.stringify({app:"pilotlog",v:1,saved:d.toISOString(),data:{calls:SS.all("calls"),vessels:SS.all("vessels"),config:SS.all("config")}},null,1)],{type:"application/json"}));
 };
 $("bkFile").onchange=async e=>{
   const f=e.target.files[0];e.target.value="";if(!f)return;
   let parsed;try{parsed=JSON.parse(await f.text());if(parsed.app!=="pilotlog"||!parsed.data)throw 0}catch(_){toast("ไฟล์นี้ไม่ใช่ไฟล์สำรองของบันทึกนำร่อง");return}
   const box=$("bkConfirm");box.replaceChildren();
   const n=Object.keys(parsed.data.calls||{}).length,m=Object.keys(parsed.data.vessels||{}).length;
-  box.append(`ไฟล์นี้มี ${n} รายการบันทึก · ${m} ลำ ข้อมูลปัจจุบันในเครื่องจะถูกแทนที่ทั้งหมด `,
-    el("button",{class:"btn danger armed",onclick:()=>{STORE=parsed.data;normStore();try{persist();toast("กู้คืนข้อมูลแล้ว")}catch(_){}box.hidden=true}},"แทนที่ข้อมูล"),
+  box.append(`ไฟล์นี้มี ${n} รายการบันทึก · ${m} ลำ ข้อมูลปัจจุบันจะถูกแทนที่ทั้งหมด${SS.connected()?" (รวมใน Google Sheet และทุกเครื่องที่เชื่อมต่อ)":""} `,
+    el("button",{class:"btn danger armed",onclick:()=>{for(const c of ["calls","vessels","config"])SS.replaceAll(c,parsed.data[c]||{});toast("กู้คืนข้อมูลแล้ว"+(SS.connected()?" กำลังซิงก์ขึ้น Google Sheet":""));box.hidden=true}},"แทนที่ข้อมูล"),
     " ",el("button",{class:"btn",onclick:()=>box.hidden=true},"ยกเลิก"));
   box.hidden=false;
 };
@@ -963,6 +999,14 @@ listeners.add(bkInfo);
   let t="log";try{t=localStorage.getItem("pl.tab")||"log"}catch(e){}
   setTab(t);setDate(curDate);renderCfg();renderVessels();bkInfo();
   $("remarkList").append(el("option",{value:"เรือยาวเกินกำหนด เมตร( ฟุต)"}));
+  SS.onStatus(renderSync);
+  { const c=SS.config(); if(c.url)$("syncUrl").value=c.url; }
+  SS.start().then(()=>{
+    if(!Object.keys(SS.all("vessels")).length&&Array.isArray(window.__SHIP_DB__)){
+      for(const v of window.__SHIP_DB__)SS.put("vessels",slug(v.name),{name:v.name,loa:v.loa||"",agent:v.agent||""},{updated:1,quiet:true});
+      emit();
+    }
+  });
   db=localDb;subscribeCalls();
   db.collection("vessels").onSnapshot(s=>{vessels=s.docs.map(x=>({id:x.id,...x.data()}));rebuildVessels()});
   db.doc("config/lists").onSnapshot(s=>{const d=s.exists?s.data():{};cfg={ports:d.ports||DEF.ports,berths:d.berths||DEF.berths,pilots:d.pilots||DEF.pilots};renderCfg()});

@@ -504,33 +504,42 @@
     }
   }
 
+  // Ship lengths live in the shared sync store (Google Sheet when connected, otherwise this browser).
+  const SS = window.SyncStore || null;
+  const shipDefaults = () => window.__DEFAULT_SHIPS__ || {};
+  const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  if (SS) SS.migrate(SHIPS_KEY, (old, add) => { for (const k in old) add('calcShips', k, old[k]); });
+
   function loadShips() {
-    try {
-      const saved = localStorage.getItem(SHIPS_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed && typeof parsed === 'object') ships = parsed;
-      }
-    } catch (err) {
-      ships = {};
-    }
-    // defaults shipped with the app (ships.csv in the repo): local entries win
-    try {
-      const d = window.__DEFAULT_SHIPS__ || {};
-      for (const k in d) if (!(k in ships)) ships[k] = d[k];
-    } catch (err) {}
+    ships = {};
+    const st = SS ? SS.all('calcShips') : (() => { try { return JSON.parse(localStorage.getItem(SHIPS_KEY) || '{}'); } catch (e) { return {}; } })();
+    const d = shipDefaults();
+    for (const k in d) ships[k] = d[k];                       // ships.csv in the repo
+    for (const k in st) { if (st[k] && st[k].hidden) delete ships[k]; else ships[k] = st[k]; }   // saved entries win
   }
 
   function updateMemoryInfo() {
-    memoryInfo.textContent = 'ความยาวเรือที่จำไว้: ' + Object.keys(ships).length + ' ลำ';
+    let t = 'ความยาวเรือที่จำไว้: ' + Object.keys(ships).length + ' ลำ';
+    if (SS) t += syncNote;
+    memoryInfo.textContent = t;
   }
+  let syncNote = '';
 
   function saveShips() {
-    try {
-      localStorage.setItem(SHIPS_KEY, JSON.stringify(ships));
-    } catch (err) {
-      showError('ไม่สามารถบันทึกข้อมูลเรือถาวรได้');
+    if (!SS) {
+      try { localStorage.setItem(SHIPS_KEY, JSON.stringify(ships)); } catch (err) { showError('ไม่สามารถบันทึกข้อมูลเรือถาวรได้'); }
+      updateMemoryInfo(); return;
     }
+    const st = SS.all('calcShips'), d = shipDefaults();
+    for (const k in ships) {
+      if (same(st[k], ships[k])) continue;
+      if (!(k in st) && k in d && same(d[k], ships[k])) continue;   // unchanged default, nothing to store
+      SS.put('calcShips', k, ships[k], { quiet: true });
+    }
+    for (const k in st) if (!(k in ships) && !(st[k] && st[k].hidden)) {
+      if (k in d) SS.put('calcShips', k, { hidden: true }, { quiet: true }); else SS.del('calcShips', k);
+    }
+    for (const k in d) if (!(k in ships) && !(k in st)) SS.put('calcShips', k, { hidden: true }, { quiet: true });
     updateMemoryInfo();
   }
 
@@ -882,6 +891,15 @@
   loadShips();
   updateMemoryInfo();
   renderHistory();
+  if (SS) {
+    SS.on(() => { loadShips(); updateMemoryInfo(); if (suggestBox.classList.contains('show')) updateSuggestions(); });
+    SS.onStatus((st, err, n) => {
+      syncNote = { local: '', syncing: ' · ⟳ กำลังซิงก์', online: ' · ☁ ซิงก์กับ Google Sheet แล้ว', offline: ' · ⚠ ออฟไลน์', error: ' · ⚠ ซิงก์ไม่ได้' }[st] || '';
+      if (n && st !== 'online' && st !== 'local') syncNote += ' (รอส่ง ' + n + ')';
+      updateMemoryInfo();
+    });
+    SS.start();
+  }
 </script>
 </body>
 </html>
