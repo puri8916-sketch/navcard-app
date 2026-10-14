@@ -469,7 +469,7 @@ function beYY(iso){return String((+iso.slice(0,4)+543)%100).padStart(2,"0")}
 function norm(s){return String(s||"").trim().toUpperCase().replace(/\s+/g," ")}
 function slug(s){const x=norm(s).replace(/[^A-Z0-9._~:@+-]+/g,"-").replace(/^-+|-+$/g,"").slice(0,120);return x||("V"+Date.now())}
 function el(tag,attrs={},...kids){const e=document.createElement(tag);for(const[k,v]of Object.entries(attrs)){if(k==="class")e.className=v;else if(k.startsWith("on"))e.addEventListener(k.slice(2),v);else if(v!==undefined&&v!==null)e.setAttribute(k,v)}for(const k of kids.flat()){if(k==null)continue;e.append(k instanceof Node?k:document.createTextNode(String(k)))}return e}
-function cell(v,cls){const td=el("td",cls?{class:cls}:{});if(v===""||v==null)td.append(el("span",{class:"dash"},"–"));else td.append(v instanceof Node?v:String(v));return td}
+function cell(v,cls){const td=el("td",cls?{class:cls}:{});if(v===""||v==null){td.classList.add("ctr");td.append(el("span",{class:"dash"},"–"))}else{if(v==="-")td.classList.add("ctr");td.append(v instanceof Node?v:String(v))}return td}
 function pilotChip(p){if(!p)return "";return p==="-CAP-"?el("span",{class:"chip cap"},"-CAP-"):p}
 function statusChip(s){if(!s)return "";return el("span",{class:"chip "+(s==="ปิดการเงิน"?"ok":"wait")},s)}
 let toastT;function toast(msg){const t=$("toast");t.textContent=msg;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>t.hidden=true,2400)}
@@ -759,7 +759,7 @@ async function buildPdfBlob(rows,title,sub,onPage){
           if(!isS&&k==="vessel")o.w=600;
           if(!isS&&(k==="pilotIn"||k==="pilotOut")&&c[k]==="-CAP-")o.c=PDF_C.red;
           if(isS&&k==="vessel"){o.mono=false;o.c=PDF_C.red}
-          const v=val(k);if(v)txt(v,xs[i],cy,cc[1],o);
+          const v=val(k);if(v)txt(v,xs[i],cy,cc[1],v==="-"?{...o,align:"center"}:o);
         });
         y+=r.h;line(M,y,M+TW,y,isS?"#e3c9c7":PDF_C.grid,.4);
       }
