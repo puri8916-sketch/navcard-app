@@ -444,7 +444,7 @@ const CFG_META = [
 ];
 const $ = id => document.getElementById(id);
 let db=null, cfg={...DEF}, vessels=[], vByName=new Map(), calls=[], allCalls=[], lastRows=[], unsubCalls=null, searchQ="", fStatus="all", scope="day";
-let curDate=isoToday(), tab="log", editing=null, status="", shifts=[], expanded=new Set(), canWrite=true, downloads=null, vEditId=null, armedDel=false;
+let curDate=isoToday(), tab="log", editing=null, status="", shifts=[], collapsed=new Set(), canWrite=true, downloads=null, vEditId=null, armedDel=false;
 
 function isoToday(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
 function shiftDate(iso,n){const [y,m,d]=iso.split("-").map(Number);const t=new Date(y,m-1,d+n);return t.getFullYear()+"-"+String(t.getMonth()+1).padStart(2,"0")+"-"+String(t.getDate()).padStart(2,"0")}
@@ -469,7 +469,7 @@ $("prevDay").onclick=()=>{toDay();setDate(shiftDate(curDate,-1))};
 $("nextDay").onclick=()=>{toDay();setDate(shiftDate(curDate,1))};
 $("todayBtn").onclick=()=>{toDay();setDate(isoToday())};
 $("datePick").onchange=e=>{if(e.target.value){toDay();setDate(e.target.value)}};
-function setDate(iso){curDate=iso;$("datePick").value=iso;$("sheetTab").textContent=beTab(iso);expanded.clear();renderLog()}
+function setDate(iso){curDate=iso;$("datePick").value=iso;$("sheetTab").textContent=beTab(iso);renderLog()}
 
 /* ---------- daily log ---------- */
 const isOpen=c=>c.status!=="ปิดการเงิน"&&!String(c.closeNo||"").trim();
@@ -514,8 +514,8 @@ function renderLog(){
     }
     const n=c.shifts?.length||0;
     const ship=el("td",{class:"ship"},hl(c.vessel||"—"));
-    if(n){ship.append(el("button",{class:"shiftbtn","aria-expanded":expanded.has(c.id),title:"แสดง/ซ่อนการย้ายท่า",onclick:e=>{e.stopPropagation();expanded.has(c.id)?expanded.delete(c.id):expanded.add(c.id);renderLog()}},(expanded.has(c.id)?"▾":"▸")+" ย้ายท่า "+n))}
-    const alt=(gi++%2)?" alt":"",showShifts=n&&expanded.has(c.id);
+    if(n){ship.append(el("button",{class:"shiftbtn","aria-expanded":!collapsed.has(c.id),title:"แสดง/ซ่อนการย้ายท่า",onclick:e=>{e.stopPropagation();collapsed.has(c.id)?collapsed.delete(c.id):collapsed.add(c.id);renderLog()}},(!collapsed.has(c.id)?"▾":"▸")+" ย้ายท่า "+n))}
+    const alt=(gi++%2)?" alt":"",showShifts=n&&!collapsed.has(c.id);
     const tr=el("tr",{class:"main"+alt+(showShifts?"":" grp-end"),"data-id":c.id,tabindex:0,onkeydown:e=>{if(e.key==="Enter"&&e.target===e.currentTarget)openEditor(c)}},
       cell(el("span",{},el("button",{class:"edbtn",type:"button",title:"เปิดฟอร์มแก้ไข","aria-label":"เปิดฟอร์มแก้ไข "+(c.vessel||""),onclick:e=>{e.stopPropagation();openEditor(c)}},"✎"),el("span",{class:"jobno"},hl(c.job||"")),closeF&&c.date?el("span",{class:"dsub"},beTab(c.date)):null),""), ship, cell(c.from,"mono"),
       cell(c.eta,"mono div"), cell(c.order,"mono"), cell(pilotChip(c.pilotIn),"mono"), cell(c.berth,"mono"), cell(c.draughtIn,"mono"),
@@ -523,7 +523,7 @@ function renderLog(){
       cell(c.atd,"mono div"), cell(c.paknam,"mono"), cell(pilotChip(c.pilotOut),"mono"), cell(c.draughtOut,"mono"),
       cell(c.remark?el("span",{class:"remark"},c.remark):"","div"), cell(closeCell(c,rows,ri)));
     body.append(tr);
-    if(n&&expanded.has(c.id)){
+    if(n&&!collapsed.has(c.id)){
       c.shifts.forEach((s,i)=>{
         body.append(el("tr",{class:"shift"+alt+(i===c.shifts.length-1?" grp-end":""),"data-id":c.id,"data-si":i},el("td"),el("td",{class:"ship"},"↳ ย้ายท่า "+(i+1)),el("td"),
           el("td",{class:"div"}),cell(s.order,"mono"),cell(pilotChip(s.pilot),"mono"),cell(moveEl(s)),cell(s.draught,"mono"),
