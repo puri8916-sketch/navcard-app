@@ -140,6 +140,17 @@
     pending: () => S.outbox.length,
     syncNow: () => cycle(),
     async test(url, key) { return api("GET", "action=ping", { url: url.trim(), key: key.trim() }); },
+    /** Put default docs into the connected sheet once per sheet. Only a sheet that already holds data
+     *  (the original port) gets them; a brand-new empty sheet (new port) starts empty. Flag lives in the sheet. */
+    async seedSheet(flag, c, docs) {
+      await ready;
+      if (!getCfg().url || status !== "online" || col("meta")[flag]) return false;
+      const used = ["calls", "vessels", "calcShips"].some(x => Object.keys(col(x)).length);
+      let n = 0;
+      if (used) for (const id in docs) if (col(c)[id] === undefined) { put(c, id, docs[id], { updated: 1, quiet: true }); n++; }
+      put("meta", flag, { at: Date.now(), seeded: used, n: n }, { quiet: true });
+      emit(); return n;
+    },
     /** run fn only once per browser (flag kept even after disconnecting) */
     once(k) { if (S.migrated["once:" + k]) return false; S.migrated["once:" + k] = true; save(); return true; },
     async setConfig(url, key) {
@@ -154,6 +165,8 @@
     async disconnect() {
       if (await flush()) throw new Error("ยังมีข้อมูลรอส่งขึ้นชีต " + S.outbox.length + " รายการ ถ้ายกเลิกตอนนี้จะหาย เชื่อมต่อเน็ตแล้วกด ซิงก์ตอนนี้ ก่อน");
       ls.set(CFG, JSON.stringify({ off: true }));
+      // also forget per-browser leftovers: calculator history + data from versions before syncing (already in the sheet)
+      ["calc3_2808_history", "calc3_2808_ships", "pilotlog_v1"].forEach(k => { try { localStorage.removeItem(k); } catch (e) {} });
       blank(); save(); emit(); setStatus("local");
     }
   };

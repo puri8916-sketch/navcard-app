@@ -15,8 +15,6 @@
   function readLocal() {
     const ships = {};
     try {
-      const old = readJSON(OLD_KEY);
-      if (old && typeof old === 'object') Object.assign(ships, old);
       const c = readJSON(CACHE);
       if (c && c.cols && c.cols.calcShips) Object.assign(ships, c.cols.calcShips);
       return { ships: ships };

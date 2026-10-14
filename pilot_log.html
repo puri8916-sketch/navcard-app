@@ -1423,6 +1423,7 @@ listeners.add(bkInfo);
   $("remarkList").append(el("option",{value:"ทำเที่ยวครบ"}));
   SS.onStatus(renderSync);
   { const c=SS.config(); if(c.url)$("syncUrl").value=c.url; }
+  if(window.__DEFAULT_SHIPS__)SS.seedSheet("calcDefaults","calcShips",window.__DEFAULT_SHIPS__);
   SS.start().then(()=>{
     if(SS.once("shipdb_seed")&&!Object.keys(SS.all("vessels")).length&&Array.isArray(window.__SHIP_DB__)){   // seed default registry once per browser only (not after disconnecting)
       for(const v of window.__SHIP_DB__)SS.put("vessels",slug(v.name),{name:v.name,loa:v.loa||"",agent:v.agent||""},{updated:1,quiet:true});

@@ -170,6 +170,9 @@ if _page == _P_LOG:
     with open(os.path.join(_HERE, "pilot_log.html"), encoding="utf-8") as _f:
         _log_html = _f.read()
     _inject = "window.__SHIP_DB__=" + json.dumps(_ship_db, ensure_ascii=False).replace("</", "<\\/") + ";"
+    # ships.csv lengths are copied once into the original port's sheet (calcShips) by the page
+    _inject += "window.__DEFAULT_SHIPS__=" + json.dumps(nc.load_default_ships(os.path.join(_HERE, "ships.csv")),
+                                                       ensure_ascii=False).replace("</", "<\\/") + ";"
     _log_theme = {_THEME_OPTIONS[0]: "light", _THEME_OPTIONS[1]: "dark"}.get(_theme_choice)
     if _log_theme:
         _inject += "window.__THEME__='" + _log_theme + "';"
@@ -206,9 +209,8 @@ st.title("⚓ Navigation Card Merger")
 _ship_store = components.declare_component(
     "ship_store", path=os.path.join(_HERE, "ship_store_component"))
 _store = _ship_store(key="ship_store", default=None)
-_ship_memory = {k: v["value"] for k, v in nc.load_default_ships(os.path.join(_HERE, "ships.csv")).items()}
-_ship_memory = {k: float(v) for k, v in _ship_memory.items()}
-_ship_memory.update(nc.ship_memory_from_store(_store))
+# ship lengths come from the calculator store only (ships.csv defaults now live in the sheet of the original port)
+_ship_memory = dict(nc.ship_memory_from_store(_store))
 for _nm, _d in ((_store or {}).get("ships") or {}).items():   # ships removed in the calculator
     if isinstance(_d, dict) and _d.get("hidden"):
         _ship_memory.pop(_nm, None)

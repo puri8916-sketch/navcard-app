@@ -513,9 +513,8 @@
   function loadShips() {
     ships = {};
     const st = SS ? SS.all('calcShips') : (() => { try { return JSON.parse(localStorage.getItem(SHIPS_KEY) || '{}'); } catch (e) { return {}; } })();
-    const d = shipDefaults();
-    for (const k in d) ships[k] = d[k];                       // ships.csv in the repo
-    for (const k in st) { if (st[k] && st[k].hidden) delete ships[k]; else ships[k] = st[k]; }   // saved entries win
+    // ships.csv defaults are copied into the (original) sheet once — see seedSheet; not shown on their own any more
+    for (const k in st) { if (!(st[k] && st[k].hidden)) ships[k] = st[k]; }
   }
 
   function updateMemoryInfo() {
@@ -530,16 +529,9 @@
       try { localStorage.setItem(SHIPS_KEY, JSON.stringify(ships)); } catch (err) { showError('ไม่สามารถบันทึกข้อมูลเรือถาวรได้'); }
       updateMemoryInfo(); return;
     }
-    const st = SS.all('calcShips'), d = shipDefaults();
-    for (const k in ships) {
-      if (same(st[k], ships[k])) continue;
-      if (!(k in st) && k in d && same(d[k], ships[k])) continue;   // unchanged default, nothing to store
-      SS.put('calcShips', k, ships[k], { quiet: true });
-    }
-    for (const k in st) if (!(k in ships) && !(st[k] && st[k].hidden)) {
-      if (k in d) SS.put('calcShips', k, { hidden: true }, { quiet: true }); else SS.del('calcShips', k);
-    }
-    for (const k in d) if (!(k in ships) && !(k in st)) SS.put('calcShips', k, { hidden: true }, { quiet: true });
+    const st = SS.all('calcShips');
+    for (const k in ships) if (!same(st[k], ships[k])) SS.put('calcShips', k, ships[k], { quiet: true });
+    for (const k in st) if (!(k in ships) && !(st[k] && st[k].hidden)) SS.del('calcShips', k);
     updateMemoryInfo();
   }
 
@@ -899,6 +891,7 @@
       updateMemoryInfo();
     });
     SS.start();
+    SS.seedSheet('calcDefaults', 'calcShips', shipDefaults());
   }
 </script>
 </body>
