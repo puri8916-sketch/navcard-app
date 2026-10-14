@@ -123,6 +123,12 @@ label.f input.lm{color:var(--pen-red)}
 .cin.mono{font-family:var(--f-mono)}
 .edbtn{border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:5px;width:22px;height:22px;padding:0;cursor:pointer;margin-right:6px;font-size:12px;vertical-align:middle}
 .edbtn:hover,.edbtn:focus-visible{color:var(--accent);border-color:var(--accent)}
+.grip{border:0;background:none;color:var(--muted);cursor:grab;touch-action:none;padding:0;width:14px;margin:0 3px 0 -4px;font-size:13px;line-height:1;vertical-align:middle;opacity:.55}
+.grip:hover,.grip:focus-visible{opacity:1;color:var(--accent)}
+body.rowdrag,body.rowdrag *{cursor:grabbing!important;user-select:none!important}
+.log tbody tr.dragging td{opacity:.45}
+.log tbody tr.drop-b td{box-shadow:inset 0 3px 0 var(--accent)}
+.log tbody tr.drop-a td{box-shadow:inset 0 -3px 0 var(--accent)}
 .syncchip{border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:999px;padding:3px 10px;font-size:12px;cursor:pointer;white-space:nowrap}
 .syncchip[data-st="online"]{color:var(--ok-ink);background:var(--ok-bg);border-color:transparent}
 .syncchip[data-st="offline"],.syncchip[data-st="error"]{color:var(--warn-ink);background:var(--warn-bg);border-color:transparent}
@@ -567,7 +573,7 @@ function renderLog(){
     if(n){ship.append(el("button",{class:"shiftbtn","aria-expanded":!collapsed.has(c.id),title:"แสดง/ซ่อนการย้ายท่า",onclick:e=>{e.stopPropagation();collapsed.has(c.id)?collapsed.delete(c.id):collapsed.add(c.id);renderLog()}},(!collapsed.has(c.id)?"▾":"▸")+" ย้ายท่า "+n))}
     const alt=(gi++%2)?" alt":"",showShifts=n&&!collapsed.has(c.id);
     const tr=el("tr",{class:"main"+alt+(showShifts?"":" grp-end"),"data-id":c.id,tabindex:0,onkeydown:e=>{if(e.key==="Enter"&&e.target===e.currentTarget)openEditor(c)}},
-      cell(el("span",{},el("button",{class:"edbtn",type:"button",title:"เปิดฟอร์มแก้ไข","aria-label":"เปิดฟอร์มแก้ไข "+(c.vessel||""),onclick:e=>{e.stopPropagation();openEditor(c)}},"✎"),el("span",{class:"jobno"},hl(c.job||"")),closeF&&c.date?el("span",{class:"dsub"},beTab(c.date)):null),""), ship, cell(c.from,"mono"),
+      cell(el("span",{},canReorder()?el("button",{class:"grip",type:"button",title:"ลากเพื่อเลื่อนลำดับ (หรือกด ↑ ↓)","aria-label":"เลื่อนลำดับ "+(c.vessel||""),onkeydown:e=>{if(e.key==="ArrowUp"||e.key==="ArrowDown"){e.preventDefault();e.stopPropagation();moveRow(c.id,e.key==="ArrowUp"?-1:1)}}},"⠿"):null,el("button",{class:"edbtn",type:"button",title:"เปิดฟอร์มแก้ไข","aria-label":"เปิดฟอร์มแก้ไข "+(c.vessel||""),onclick:e=>{e.stopPropagation();openEditor(c)}},"✎"),el("span",{class:"jobno"},hl(c.job||"")),closeF&&c.date?el("span",{class:"dsub"},beTab(c.date)):null),""), ship, cell(c.from,"mono"),
       cell(timeInv(timeOf(c.eta),invIn(c)),"mono div"), cell(invIn(c)?"-":timeOf(c.order),"mono"+(invIn(c)?" ctr":"")), cell(capCell(c.pilotIn,c.capIn),"mono"), cell(c.berth,"mono"), cell(c.draughtIn,"mono"),
       cell(loaEl(c),"mono div"), cell(c.lbp,"mono"), cell(c.agent?hl(c.agent):""),
       cell(timeInv(timeOf(c.atd),invOut(c)),"mono div"), cell(capCell(c.pilotOut,c.capOut),"mono"), cell(c.draughtOut,"mono"), cell(c.agentOut?hl(c.agentOut):""),
@@ -595,6 +601,41 @@ try{setShiftRed(localStorage.getItem("pl.shiftRed")!=="0")}catch(e){setShiftRed(
 
 /* ---------- ลำดับการปิด: typed closing number, filter by prefix (e.g. 14 -> 14/1..14/n) ---------- */
 let closeF="",focusAfter=null;
+/* ---------- row reordering (day view): order = field t ---------- */
+function canReorder(){return canWrite&&!!db&&scope==="day"&&!closeF}
+async function setOrder(ids,movedId){
+  const byId=new Map(lastRows.map(c=>[c.id,c])),i=ids.indexOf(movedId),p=byId.get(ids[i-1]),n=byId.get(ids[i+1]);
+  const tP=p?+p.t||0:null,tN=n?+n.t||0:null;let nt=null;
+  if(p&&n){if(tN-tP>1e-6)nt=(tP+tN)/2}else if(p)nt=tP+1000;else if(n)nt=tN-1000;
+  const put=(c,t)=>{const {id,...d}=c;return db.collection("calls").doc(id).set({...JSON.parse(JSON.stringify(d)),t,updated:Date.now()})};
+  try{
+    if(nt!==null)await put(byId.get(movedId),nt);
+    else{const b=Math.min(...lastRows.map(c=>+c.t||Date.now()));for(let k=0;k<ids.length;k++){const c=byId.get(ids[k]);if((+c.t||0)!==b+k*1000)await put(c,b+k*1000)}}
+    focusAfter=null;
+  }catch(e){toast("เลื่อนลำดับไม่สำเร็จ ("+(e.code||"error")+")")}
+}
+function moveRow(id,d){const ids=lastRows.map(c=>c.id),i=ids.indexOf(id),j=i+d;if(i<0||j<0||j>=ids.length)return;ids.splice(i,1);ids.splice(j,0,id);
+  setOrder(ids,id).then(()=>setTimeout(()=>$("logBody").querySelector(`tr.main[data-id="${CSS.escape(id)}"] .grip`)?.focus(),60))}
+$("logBody").addEventListener("pointerdown",e=>{
+  const g=e.target.closest(".grip");if(!g||e.button>0||!canReorder())return;e.preventDefault();
+  const body=$("logBody"),tr=g.closest("tr.main"),id=tr.dataset.id;try{g.setPointerCapture(e.pointerId)}catch(_){}
+  const mains=()=>[...body.querySelectorAll("tr.main")];
+  const gEnd=m=>{let x=m;while(x.nextElementSibling&&!x.nextElementSibling.classList.contains("main")&&x.nextElementSibling.dataset.id===m.dataset.id)x=x.nextElementSibling;return x};
+  const clear=()=>body.querySelectorAll(".drop-a,.drop-b").forEach(x=>x.classList.remove("drop-a","drop-b"));
+  let tgt=null,after=false,moved=false;
+  const mv=ev=>{if(!moved){moved=true;tr.classList.add("dragging");document.body.classList.add("rowdrag")}
+    const ms=mains();tgt=null;
+    for(const m of ms){const a=m.getBoundingClientRect().top,b=gEnd(m).getBoundingClientRect().bottom;if(ev.clientY>=a&&ev.clientY<=b){tgt=m;after=ev.clientY>(a+b)/2;break}}
+    if(!tgt&&ms.length){if(ev.clientY<ms[0].getBoundingClientRect().top){tgt=ms[0];after=false}else{tgt=ms[ms.length-1];after=true}}
+    clear();if(tgt&&tgt!==tr)(after?gEnd(tgt):tgt).classList.add(after?"drop-a":"drop-b");
+    const sc=body.closest(".tablewrap")||document.scrollingElement;if(ev.clientY<40)window.scrollBy(0,-12);else if(ev.clientY>innerHeight-40)window.scrollBy(0,12)};
+  const up=()=>{g.removeEventListener("pointermove",mv);g.removeEventListener("pointerup",up);g.removeEventListener("pointercancel",up);
+    clear();tr.classList.remove("dragging");document.body.classList.remove("rowdrag");
+    if(!moved||!tgt||tgt===tr)return;
+    const ids=lastRows.map(c=>c.id);ids.splice(ids.indexOf(id),1);ids.splice(ids.indexOf(tgt.dataset.id)+(after?1:0),0,id);
+    if(ids.join()!==lastRows.map(c=>c.id).join())setOrder(ids,id)};
+  g.addEventListener("pointermove",mv);g.addEventListener("pointerup",up);g.addEventListener("pointercancel",up);
+});
 function cnParts(v){const m=String(v||"").trim().match(/^(.*?)\s*\/\s*(\d+)\s*$/);return m?{p:m[1].trim(),n:+m[2]}:null}
 function matchC(c){if(!closeF)return true;const v=String(c.closeNo||"").trim();if(!v)return false;
   if(closeF.includes("/"))return v.replace(/\s+/g,"").toUpperCase().startsWith(closeF.replace(/\s+/g,"").toUpperCase());
@@ -1005,7 +1046,7 @@ document.querySelectorAll("#hlColors [data-c]").forEach(b=>b.addEventListener("c
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&markMode&&$("sheet").hidden)setMarkMode(false)});
 $("logBody").addEventListener("click",async e=>{
   if(!markMode)return;
-  if(e.target.closest(".edbtn,.shiftbtn"))return;
+  if(e.target.closest(".edbtn,.shiftbtn,.grip"))return;
   const td=e.target.closest("td[data-k]");if(!td)return;
   e.stopPropagation();e.preventDefault();
   if(!canWrite||!db)return;
