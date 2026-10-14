@@ -130,7 +130,16 @@ st.markdown("""<style>
 [data-testid="stSidebarCollapseButton"] button,[data-testid="stExpandSidebarButton"]{border:1px solid rgba(128,128,128,.45)!important;border-radius:8px!important}
 </style>""", unsafe_allow_html=True)
 
+# Start every page load with the menu hidden. Streamlit remembers the last open/closed state in
+# localStorage (stSidebarCollapsed-*), which overrides initial_sidebar_state, so reset it once per load.
 with st.sidebar:
+    components.html("""<script>
+    (()=>{const P=window.parent;if(!P||P.__navSbInit)return;P.__navSbInit=true;
+    try{for(let i=0;i<P.localStorage.length;i++){const k=P.localStorage.key(i);if(k&&k.startsWith("stSidebarCollapsed-"))P.localStorage.setItem(k,"true")}}catch(e){}
+    let n=0;const t=setInterval(()=>{const sb=P.document.querySelector('[data-testid="stSidebar"]');
+      if(sb&&sb.getAttribute("aria-expanded")==="true"){const b=P.document.querySelector('[data-testid="stSidebarCollapseButton"] button');if(b){b.click();clearInterval(t)}}
+      else if(sb||++n>40)clearInterval(t)},100)})();
+    </script>""", height=0)
     if st.session_state.get("theme_choice") not in _THEME_OPTIONS:
         st.session_state["theme_choice"] = _THEME_OPTIONS[0]
     for _c, _t in zip(st.columns(2, gap="small"), _THEME_OPTIONS):
