@@ -113,7 +113,7 @@ def _sync_script():
             "<script>" + js + "</script>\n")
 
 
-_P_LOG, _P_MERGE, _P_CALC = "📒 บันทึกนำร่องประจำวัน", "⚓ รวมการ์ด", "🧮 เครื่องคิดเลข ×3.2808"
+_P_LOG, _P_MERGE, _P_CALC = "📒 บันทึกเรือ", "⚓ รวมการ์ด", "🧮 เครื่องคิดเลข ×3.2808"
 _PAGES = [_P_LOG, _P_MERGE, _P_CALC]
 if st.session_state.get("page_choice") not in _PAGES:
     st.session_state["page_choice"] = _PAGES[0]
