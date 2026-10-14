@@ -130,6 +130,7 @@ label.f input.lm{color:var(--pen-red)}
 .pdfbar label{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)}
 .pdfbar input[type=month]{border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:4px 8px;font-family:var(--f-mono)}
 .pdfbar #pdfMsg{color:var(--accent);font-weight:500}
+.invtag{display:block;color:var(--pen-red);font-family:var(--f-body);font-size:11px;font-weight:500;line-height:1.15;margin-top:1px}
 .jobno{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
 .chip{display:inline-block;padding:1px 9px;border-radius:999px;font-size:12px;font-weight:500}
 .chip.ok{background:var(--ok-bg);color:var(--ok-ink)}
@@ -193,6 +194,7 @@ label.f input:focus,.srow input:focus{border-color:var(--accent);outline:none;bo
 .linkbtn{border:0;background:none;color:var(--accent);cursor:pointer;padding:0;font-size:12px;text-decoration:underline}
 .linkbtn.del{color:var(--danger)}
 .sync{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:400;letter-spacing:0;text-transform:none;color:var(--muted);cursor:pointer}
+.invlbl{color:var(--pen-red);font-weight:500}
 .sync input{accent-color:var(--accent);margin:0}
 .btn.sm{padding:3px 10px;font-size:12px;text-transform:none;letter-spacing:0}
 .stbox{display:flex;flex-direction:column;gap:2px;font-size:11.5px;color:var(--muted)}
@@ -396,7 +398,7 @@ table.reg{border-collapse:collapse;width:100%;min-width:520px}
     </section>
     <div class="two">
       <section class="blk">
-        <h3 class="lg">ขาเข้า<span class="spacer"></span><label class="sync"><input type="checkbox" id="etaSync" checked> ETA Bar = Order</label></h3>
+        <h3 class="lg">ขาเข้า<span class="spacer"></span><label class="sync"><input type="checkbox" id="etaSync" checked> ETA Bar = Order</label><label class="sync"><input type="checkbox" id="invIn"> <span class="invlbl">แยกใบแจ้งหนี้</span></label></h3>
         <div class="g g3">
           <label class="f">ETA Bar<input id="fEta" class="mono" inputmode="numeric" placeholder="hhmm" autocomplete="off"></label>
           <label class="f">Order for Entering<input id="fOrder" class="mono" inputmode="numeric" placeholder="hhmm" autocomplete="off"></label>
@@ -406,7 +408,7 @@ table.reg{border-collapse:collapse;width:100%;min-width:520px}
         </div>
       </section>
       <section class="blk">
-        <h3 class="lg">ขาออก</h3>
+        <h3 class="lg">ขาออก<span class="spacer"></span><label class="sync"><input type="checkbox" id="invOut"> <span class="invlbl">แยกใบแจ้งหนี้</span></label></h3>
         <div class="g g3">
           <label class="f">ATD Bar<input id="fAtd" class="mono" inputmode="numeric" placeholder="hhmm" autocomplete="off"></label>
           <label class="f">Pilot No.<input id="fPilotOut" class="mono" placeholder="เลข"></label>
@@ -486,7 +488,7 @@ function setDate(iso){curDate=iso;$("datePick").value=iso;$("sheetTab").textCont
 
 /* ---------- daily log ---------- */
 const isOpen=c=>c.status!=="ปิดการเงิน"&&!String(c.closeNo||"").trim();
-function matchQ(c){if(!searchQ)return true;const hay=norm([c.vessel,c.job,c.agent,c.agentOut,c.berth,c.from,c.remark,c.closeNo,...(c.shifts||[]).map(x=>x.agent)].join(" "));return searchQ.split(" ").every(t=>hay.includes(t))}
+function matchQ(c){if(!searchQ)return true;const hay=norm([invIn(c)||invOut(c)?INV_TXT:"",c.vessel,c.job,c.agent,c.agentOut,c.berth,c.from,c.remark,c.closeNo,...(c.shifts||[]).map(x=>x.agent)].join(" "));return searchQ.split(" ").every(t=>hay.includes(t))}
 function matchS(c){return fStatus==="all"||(fStatus==="open"?isOpen(c):c.status===fStatus)}
 function setSeg(id,v){document.querySelectorAll("#"+id+" button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.v===v))}
 function hl(text){
@@ -531,9 +533,9 @@ function renderLog(){
     const alt=(gi++%2)?" alt":"",showShifts=n&&!collapsed.has(c.id);
     const tr=el("tr",{class:"main"+alt+(showShifts?"":" grp-end"),"data-id":c.id,tabindex:0,onkeydown:e=>{if(e.key==="Enter"&&e.target===e.currentTarget)openEditor(c)}},
       cell(el("span",{},el("button",{class:"edbtn",type:"button",title:"เปิดฟอร์มแก้ไข","aria-label":"เปิดฟอร์มแก้ไข "+(c.vessel||""),onclick:e=>{e.stopPropagation();openEditor(c)}},"✎"),el("span",{class:"jobno"},hl(c.job||"")),closeF&&c.date?el("span",{class:"dsub"},beTab(c.date)):null),""), ship, cell(c.from,"mono"),
-      cell(c.eta,"mono div"), cell(c.order,"mono"), cell(pilotChip(c.pilotIn),"mono"), cell(c.berth,"mono"), cell(c.draughtIn,"mono"),
+      cell(timeInv(timeOf(c.eta),invIn(c)),"mono div"), cell(timeOf(c.order),"mono"), cell(pilotChip(c.pilotIn),"mono"), cell(c.berth,"mono"), cell(c.draughtIn,"mono"),
       cell(loaEl(c),"mono div"), cell(c.lbp,"mono"), cell(c.agent?hl(c.agent):""),
-      cell(c.atd,"mono div"), cell(pilotChip(c.pilotOut),"mono"), cell(c.draughtOut,"mono"), cell(c.agentOut?hl(c.agentOut):""),
+      cell(timeInv(timeOf(c.atd),invOut(c)),"mono div"), cell(pilotChip(c.pilotOut),"mono"), cell(c.draughtOut,"mono"), cell(c.agentOut?hl(c.agentOut):""),
       cell(c.remark?el("span",{class:"remark"},c.remark):"","div"), cell(closeCell(c,rows,ri)));
     body.append(tr);
     if(n&&!collapsed.has(c.id)){
@@ -606,7 +608,11 @@ const F_UPPER=new Set(["from","lbp","berth"]);
 let pendingEdit=null,editingCell=null;
 function rawVal(c,si,f){
   if(si!=null){const s=(c.shifts||[])[si]||{};if(f==="move")return (s.fromBerth||s.berth)?(s.fromBerth||"")+" > "+(s.berth||""):"";return s[f]||""}
-  if(f==="loa")return c.loa?c.loa+(c.loaM?"/"+c.loaM:""):"";return c[f]||"";
+  if(f==="loa")return c.loa?c.loa+(c.loaM?"/"+c.loaM:""):"";
+  if(f==="eta")return timeOf(c.eta)+(invIn(c)?INV_TXT:"");
+  if(f==="order")return timeOf(c.order);
+  if(f==="atd")return timeOf(c.atd)+(invOut(c)?INV_TXT:"");
+  return c[f]||"";
 }
 function tagCells(){$("logBody").querySelectorAll("tr[data-id]").forEach(tr=>{const si=tr.dataset.si;[...tr.children].forEach((td,j)=>{const f=si!=null?SHIFT_F[j]:MAIN_F[j];if(f)td.dataset.f=f})})}
 function cellTarget(tr,j,dir){
@@ -652,8 +658,11 @@ async function commitCell(c,si,f,v){
     if(f==="move"){const m=v.split(/\s*(?:→|>)\s*/);s.fromBerth=(m.length>1?m[0]:"").toUpperCase();s.berth=(m.length>1?m[1]:m[0]).toUpperCase()}else s[f]=v}
   else if(f==="loa"){const [a,b]=v.split("/");doc.loa=(a||"").trim();doc.loaM=(b||"").trim()}
   else{
-    if(f==="eta"&&(c.order||"")===(c.eta||""))doc.order=v;
-    if(f==="order"&&(c.eta||"")===(c.order||""))doc.eta=v;
+    if(f==="eta"||f==="order"){const pv=invSplit(v),same=timeOf(c.eta)===timeOf(c.order);
+      doc.eta=timeOf(c.eta);doc.order=timeOf(c.order);
+      if(f==="eta"){doc.invIn=pv.inv;if(same)doc.order=pv.t}else{doc.invIn=pv.inv||invIn(c);if(same)doc.eta=pv.t}
+      v=pv.t}
+    if(f==="atd"){const pv=invSplit(v);doc.invOut=pv.inv;v=pv.t}
     if(f==="vessel"){const r=vByName.get(norm(v));if(r){if(r.loa)doc.loa=r.loa;if(r.agent)doc.agent=r.agent}}
     doc[f]=v;
   }
@@ -695,7 +704,7 @@ async function buildPdfBlob(rows,title,sub,onPage){
   const items=[];let lastD=null;
   for(const c of rows){
     if(c.date!==lastD){lastD=c.date;items.push({k:"d",c,h:DROW})}
-    const g=[{k:"m",c,h:ROW}];(c.shifts||[]).forEach((s,i)=>g.push({k:"s",c,s,i,h:SROW}));items.push({k:"g",g,h:g.reduce((n,r)=>n+r.h,0),c});
+    const g=[{k:"m",c,h:(invIn(c)||invOut(c))?ROW+7:ROW}];(c.shifts||[]).forEach((s,i)=>g.push({k:"s",c,s,i,h:SROW}));items.push({k:"g",g,h:g.reduce((n,r)=>n+r.h,0),c});
   }
   const cap=PH-TOP-GH-HH-FOOT-M;const pages=[];let cur=[],used=0,curDate=null;
   const newPage=()=>{pages.push(cur);cur=[];used=0};
@@ -733,7 +742,7 @@ async function buildPdfBlob(rows,title,sub,onPage){
         y+=it.h;line(M,y,M+TW,y,PDF_C.grid);continue}
       for(const r of it.g){
         const c=r.c,isS=r.k==="s",col=isS?PDF_C.red:PDF_C.ink;
-        const val=k=>{if(!isS){if(k==="loa")return null;return c[k]||""}
+        const val=k=>{if(!isS){if(k==="loa")return null;return (k==="order"?timeOf(c[k]):c[k])||""}
           const s=r.s;return {job:"",vessel:"↳ ย้ายท่า "+(r.i+1),order:s.order,pilotIn:s.pilot,berth:moveTxt(s),draughtIn:s.draught,agent:s.agent}[k]||""};
         PDF_COLS.forEach((cc,i)=>{
           const k=cc[2],mk=(isS?"s"+r.i+":":"")+(k==="closeNo"?"status":k),m=c.marks?.[mk];
@@ -743,6 +752,8 @@ async function buildPdfBlob(rows,title,sub,onPage){
             g.textBaseline="middle";g.textAlign="left";g.fillStyle=PDF_C.ink;g.fillText(fit(ft,(cc[1]-5)*S),(xs[i]+2.5)*S,cy*S);
             if(c.loaM){const w1=g.measureText(ft+"/").width/S;g.fillText(ft?"/":"",(xs[i]+2.5+g.measureText(ft).width/S)*S,cy*S);g.fillStyle=PDF_C.red;g.fillText(fit(c.loaM,(cc[1]-5-w1)*S),(xs[i]+2.5+w1)*S,cy*S)}return}
           if(!isS&&k==="closeNo"){const v=c.closeNo||(c.status==="ปิดการเงิน"?"ปิดเงิน":c.status||"");if(v)txt(v,xs[i],cy,cc[1],{...o,mono:!!c.closeNo});return}
+          if(!isS&&(k==="eta"||k==="atd")){const t=timeOf(c[k]),inv=k==="eta"?invIn(c):invOut(c);
+            if(inv){if(t)txt(t,xs[i],cy-3.6,cc[1],o);txt(INV_TXT,xs[i],cy+4.4,cc[1],{c:PDF_C.red,pt:6.2,mono:false,w:500})}else if(t)txt(t,xs[i],cy,cc[1],o);return}
           if(!isS&&k==="vessel")o.w=600;
           if(!isS&&(k==="pilotIn"||k==="pilotOut")&&c[k]==="-CAP-")o.c=PDF_C.red;
           if(isS&&k==="vessel"){o.mono=false;o.c=PDF_C.red}
@@ -835,6 +846,13 @@ function subscribeCalls(){
 function loaEl(c){if(!c.loa&&!c.loaM)return "";const f=el("span",{});
   if(c.loa)f.append(el("span",{class:"ft"},/^\d+(\.\d+)?$/.test(String(c.loa).trim())?c.loa+"′":c.loa));
   if(c.loaM)f.append("/",el("span",{class:"loam"},c.loaM));return f}
+/* แยกใบแจ้งหนี้: a flag per leg; text typed after a time ("…แยก…" or "/i") is split off into the flag */
+const INV_TXT="แยกใบแจ้งหนี้";
+function invSplit(v){v=String(v||"");const m=v.match(/\s*(แยก.*|\/i\s*)$/i);return m?{t:v.slice(0,m.index).trim(),inv:true}:{t:v.trim(),inv:false}}
+function timeOf(v){return invSplit(v).t}
+function invIn(c){return !!c.invIn||invSplit(c.eta).inv||invSplit(c.order).inv}
+function invOut(c){return !!c.invOut||invSplit(c.atd).inv}
+function timeInv(t,inv){if(!t&&!inv)return "";const s=el("span",{},t||"");if(inv)s.append(el("span",{class:"invtag"},INV_TXT));return s}
 function moveTxt(s){return (s.fromBerth||s.berth)?(s.fromBerth||"…")+" → "+(s.berth||"…"):""}
 function moveEl(s){if(!s.fromBerth&&!s.berth)return "";return el("span",{class:"mv"},s.fromBerth||"…",el("span",{class:"ar","aria-label":"ไป"},"→"),s.berth||"…")}
 /* ---------- type-to-filter boxes (replace dropdowns) ---------- */
@@ -920,8 +938,8 @@ async function openEditor(c){
   $("edDelete").hidden=!c||!canWrite;$("edSave").disabled=!canWrite;
   const v=c||{};
   $("fJob").value=v.job||"";$("fShip").value=v.vessel||"";$("fLoa").value=v.loa||"";$("fLbp").value=v.lbp||"";$("fAgent").value=v.agent||"";
-  $("fEta").value=v.eta||"";$("fOrder").value=v.order||"";$("etaSync").checked=(v.eta||"")===(v.order||"");$("fDraughtIn").value=v.draughtIn||"";
-  $("fAtd").value=v.atd||"";$("fDraughtOut").value=v.draughtOut||"";$("fAgentOut").value=v.agentOut||"";$("fRemark").value=v.remark||"";
+  $("fEta").value=timeOf(v.eta);$("fOrder").value=timeOf(v.order);$("etaSync").checked=timeOf(v.eta)===timeOf(v.order);$("invIn").checked=invIn(v);$("invOut").checked=invOut(v);$("fDraughtIn").value=v.draughtIn||"";
+  $("fAtd").value=timeOf(v.atd);$("fDraughtOut").value=v.draughtOut||"";$("fAgentOut").value=v.agentOut||"";$("fRemark").value=v.remark||"";
   $("fFrom").value=v.from||"";$("fBerth").value=v.berth||"";$("fPilotIn").value=v.pilotIn||"";$("fPilotOut").value=v.pilotOut||"";pop.hidden=true;
   $("fLoaM").value=v.loaM||"";shifts=(v.shifts||[]).map(s=>({...s}));renderShifts();setStatus(v.status||"");$("fCloseNo").value=v.closeNo||"";checkShip();
   $("scrim").hidden=false;$("sheet").hidden=false;placeSheet();$("fShip").focus();
@@ -932,6 +950,9 @@ function closeEditor(){pop.hidden=true;$("scrim").hidden=true;$("sheet").hidden=
 $("edClose").onclick=closeEditor;$("edCancel").onclick=closeEditor;$("scrim").onclick=closeEditor;
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("sheet").hidden)closeEditor()});
 $("addBtn").onclick=()=>openEditor(null);
+/* typing the tag after a time in the form ticks the box instead */
+[["fEta","invIn"],["fOrder","invIn"],["fAtd","invOut"]].forEach(([fid,cid])=>$(fid).addEventListener("change",()=>{const pv=invSplit($(fid).value);if(!pv.inv)return;$(fid).value=pv.t;$(cid).checked=true;
+  if(fid!=="fAtd"&&$("etaSync").checked){$("fEta").value=pv.t;$("fOrder").value=pv.t}}));
 /* ETA Bar <-> Order for Entering: typing in either fills the other (switch in the ขาเข้า header turns it off) */
 function linkEtaOrder(){const a=$("fEta"),b=$("fOrder"),sw=$("etaSync");
   const on=(src,dst)=>src.addEventListener("input",()=>{if(sw.checked)dst.value=src.value});
@@ -981,8 +1002,8 @@ $("edSave").onclick=async()=>{
   if(!vessel){toast("กรอกชื่อเรือก่อนบันทึก");$("fShip").focus();return}
   const g=id=>$(id).value.trim();
   const data={date:editing?.date||curDate,by:beYY(editing?.date||curDate),fy:fyYY(editing?.date||curDate),job:g("fJob"),vessel,from:g("fFrom"),loa:g("fLoa"),loaM:g("fLoaM"),lbp:g("fLbp"),ng:editing?.ng||"",agent:g("fAgent"),
-    eta:g("fEta"),order:g("fOrder"),pilotIn:g("fPilotIn"),berth:g("fBerth"),draughtIn:g("fDraughtIn"),
-    atd:g("fAtd"),paknam:editing?.paknam||"",pilotOut:g("fPilotOut"),draughtOut:g("fDraughtOut"),agentOut:g("fAgentOut"),remark:g("fRemark"),status,closeNo:g("fCloseNo"),cnAt:g("fCloseNo")!==(editing?.closeNo||"")?(g("fCloseNo")?Date.now():0):(editing?.cnAt||0),
+    eta:timeOf(g("fEta")),order:timeOf(g("fOrder")),invIn:$("invIn").checked||invSplit(g("fEta")).inv||invSplit(g("fOrder")).inv,pilotIn:g("fPilotIn"),berth:g("fBerth"),draughtIn:g("fDraughtIn"),
+    atd:timeOf(g("fAtd")),invOut:$("invOut").checked||invSplit(g("fAtd")).inv,paknam:editing?.paknam||"",pilotOut:g("fPilotOut"),draughtOut:g("fDraughtOut"),agentOut:g("fAgentOut"),remark:g("fRemark"),status,closeNo:g("fCloseNo"),cnAt:g("fCloseNo")!==(editing?.closeNo||"")?(g("fCloseNo")?Date.now():0):(editing?.cnAt||0),
     shifts:shifts.filter(s=>s.order||s.pilot||s.fromBerth||s.berth||s.draught||s.agent),t:editing?.t||Date.now(),updated:Date.now(),marks:Object.fromEntries(Object.entries(editing?.marks||{}).filter(([k])=>{const m=k.match(/^s(\d+):/);return !m||+m[1]<shifts.filter(s=>s.order||s.pilot||s.fromBerth||s.berth||s.draught||s.agent).length}))};
   $("edSave").disabled=true;
   try{
@@ -1000,12 +1021,12 @@ $("edDelete").onclick=async()=>{
 
 /* ---------- export ---------- */
 $("exportBtn").onclick=async()=>{
-  const H=["วันที่","No.","Ship's Name","From","ETA Bar","Order for Entering","Pilot No.","Berth","Draught","LOA","LBP","Agent","ATD Bar","Pilot No.","Draught","Agent (ขาออก)","Remark","ลำดับการปิด","สถานะการ์ด"];
+  const H=["วันที่","No.","Ship's Name","From","ETA Bar","Order for Entering","Pilot No.","Berth","Draught","LOA","LBP","Agent","ATD Bar","Pilot No.","Draught","Agent (ขาออก)","Remark","ลำดับการปิด","สถานะการ์ด","แยกใบแจ้งหนี้ขาเข้า","แยกใบแจ้งหนี้ขาออก"];
   const q=v=>{v=String(v??"");return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
   const lines=[H.map(q).join(",")];
   for(const c of lastRows){
-    lines.push([c.date?beTab(c.date):"",c.job,c.vessel,c.from,c.eta,c.order,c.pilotIn,c.berth,c.draughtIn,c.loa+(c.loaM?"/"+c.loaM:""),c.lbp,c.agent,c.atd,c.pilotOut,c.draughtOut,c.agentOut||"",c.remark,c.closeNo||"",c.status].map(q).join(","));
-    (c.shifts||[]).forEach((s,i)=>lines.push(["","","↳ ย้ายท่า "+(i+1),"","",s.order,s.pilot,moveTxt(s),s.draught,"","",s.agent||"","","","","","",""].map(q).join(",")));
+    lines.push([c.date?beTab(c.date):"",c.job,c.vessel,c.from,timeOf(c.eta),timeOf(c.order),c.pilotIn,c.berth,c.draughtIn,c.loa+(c.loaM?"/"+c.loaM:""),c.lbp,c.agent,timeOf(c.atd),c.pilotOut,c.draughtOut,c.agentOut||"",c.remark,c.closeNo||"",c.status,invIn(c)?"ใช่":"",invOut(c)?"ใช่":""].map(q).join(","));
+    (c.shifts||[]).forEach((s,i)=>lines.push(["","","↳ ย้ายท่า "+(i+1),"","",s.order,s.pilot,moveTxt(s),s.draught,"","",s.agent||"","","","","","","","",""].map(q).join(",")));
   }
   try{await downloads.save({filename:"pilot-log-"+(scope==="all"?"all":beTab(curDate))+".csv",data:new Blob(["﻿"+lines.join("\n")],{type:"text/csv"})})}catch(e){toast("ส่งออกไม่สำเร็จ")}
 };
