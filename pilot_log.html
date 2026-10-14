@@ -472,7 +472,7 @@ table.reg{border-collapse:collapse;width:100%;min-width:520px}
           </div>
         </div>
       </div>
-      <div><button class="linkbtn" id="insOver" type="button">แทรก “เรือยาวเกินกำหนด” จาก LOA</button></div>
+      <div><button class="linkbtn" id="insOver" type="button">แทรก “เรือยาวเกินกำหนด” จาก LOA (เกิน 173 ม.)</button></div>
     </section>
   </div>
   <footer>
@@ -1204,9 +1204,13 @@ $("addShipFromForm").onclick=async()=>{
   try{await db.collection("vessels").doc(slug(name)).set({name,loa:$("fLoa").value.trim(),agent:$("fAgent").value.trim()});toast("เพิ่ม "+name+" เข้าทะเบียนแล้ว")}catch(e){toast("เพิ่มเรือไม่สำเร็จ: "+e.code)}
 };
 $("insOver").onclick=()=>{
-  const ft=parseFloat($("fLoa").value),mIn=$("fLoaM").value.trim();
-  const m=mIn||(isFinite(ft)?(ft*0.3048).toFixed(2):"");
-  $("fRemark").value=`เรือยาวเกินกำหนด ${m} เมตร (${isFinite(ft)?$("fLoa").value.trim():""} ฟุต)`;
+  const LIMIT=173,ft=parseFloat($("fLoa").value),mIn=parseFloat($("fLoaM").value);
+  const m=isFinite(mIn)?mIn:isFinite(ft)?ft*0.3048:NaN;
+  if(!isFinite(m)){toast("กรอก LOA ก่อน");return}
+  const over=m-LIMIT;
+  if(over<=0){toast(`ยาว ${+m.toFixed(2)} เมตร ไม่เกิน ${LIMIT} เมตร`);return}
+  const r2=x=>(Math.round(x*100)/100).toFixed(2);
+  $("fRemark").value=`เรือยาวเกินกำหนด ${r2(over)} เมตร (${r2(over*3.2808)} ฟุต)`;
 };
 
 function renderShifts(){
