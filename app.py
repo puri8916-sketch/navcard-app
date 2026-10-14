@@ -124,20 +124,18 @@ def _go(p):
 
 
 with st.sidebar:
+    if st.session_state.get("theme_choice") not in _THEME_OPTIONS:
+        st.session_state["theme_choice"] = _THEME_OPTIONS[0]
+    for _c, _t in zip(st.columns(2, gap="small"), _THEME_OPTIONS):
+        _c.button(_t, key=f"theme_{_t}", width="stretch",
+                  on_click=lambda t=_t: st.session_state.__setitem__("theme_choice", t),
+                  type="primary" if st.session_state["theme_choice"] == _t else "secondary")
+    _theme_choice = st.session_state["theme_choice"]
     st.markdown("### เมนู")
     for _i, _p in enumerate(_PAGES):
         st.button(_p, key=f"nav_{_i}", on_click=_go, args=(_p,), width="stretch",
                   type="primary" if st.session_state["page_choice"] == _p else "secondary")
     _page = st.session_state["page_choice"]
-    st.divider()
-    st.markdown("**โหมดการแสดงผล**")
-    if st.session_state.get("theme_choice") not in _THEME_OPTIONS:
-        st.session_state["theme_choice"] = _THEME_OPTIONS[0]
-    for _t in _THEME_OPTIONS:
-        st.button(_t, key=f"theme_{_t}", width="stretch",
-                  on_click=lambda t=_t: st.session_state.__setitem__("theme_choice", t),
-                  type="primary" if st.session_state["theme_choice"] == _t else "secondary")
-    _theme_choice = st.session_state["theme_choice"]
 apply_theme(_theme_choice)
 
 if _page == _P_LOG:
