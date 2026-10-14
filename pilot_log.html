@@ -786,7 +786,7 @@ $("pdfGo").onclick=async()=>{
   $("pdfGo").disabled=true;$("pdfMsg").textContent="กำลังสร้าง PDF…";
   try{
     const blob=await buildPdfBlob(rows,"บันทึกนำร่องสงขลา",`${range} · เรือ ${rows.length} ลำ · ย้ายท่า ${sh} ครั้ง`,(i,n)=>{$("pdfMsg").textContent=`กำลังสร้าง PDF… หน้า ${i}/${n}`});
-    const name=`pilot-log_${+f.slice(0,4)+543}-${f.slice(5)}`+(f===t?"":`_to_${+t.slice(0,4)+543}-${t.slice(5)}`)+".pdf";
+    const name="บันทึกเรือประจำเดือน "+(f===t?ymLabel(f):ymLabel(f)+" - "+ymLabel(t))+".pdf";
     await downloads.save({filename:name,data:blob});
     $("pdfMsg").textContent=`ดาวน์โหลดแล้ว: ${name}`;
   }catch(e){$("pdfMsg").textContent=e?.code==="declined"?"ยกเลิกการดาวน์โหลด":"สร้าง PDF ไม่สำเร็จ ("+(e?.code||e?.message||"error")+")"}
