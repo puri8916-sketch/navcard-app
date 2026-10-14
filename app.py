@@ -11,7 +11,7 @@ import streamlit.components.v1 as components
 import nav_core as nc
 
 st.set_page_config(page_title="Navigation Card Merger", layout="wide",
-                   initial_sidebar_state="expanded")
+                   initial_sidebar_state="collapsed")
 
 _BASE_CSS = """
 <style>
