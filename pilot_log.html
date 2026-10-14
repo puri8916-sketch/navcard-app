@@ -1381,13 +1381,15 @@ $("syncSave").onclick=async()=>{
   if(!key){msg.textContent="กรอกรหัสเข้าใช้ (ตัวเดียวกับใน KEYS ของสคริปต์)";return}
   msg.textContent="กำลังทดสอบ…";$("syncSave").disabled=true;
   try{const j=await SS.test(url,key);const n=j.counts||{};
-    SS.setConfig(url,key);msg.textContent=`เชื่อมต่อสำเร็จ ในชีตมี ${n.calls||0} รายการบันทึก · ${n.vessels||0} ลำ · ความยาวเรือ ${n.calcShips||0} ลำ กำลังซิงก์ข้อมูลในเครื่องนี้ขึ้นไป`;$("syncKey").value="";
+    const had=SS.pending();await SS.setConfig(url,key);msg.textContent=`เชื่อมต่อสำเร็จ ในชีตมี ${n.calls||0} รายการบันทึก · ${n.vessels||0} ลำ · ความยาวเรือ ${n.calcShips||0} ลำ กำลังโหลดข้อมูล`+(had?` และส่งข้อมูลที่บันทึกในเครื่องนี้ ${had} รายการขึ้นไป`:"");$("syncKey").value="";
   }catch(e){msg.textContent="เชื่อมต่อไม่สำเร็จ: "+e.message}finally{$("syncSave").disabled=false}
 };
 $("syncNow").onclick=()=>SS.syncNow();
 let offArmed=false;
-$("syncOff").onclick=()=>{if(!offArmed){offArmed=true;$("syncOff").textContent="กดอีกครั้งเพื่อยืนยัน";setTimeout(()=>{offArmed=false;$("syncOff").textContent="ยกเลิกการเชื่อมต่อ"},3000);return}
-  SS.setConfig("");$("syncUrl").value="";$("syncMsg").textContent="ยกเลิกการเชื่อมต่อแล้ว ข้อมูลที่มีอยู่ยังเก็บไว้ในเครื่องนี้";offArmed=false;$("syncOff").textContent="ยกเลิกการเชื่อมต่อ"};
+$("syncOff").onclick=async()=>{if(!offArmed){offArmed=true;$("syncOff").textContent="กดอีกครั้งเพื่อยืนยัน (ล้างข้อมูลในเครื่องนี้)";setTimeout(()=>{offArmed=false;$("syncOff").textContent="ยกเลิกการเชื่อมต่อ"},4000);return}
+  offArmed=false;$("syncOff").textContent="ยกเลิกการเชื่อมต่อ";$("syncOff").disabled=true;
+  try{await SS.disconnect();$("syncUrl").value="";$("syncMsg").textContent="ยกเลิกการเชื่อมต่อแล้ว ล้างข้อมูลในเครื่องนี้แล้ว — ข้อมูลยังอยู่ครบใน Google Sheet เชื่อมต่อใหม่เมื่อไหร่ก็โหลดกลับมา";bkInfo()}
+  catch(e){$("syncMsg").textContent="ยกเลิกไม่ได้: "+e.message}finally{$("syncOff").disabled=false}};
 
 function saveFile(name,blob){
   try{const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),5000)}
@@ -1422,7 +1424,7 @@ listeners.add(bkInfo);
   SS.onStatus(renderSync);
   { const c=SS.config(); if(c.url)$("syncUrl").value=c.url; }
   SS.start().then(()=>{
-    if(!Object.keys(SS.all("vessels")).length&&Array.isArray(window.__SHIP_DB__)){
+    if(SS.once("shipdb_seed")&&!Object.keys(SS.all("vessels")).length&&Array.isArray(window.__SHIP_DB__)){   // seed default registry once per browser only (not after disconnecting)
       for(const v of window.__SHIP_DB__)SS.put("vessels",slug(v.name),{name:v.name,loa:v.loa||"",agent:v.agent||""},{updated:1,quiet:true});
       emit();
     }

@@ -16,6 +16,7 @@
   function getCfg() {
     let c = null;
     try { c = JSON.parse(ls.get(CFG) || "null"); } catch (e) {}
+    if (c && c.off) return { url: "", key: "" };   // disconnected on purpose: ignore the server-injected sheet too
     const inj = window.__SYNC__ || {};
     return { url: ((c && c.url) || inj.url || "").trim(), key: ((c && c.key) || inj.key || "").trim() };
   }
@@ -65,7 +66,10 @@
     if (!c.url) { setStatus("local"); readyRes(); return; }
     if (busy) { again = true; return; }
     busy = true;
-    if (S.url !== c.url) { S.since = 0; S.url = c.url; save(); }   // new sheet → full download
+    if (S.url !== c.url) {   // different sheet → drop the other sheet's cached data, then full download
+      if (S.url) { S.cols = {}; S.meta = {}; emit(); }
+      S.since = 0; S.url = c.url; save();
+    }
     setStatus("syncing", "");
     try {
       while (S.outbox.length) {
@@ -107,6 +111,13 @@
     save();
   }
 
+  function blank() { S = { cols: {}, meta: {}, outbox: [], since: 0, migrated: S.migrated || {}, url: "" }; }
+  async function flush() {   // try to send queued edits; wait for any cycle already running
+    for (let i = 0; i < 50 && busy; i++) await new Promise(r => setTimeout(r, 100));
+    if (S.outbox.length && getCfg().url) await cycle();
+    return S.outbox.length;
+  }
+
   load();
   window.SyncStore = {
     ready,
@@ -129,10 +140,21 @@
     pending: () => S.outbox.length,
     syncNow: () => cycle(),
     async test(url, key) { return api("GET", "action=ping", { url: url.trim(), key: key.trim() }); },
-    setConfig(url, key) {
-      if (url) ls.set(CFG, JSON.stringify({ url: url.trim(), key: (key || "").trim() }));
-      else { try { localStorage.removeItem(CFG); } catch (e) {} }
+    /** run fn only once per browser (flag kept even after disconnecting) */
+    once(k) { if (S.migrated["once:" + k]) return false; S.migrated["once:" + k] = true; save(); return true; },
+    async setConfig(url, key) {
+      url = (url || "").trim();
+      const cur = getCfg().url;
+      if (cur && url && cur !== url && await flush()) throw new Error("ยังมีข้อมูลรอส่งขึ้นชีตเดิม " + S.outbox.length + " รายการ เชื่อมต่อเน็ตแล้วกด ซิงก์ตอนนี้ ก่อนเปลี่ยนชีต");
+      if (url) ls.set(CFG, JSON.stringify({ url: url, key: (key || "").trim() }));
+      else ls.set(CFG, JSON.stringify({ off: true }));
       S.since = 0; save(); kick(0);
+    },
+    /** Disconnect and wipe this browser's copy. The data stays in the sheet and comes back on reconnect. */
+    async disconnect() {
+      if (await flush()) throw new Error("ยังมีข้อมูลรอส่งขึ้นชีต " + S.outbox.length + " รายการ ถ้ายกเลิกตอนนี้จะหาย เชื่อมต่อเน็ตแล้วกด ซิงก์ตอนนี้ ก่อน");
+      ls.set(CFG, JSON.stringify({ off: true }));
+      blank(); save(); emit(); setStatus("local");
     }
   };
 })();
