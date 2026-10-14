@@ -298,12 +298,12 @@ table.reg{border-collapse:collapse;width:100%;min-width:520px}
     <div class="tablebox">
       <table class="log">
         <thead>
-          <tr class="grp"><th class="blank" colspan="3"></th><th colspan="5">ขาเข้า</th><th class="blank" colspan="4"></th><th colspan="5">ขาออก</th><th class="blank" colspan="2"></th></tr>
+          <tr class="grp"><th class="blank" colspan="3"></th><th colspan="5">ขาเข้า</th><th class="blank" colspan="3"></th><th colspan="4">ขาออก</th><th class="blank" colspan="2"></th></tr>
           <tr>
             <th>No.</th><th>Ship's Name</th><th>From</th>
             <th class="div">ETA Bar</th><th>Order for Entering</th><th>Pilot No.</th><th>Berth</th><th>Draught</th>
-            <th class="div">LOA</th><th>LBP</th><th>Net/Gross</th><th>Agent</th>
-            <th class="div">ATD Bar</th><th>Passing Paknam</th><th>Pilot No.</th><th>Draught</th><th>Agent</th>
+            <th class="div">LOA</th><th>LBP</th><th>Agent</th>
+            <th class="div">ATD Bar</th><th>Pilot No.</th><th>Draught</th><th>Agent</th>
             <th class="div">Remark</th><th>ลำดับการปิด</th>
           </tr>
         </thead>
@@ -391,7 +391,6 @@ table.reg{border-collapse:collapse;width:100%;min-width:520px}
         <label class="f">LOA (ft)<input id="fLoa" class="mono" autocomplete="off"></label>
         <label class="f">LOA (m)<input id="fLoaM" class="mono lm" inputmode="decimal" autocomplete="off"></label>
         <label class="f">LBP<input id="fLbp" class="mono" placeholder="รหัสเขตท่า"></label>
-        <label class="f">Net/Gross<input id="fNg" class="mono" autocomplete="off"></label>
         <div id="newShipHint" class="hint warn s2" hidden>เรือนี้ยังไม่อยู่ในทะเบียน <button class="linkbtn" id="addShipFromForm" type="button">เพิ่มเข้าทะเบียนเรือ</button></div>
       </div>
     </section>
@@ -410,7 +409,6 @@ table.reg{border-collapse:collapse;width:100%;min-width:520px}
         <h3 class="lg">ขาออก</h3>
         <div class="g g3">
           <label class="f">ATD Bar<input id="fAtd" class="mono" inputmode="numeric" placeholder="hhmm" autocomplete="off"></label>
-          <label class="f">Passing Paknam<input id="fPaknam" class="mono" inputmode="numeric" placeholder="hhmm" autocomplete="off"></label>
           <label class="f">Pilot No.<input id="fPilotOut" class="mono" placeholder="เลข"></label>
           <label class="f">Draught<input id="fDraughtOut" class="mono" autocomplete="off"></label>
           <label class="f s2">Agent<input id="fAgentOut"></label>
@@ -516,14 +514,14 @@ function renderLog(){
     let title,sub;
     if(filtered){title="ไม่พบรายการที่ตรงกับตัวกรอง";sub=fStatus==="open"?"การ์ดทุกใบปิดการเงินแล้ว":"ลองพิมพ์ชื่อเรือสั้นลง หรือกด “ล้างตัวกรอง”"}
     else{title="ยังไม่มีเรือในแท็บ "+beTab(curDate);sub=db?"กด “+ เพิ่มเรือ” เพื่อบันทึกลำแรกของวัน":"กำลังเชื่อมต่อฐานข้อมูล…"}
-    body.append(el("tr",{},el("td",{colspan:19,class:"empty"},el("b",{},title),sub)));
+    body.append(el("tr",{},el("td",{colspan:17,class:"empty"},el("b",{},title),sub)));
     return;
   }
   let lastDate=null,gi=0;
   for(const [ri,c] of rows.entries()){
     if(scope==="all"&&!closeF&&c.date!==lastDate){
       lastDate=c.date;gi=0;const n=rows.filter(r=>r.date===c.date).length;
-      body.append(el("tr",{class:"dgroup"},el("td",{colspan:19},
+      body.append(el("tr",{class:"dgroup"},el("td",{colspan:17},
         el("button",{class:"linkbtn",type:"button",title:"เปิดวันนี้",onclick:()=>{scope="day";setSeg("scopeSeg","day");setDate(c.date)}},beTab(c.date||"")),
         " · "+n+" ลำ")));
     }
@@ -534,15 +532,15 @@ function renderLog(){
     const tr=el("tr",{class:"main"+alt+(showShifts?"":" grp-end"),"data-id":c.id,tabindex:0,onkeydown:e=>{if(e.key==="Enter"&&e.target===e.currentTarget)openEditor(c)}},
       cell(el("span",{},el("button",{class:"edbtn",type:"button",title:"เปิดฟอร์มแก้ไข","aria-label":"เปิดฟอร์มแก้ไข "+(c.vessel||""),onclick:e=>{e.stopPropagation();openEditor(c)}},"✎"),el("span",{class:"jobno"},hl(c.job||"")),closeF&&c.date?el("span",{class:"dsub"},beTab(c.date)):null),""), ship, cell(c.from,"mono"),
       cell(c.eta,"mono div"), cell(c.order,"mono"), cell(pilotChip(c.pilotIn),"mono"), cell(c.berth,"mono"), cell(c.draughtIn,"mono"),
-      cell(loaEl(c),"mono div"), cell(c.lbp,"mono"), cell(c.ng,"mono"), cell(c.agent?hl(c.agent):""),
-      cell(c.atd,"mono div"), cell(c.paknam,"mono"), cell(pilotChip(c.pilotOut),"mono"), cell(c.draughtOut,"mono"), cell(c.agentOut?hl(c.agentOut):""),
+      cell(loaEl(c),"mono div"), cell(c.lbp,"mono"), cell(c.agent?hl(c.agent):""),
+      cell(c.atd,"mono div"), cell(pilotChip(c.pilotOut),"mono"), cell(c.draughtOut,"mono"), cell(c.agentOut?hl(c.agentOut):""),
       cell(c.remark?el("span",{class:"remark"},c.remark):"","div"), cell(closeCell(c,rows,ri)));
     body.append(tr);
     if(n&&!collapsed.has(c.id)){
       c.shifts.forEach((s,i)=>{
         body.append(el("tr",{class:"shift"+alt+(i===c.shifts.length-1?" grp-end":""),"data-id":c.id,"data-si":i},el("td"),el("td",{class:"ship"},"↳ ย้ายท่า "+(i+1)),el("td"),
           el("td",{class:"div"}),cell(s.order,"mono"),cell(pilotChip(s.pilot),"mono"),cell(moveEl(s)),cell(s.draught,"mono"),
-          el("td",{class:"div"}),el("td"),el("td"),cell(s.agent?hl(s.agent):""),el("td",{class:"div"}),el("td"),el("td"),el("td"),el("td"),el("td",{class:"div"}),el("td")));
+          el("td",{class:"div"}),el("td"),cell(s.agent?hl(s.agent):""),el("td",{class:"div"}),el("td"),el("td"),el("td"),el("td",{class:"div"}),el("td")));
       });
     }
   }
@@ -601,8 +599,8 @@ function closeCell(c,rows,idx){
 $("cf").addEventListener("input",()=>{closeF=$("cf").value.trim();if(closeF&&scope!=="all"){scope="all";setSeg("scopeSeg","all")}renderLog()});
 
 /* ---------- inline cell editing: click a cell, type, Enter = save + next row, Tab = next cell ---------- */
-const MAIN_F=["job","vessel","from","eta","order","pilotIn","berth","draughtIn","loa","lbp","ng","agent","atd","paknam","pilotOut","draughtOut","agentOut","remark",null];
-const SHIFT_F={4:"order",5:"pilot",6:"move",7:"draught",11:"agent"};
+const MAIN_F=["job","vessel","from","eta","order","pilotIn","berth","draughtIn","loa","lbp","agent","atd","pilotOut","draughtOut","agentOut","remark",null];
+const SHIFT_F={4:"order",5:"pilot",6:"move",7:"draught",10:"agent"};
 const F_OPTS=()=>({vessel:[shipOpts],from:[portOpts,1],lbp:[portOpts,1],pilotIn:[pilotOpts],pilotOut:[pilotOpts],pilot:[pilotOpts],berth:[berthOpts,1],agent:[agentOpts],agentOut:[agentOpts],remark:[remarkOpts]});
 const F_UPPER=new Set(["from","lbp","berth"]);
 let pendingEdit=null,editingCell=null;
@@ -684,7 +682,7 @@ $("pdfClose").onclick=()=>{$("pdfBar").hidden=true};
 $("pdfFrom").addEventListener("input",pdfInfo);$("pdfTo").addEventListener("input",pdfInfo);
 
 const PDF_COLS=[["No.",46,"job"],["Ship's Name",92,"vessel"],["From",34,"from"],["ETA Bar",48,"eta"],["Order for\nEntering",48,"order"],["Pilot\nNo.",28,"pilotIn"],["Berth",62,"berth"],["Draught",30,"draughtIn"],
-  ["LOA",54,"loa"],["LBP",32,"lbp"],["Net/\nGross",26,"ng"],["Agent",50,"agent"],["ATD Bar",48,"atd"],["Passing\nPaknam",48,"paknam"],["Pilot\nNo.",28,"pilotOut"],["Draught",30,"draughtOut"],["Agent",46,"agentOut"],["Remark",52,"remark"],["ลำดับ\nการปิด",38,"closeNo"]];
+  ["LOA",54,"loa"],["LBP",32,"lbp"],["Agent",50,"agent"],["ATD Bar",48,"atd"],["Pilot\nNo.",28,"pilotOut"],["Draught",30,"draughtOut"],["Agent",46,"agentOut"],["Remark",52,"remark"],["ลำดับ\nการปิด",38,"closeNo"]];
 (()=>{const t=PDF_COLS.reduce((s,c)=>s+c[1],0);PDF_COLS.forEach(c=>c[1]=c[1]*794/t)})();
 const PDF_C={ink:"#1c3fa6",red:"#c2261e",text:"#132029",muted:"#5a6872",grid:"#c3ced3",gridDark:"#7d8f97",head:"#e8f2f3",date:"#eef1f2",accent:"#0a6672",
   hl:{y:"#fff59a",p:"#ffc6e0",g:"#c9f2b5",b:"#c4e4ff"}};
@@ -723,7 +721,7 @@ async function buildPdfBlob(rows,title,sub,onPage){
     font(8.5);g.fillStyle=PDF_C.muted;g.fillText(sub,M*S,(M+26)*S);
     // header
     let y=TOP;g.fillStyle=PDF_C.head;g.fillRect(M*S,y*S,TW*S,(GH+HH)*S);
-    const grp=[[3,5,"ขาเข้า"],[12,5,"ขาออก"]];
+    const grp=[[3,5,"ขาเข้า"],[11,4,"ขาออก"]];
     for(const [a,n,l] of grp){const gx=xs[a],gw=PDF_COLS.slice(a,a+n).reduce((s,c)=>s+c[1],0);txt(l,gx,y+GH/2,gw,{pt:7,w:600,c:PDF_C.accent,align:"center"});line(gx,y+GH,gx+gw,y+GH,PDF_C.accent,1)}
     y+=GH;
     PDF_COLS.forEach((c,i)=>{const ls=c[0].split("\n");ls.forEach((l,k)=>txt(l,xs[i],y+HH/2+(k-(ls.length-1)/2)*7.5,c[1],{pt:6.5,w:600,c:PDF_C.muted}))});
@@ -755,8 +753,8 @@ async function buildPdfBlob(rows,title,sub,onPage){
       line(M,y,M+TW,y,PDF_C.gridDark,.6);
     }
     // verticals + frame
-    [0,3,8,12,17].forEach(i=>line(xs[i],top,xs[i],y,PDF_C.gridDark,.7));
-    PDF_COLS.forEach((c,i)=>{if(i&&![3,8,12,17].includes(i))line(xs[i],top+GH,xs[i],y,PDF_C.grid,.4)});
+    [0,3,8,11,15].forEach(i=>line(xs[i],top,xs[i],y,PDF_C.gridDark,.7));
+    PDF_COLS.forEach((c,i)=>{if(i&&![3,8,11,15].includes(i))line(xs[i],top+GH,xs[i],y,PDF_C.grid,.4)});
     line(M+TW,top,M+TW,y,PDF_C.gridDark,.7);line(M,top,M+TW,top,PDF_C.gridDark,.7);
     // footer
     font(7);g.fillStyle=PDF_C.muted;g.textBaseline="alphabetic";g.textAlign="left";g.fillText("บันทึกนำร่องสงขลา · "+sub.split(" · ")[0]+" · พิมพ์ "+printed,M*S,(PH-M+4)*S);
@@ -796,7 +794,7 @@ $("pdfGo").onclick=async()=>{
 };
 
 /* ---------- highlighter: colour individual cells like a marker pen ---------- */
-const CELL_KEYS=["job","vessel","from","eta","order","pilotIn","berth","draughtIn","loa","lbp","ng","agent","atd","paknam","pilotOut","draughtOut","agentOut","remark","status"];
+const CELL_KEYS=["job","vessel","from","eta","order","pilotIn","berth","draughtIn","loa","lbp","agent","atd","pilotOut","draughtOut","agentOut","remark","status"];
 let markMode=false,markColor="y";
 function paintMarks(rows){
   const byId=new Map(rows.map(c=>[c.id,c]));
@@ -921,9 +919,9 @@ async function openEditor(c){
   $("edTitle").textContent=c?((c.vessel||"แก้ไขรายการ")+" · "+beTab(c.date||curDate)):"เพิ่มเรือ · แท็บ "+beTab(curDate);
   $("edDelete").hidden=!c||!canWrite;$("edSave").disabled=!canWrite;
   const v=c||{};
-  $("fJob").value=v.job||"";$("fShip").value=v.vessel||"";$("fLoa").value=v.loa||"";$("fLbp").value=v.lbp||"";$("fNg").value=v.ng||"";$("fAgent").value=v.agent||"";
+  $("fJob").value=v.job||"";$("fShip").value=v.vessel||"";$("fLoa").value=v.loa||"";$("fLbp").value=v.lbp||"";$("fAgent").value=v.agent||"";
   $("fEta").value=v.eta||"";$("fOrder").value=v.order||"";$("etaSync").checked=(v.eta||"")===(v.order||"");$("fDraughtIn").value=v.draughtIn||"";
-  $("fAtd").value=v.atd||"";$("fPaknam").value=v.paknam||"";$("fDraughtOut").value=v.draughtOut||"";$("fAgentOut").value=v.agentOut||"";$("fRemark").value=v.remark||"";
+  $("fAtd").value=v.atd||"";$("fDraughtOut").value=v.draughtOut||"";$("fAgentOut").value=v.agentOut||"";$("fRemark").value=v.remark||"";
   $("fFrom").value=v.from||"";$("fBerth").value=v.berth||"";$("fPilotIn").value=v.pilotIn||"";$("fPilotOut").value=v.pilotOut||"";pop.hidden=true;
   $("fLoaM").value=v.loaM||"";shifts=(v.shifts||[]).map(s=>({...s}));renderShifts();setStatus(v.status||"");$("fCloseNo").value=v.closeNo||"";checkShip();
   $("scrim").hidden=false;$("sheet").hidden=false;placeSheet();$("fShip").focus();
@@ -982,9 +980,9 @@ $("edSave").onclick=async()=>{
   const vessel=$("fShip").value.trim();
   if(!vessel){toast("กรอกชื่อเรือก่อนบันทึก");$("fShip").focus();return}
   const g=id=>$(id).value.trim();
-  const data={date:editing?.date||curDate,by:beYY(editing?.date||curDate),fy:fyYY(editing?.date||curDate),job:g("fJob"),vessel,from:g("fFrom"),loa:g("fLoa"),loaM:g("fLoaM"),lbp:g("fLbp"),ng:g("fNg"),agent:g("fAgent"),
+  const data={date:editing?.date||curDate,by:beYY(editing?.date||curDate),fy:fyYY(editing?.date||curDate),job:g("fJob"),vessel,from:g("fFrom"),loa:g("fLoa"),loaM:g("fLoaM"),lbp:g("fLbp"),ng:editing?.ng||"",agent:g("fAgent"),
     eta:g("fEta"),order:g("fOrder"),pilotIn:g("fPilotIn"),berth:g("fBerth"),draughtIn:g("fDraughtIn"),
-    atd:g("fAtd"),paknam:g("fPaknam"),pilotOut:g("fPilotOut"),draughtOut:g("fDraughtOut"),agentOut:g("fAgentOut"),remark:g("fRemark"),status,closeNo:g("fCloseNo"),cnAt:g("fCloseNo")!==(editing?.closeNo||"")?(g("fCloseNo")?Date.now():0):(editing?.cnAt||0),
+    atd:g("fAtd"),paknam:editing?.paknam||"",pilotOut:g("fPilotOut"),draughtOut:g("fDraughtOut"),agentOut:g("fAgentOut"),remark:g("fRemark"),status,closeNo:g("fCloseNo"),cnAt:g("fCloseNo")!==(editing?.closeNo||"")?(g("fCloseNo")?Date.now():0):(editing?.cnAt||0),
     shifts:shifts.filter(s=>s.order||s.pilot||s.fromBerth||s.berth||s.draught||s.agent),t:editing?.t||Date.now(),updated:Date.now(),marks:Object.fromEntries(Object.entries(editing?.marks||{}).filter(([k])=>{const m=k.match(/^s(\d+):/);return !m||+m[1]<shifts.filter(s=>s.order||s.pilot||s.fromBerth||s.berth||s.draught||s.agent).length}))};
   $("edSave").disabled=true;
   try{
@@ -1002,12 +1000,12 @@ $("edDelete").onclick=async()=>{
 
 /* ---------- export ---------- */
 $("exportBtn").onclick=async()=>{
-  const H=["วันที่","No.","Ship's Name","From","ETA Bar","Order for Entering","Pilot No.","Berth","Draught","LOA","LBP","Net/Gross","Agent","ATD Bar","Passing Paknam","Pilot No.","Draught","Agent (ขาออก)","Remark","ลำดับการปิด","สถานะการ์ด"];
+  const H=["วันที่","No.","Ship's Name","From","ETA Bar","Order for Entering","Pilot No.","Berth","Draught","LOA","LBP","Agent","ATD Bar","Pilot No.","Draught","Agent (ขาออก)","Remark","ลำดับการปิด","สถานะการ์ด"];
   const q=v=>{v=String(v??"");return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
   const lines=[H.map(q).join(",")];
   for(const c of lastRows){
-    lines.push([c.date?beTab(c.date):"",c.job,c.vessel,c.from,c.eta,c.order,c.pilotIn,c.berth,c.draughtIn,c.loa+(c.loaM?"/"+c.loaM:""),c.lbp,c.ng,c.agent,c.atd,c.paknam,c.pilotOut,c.draughtOut,c.agentOut||"",c.remark,c.closeNo||"",c.status].map(q).join(","));
-    (c.shifts||[]).forEach((s,i)=>lines.push(["","","↳ ย้ายท่า "+(i+1),"","",s.order,s.pilot,moveTxt(s),s.draught,"","","",s.agent||"","","","","","","","",""].map(q).join(",")));
+    lines.push([c.date?beTab(c.date):"",c.job,c.vessel,c.from,c.eta,c.order,c.pilotIn,c.berth,c.draughtIn,c.loa+(c.loaM?"/"+c.loaM:""),c.lbp,c.agent,c.atd,c.pilotOut,c.draughtOut,c.agentOut||"",c.remark,c.closeNo||"",c.status].map(q).join(","));
+    (c.shifts||[]).forEach((s,i)=>lines.push(["","","↳ ย้ายท่า "+(i+1),"","",s.order,s.pilot,moveTxt(s),s.draught,"","",s.agent||"","","","","","",""].map(q).join(",")));
   }
   try{await downloads.save({filename:"pilot-log-"+(scope==="all"?"all":beTab(curDate))+".csv",data:new Blob(["﻿"+lines.join("\n")],{type:"text/csv"})})}catch(e){toast("ส่งออกไม่สำเร็จ")}
 };
