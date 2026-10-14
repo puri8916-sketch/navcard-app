@@ -369,10 +369,10 @@ table.reg{border-collapse:collapse;width:100%;min-width:520px}
       <div class="cfg" id="cfgBox"></div>
       <div class="cfgcard" id="syncCard">
         <h3>เชื่อมต่อ Google Sheet</h3>
-        <span class="hint">ใช้ข้อมูลชุดเดียวกันทุกเครื่อง (บันทึกประจำวัน + ความยาวเรือในเครื่องคิดเลข) ตั้งครั้งเดียวต่อเครื่อง วิธีติดตั้งสคริปต์ดูใน README</span>
+        <span class="hint" id="syncHelp">ใช้ข้อมูลชุดเดียวกันทุกเครื่อง (บันทึกประจำวัน + ความยาวเรือในเครื่องคิดเลข) ตั้งครั้งเดียวต่อเครื่อง วิธีติดตั้งสคริปต์ดูใน README</span>
         <span class="hint" id="syncState"></span>
-        <label class="f">Web app URL<input id="syncUrl" class="mono" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off"></label>
-        <label class="f">รหัสเข้าใช้<input id="syncKey" type="password" autocomplete="off"></label>
+        <label class="f" id="syncUrlF">Web app URL<input id="syncUrl" class="mono" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off"></label>
+        <label class="f" id="syncKeyF">รหัสเข้าใช้<input id="syncKey" type="password" autocomplete="off"></label>
         <div class="toolbar">
           <button class="btn primary" id="syncSave" type="button">ทดสอบและเชื่อมต่อ</button>
           <button class="btn" id="syncNow" type="button" hidden>ซิงก์ตอนนี้</button>
@@ -401,11 +401,10 @@ table.reg{border-collapse:collapse;width:100%;min-width:520px}
       </div>
       <div class="cfgcard">
         <h3>สำรองข้อมูล</h3>
-        <span class="hint">ดาวน์โหลดข้อมูลทั้งหมดเก็บไว้เป็นไฟล์ ถ้ายังไม่ได้เชื่อมต่อ Google Sheet ข้อมูลจะอยู่เฉพาะเบราว์เซอร์นี้ ควรสำรองเป็นระยะ</span>
+        <span class="hint">ดาวน์โหลดข้อมูลทั้งหมดเก็บไว้เป็นไฟล์ (สำเนาสำรองนอก Google Sheet) ควรสำรองเป็นระยะ</span>
         <span class="hint" id="bkInfo"></span>
         <div class="toolbar">
           <button class="btn primary" id="bkSave">ดาวน์โหลดไฟล์สำรอง (.json)</button>
-          <label class="btn" for="bkFile">กู้คืนจากไฟล์…</label>
           <input type="file" id="bkFile" accept=".json,application/json" hidden>
         </div>
         <div id="bkConfirm" class="hint warn" hidden></div>
@@ -1372,7 +1371,8 @@ function renderSync(st,err,pend){
   chip.textContent=txt+(n&&st!=="online"?` · รอส่ง ${n}`:"");chip.dataset.st=st;chip.title=err||"";chip.hidden=st==="online"||st==="syncing";
   const c=SS.config();
   $("syncState").textContent=c.url?(st==="online"?"เชื่อมต่อแล้ว ข้อมูลตรงกันทุกเครื่องที่ใช้รหัสเดียวกัน":st==="error"?"เชื่อมต่อไม่ได้: "+err:st==="offline"?"ออฟไลน์อยู่ จะส่งข้อมูลเมื่อกลับมาออนไลน์":"กำลังซิงก์…"):"ยังไม่ได้เชื่อมต่อ ข้อมูลเก็บเฉพาะเบราว์เซอร์นี้";
-  $("syncOff").hidden=!c.url;$("syncNow").hidden=!c.url;
+  /* once connected, the connection can't be changed or switched off from the page (shared data) */
+  const on=!!c.url;["syncHelp","syncUrlF","syncKeyF","syncSave"].forEach(id=>$(id).hidden=on);$("syncOff").hidden=true;$("syncNow").hidden=!on;
 }
 $("syncChip").onclick=()=>setTab("cfg");
 $("syncSave").onclick=async()=>{
