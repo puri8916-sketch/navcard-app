@@ -225,6 +225,7 @@ table.reg{border-collapse:collapse;width:100%;min-width:520px}
 .cfg{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
 .cfgcard{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px}
 .cfgcard h3{margin:0;font-size:14px;font-weight:600}
+.log th.nw{white-space:nowrap}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .tag{display:inline-flex;align-items:center;gap:4px;padding:2px 4px 2px 10px;border-radius:999px;background:var(--bg);border:1px solid var(--line);font-family:var(--f-mono);font-size:12px}
 .tag button{border:0;background:none;cursor:pointer;color:var(--muted);width:20px;height:20px;border-radius:50%}
@@ -323,9 +324,9 @@ table.reg{border-collapse:collapse;width:100%;min-width:520px}
         <thead>
           <tr class="grp"><th class="blank" colspan="3"></th><th colspan="5">ขาเข้า</th><th class="blank" colspan="3"></th><th colspan="4">ขาออก</th><th class="blank" colspan="2"></th></tr>
           <tr>
-            <th>No.</th><th>Ship's Name</th><th>From</th>
+            <th>No.</th><th>Ship's Name</th><th class="nw">เขตท่า</th>
             <th class="div">ETA Bar</th><th>Order for Entering</th><th>Pilot No.</th><th>Berth</th><th>Draught</th>
-            <th class="div">LOA</th><th>LBP</th><th>Agent</th>
+            <th class="div">LOA</th><th class="nw">เขตท่า</th><th>Agent</th>
             <th class="div">ATD Bar</th><th>Pilot No.</th><th>Draught</th><th>Agent</th>
             <th class="div">Remark</th><th>ลำดับการปิด</th>
           </tr>
@@ -727,8 +728,8 @@ $("pdfBtn").onclick=()=>{const b=$("pdfBar");b.hidden=!b.hidden;if(!b.hidden){co
 $("pdfClose").onclick=()=>{$("pdfBar").hidden=true};
 $("pdfFrom").addEventListener("input",pdfInfo);$("pdfTo").addEventListener("input",pdfInfo);
 
-const PDF_COLS=[["No.",46,"job"],["Ship's Name",92,"vessel"],["From",34,"from"],["ETA Bar",48,"eta"],["Order for\nEntering",48,"order"],["Pilot\nNo.",34,"pilotIn"],["Berth",62,"berth"],["Draught",30,"draughtIn"],
-  ["LOA",54,"loa"],["LBP",32,"lbp"],["Agent",50,"agent"],["ATD Bar",48,"atd"],["Pilot\nNo.",34,"pilotOut"],["Draught",30,"draughtOut"],["Agent",46,"agentOut"],["Remark",52,"remark"],["ลำดับ\nการปิด",38,"closeNo"]];
+const PDF_COLS=[["No.",46,"job"],["Ship's Name",92,"vessel"],["เขตท่า",34,"from"],["ETA Bar",48,"eta"],["Order for\nEntering",48,"order"],["Pilot\nNo.",34,"pilotIn"],["Berth",62,"berth"],["Draught",30,"draughtIn"],
+  ["LOA",54,"loa"],["เขตท่า",32,"lbp"],["Agent",50,"agent"],["ATD Bar",48,"atd"],["Pilot\nNo.",34,"pilotOut"],["Draught",30,"draughtOut"],["Agent",46,"agentOut"],["Remark",52,"remark"],["ลำดับ\nการปิด",38,"closeNo"]];
 (()=>{const t=PDF_COLS.reduce((s,c)=>s+c[1],0);PDF_COLS.forEach(c=>c[1]=c[1]*794/t)})();
 const PDF_C={ink:"#1c3fa6",red:"#c2261e",green:"#16612a",text:"#132029",muted:"#5a6872",grid:"#c3ced3",gridDark:"#7d8f97",head:"#e8f2f3",date:"#eef1f2",accent:"#0a6672",
   hl:{y:"#fff59a",p:"#ffc6e0",g:"#c9f2b5",b:"#c4e4ff"}};
