@@ -115,6 +115,13 @@ label.f input.lm{color:var(--pen-red)}
 .cno .val{font-family:var(--f-mono);color:var(--pen);font-weight:600}
 .dsub{display:block;font-size:11px;color:var(--muted);font-family:var(--f-mono)}
 .gapnote{color:var(--danger);font-weight:500}
+.log tbody td[data-f]{cursor:text}
+.log tbody td[data-f]:hover{box-shadow:inset 0 0 0 1px var(--accent)}
+.log td.editing{padding:2px 3px}
+.cin{width:100%;min-width:72px;height:28px;border:1px solid var(--accent);border-radius:4px;padding:2px 6px;font:inherit;color:var(--pen);background:var(--surface);box-shadow:0 0 0 2px var(--accent-soft);outline:none}
+.cin.mono{font-family:var(--f-mono)}
+.edbtn{border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:5px;width:22px;height:22px;padding:0;cursor:pointer;margin-right:6px;font-size:12px;vertical-align:middle}
+.edbtn:hover,.edbtn:focus-visible{color:var(--accent);border-color:var(--accent)}
 .jobno{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
 .chip{display:inline-block;padding:1px 9px;border-radius:999px;font-size:12px;font-weight:500}
 .chip.ok{background:var(--ok-bg);color:var(--ok-ink)}
@@ -491,8 +498,8 @@ function renderLog(){
     const ship=el("td",{class:"ship"},hl(c.vessel||"—"));
     if(n){ship.append(el("button",{class:"shiftbtn","aria-expanded":expanded.has(c.id),title:"แสดง/ซ่อนการย้ายท่า",onclick:e=>{e.stopPropagation();expanded.has(c.id)?expanded.delete(c.id):expanded.add(c.id);renderLog()}},(expanded.has(c.id)?"▾":"▸")+" ย้ายท่า "+n))}
     const alt=(gi++%2)?" alt":"",showShifts=n&&expanded.has(c.id);
-    const tr=el("tr",{class:"main"+alt+(showShifts?"":" grp-end"),"data-id":c.id,tabindex:0,onclick:()=>openEditor(c),onkeydown:e=>{if(e.key==="Enter")openEditor(c)}},
-      cell(el("span",{class:"jobno"},hl(c.job||""),closeF&&c.date?el("span",{class:"dsub"},beTab(c.date)):null),""), ship, cell(c.from,"mono"),
+    const tr=el("tr",{class:"main"+alt+(showShifts?"":" grp-end"),"data-id":c.id,tabindex:0,onkeydown:e=>{if(e.key==="Enter"&&e.target===e.currentTarget)openEditor(c)}},
+      cell(el("span",{},el("button",{class:"edbtn",type:"button",title:"เปิดฟอร์มแก้ไข","aria-label":"เปิดฟอร์มแก้ไข "+(c.vessel||""),onclick:e=>{e.stopPropagation();openEditor(c)}},"✎"),el("span",{class:"jobno"},hl(c.job||"")),closeF&&c.date?el("span",{class:"dsub"},beTab(c.date)):null),""), ship, cell(c.from,"mono"),
       cell(c.eta,"mono div"), cell(c.order,"mono"), cell(pilotChip(c.pilotIn),"mono"), cell(c.berth,"mono"), cell(c.draughtIn,"mono"),
       cell(loaEl(c),"mono div"), cell(c.lbp,"mono"), cell(c.ng,"mono"), cell(c.agent?hl(c.agent):""),
       cell(c.atd,"mono div"), cell(c.paknam,"mono"), cell(pilotChip(c.pilotOut),"mono"), cell(c.draughtOut,"mono"),
@@ -506,7 +513,7 @@ function renderLog(){
       });
     }
   }
-  paintMarks(rows);
+  paintMarks(rows);tagCells();if(!editingCell)openPending();
   if(focusAfter){const id=focusAfter;focusAfter=null;focusRow(id)}
 }
 
@@ -559,6 +566,75 @@ function closeCell(c,rows,idx){
   return wrap.childNodes.length?wrap:"";
 }
 $("cf").addEventListener("input",()=>{closeF=$("cf").value.trim();if(closeF&&scope!=="all"){scope="all";setSeg("scopeSeg","all")}renderLog()});
+
+/* ---------- inline cell editing: click a cell, type, Enter = save + next row, Tab = next cell ---------- */
+const MAIN_F=["job","vessel","from","eta","order","pilotIn","berth","draughtIn","loa","lbp","ng","agent","atd","paknam","pilotOut","draughtOut","remark",null];
+const SHIFT_F={4:"order",5:"pilot",6:"move",7:"draught",11:"agent"};
+const F_OPTS=()=>({vessel:[shipOpts],from:[portOpts,1],lbp:[portOpts,1],pilotIn:[pilotOpts],pilotOut:[pilotOpts],pilot:[pilotOpts],berth:[berthOpts,1],agent:[agentOpts],remark:[remarkOpts]});
+const F_UPPER=new Set(["from","lbp","berth"]);
+let pendingEdit=null,editingCell=null;
+function rawVal(c,si,f){
+  if(si!=null){const s=(c.shifts||[])[si]||{};if(f==="move")return (s.fromBerth||s.berth)?(s.fromBerth||"")+" > "+(s.berth||""):"";return s[f]||""}
+  if(f==="loa")return c.loa?c.loa+(c.loaM?"/"+c.loaM:""):"";return c[f]||"";
+}
+function tagCells(){$("logBody").querySelectorAll("tr[data-id]").forEach(tr=>{const si=tr.dataset.si;[...tr.children].forEach((td,j)=>{const f=si!=null?SHIFT_F[j]:MAIN_F[j];if(f)td.dataset.f=f})})}
+function cellTarget(tr,j,dir){
+  const tds=[...tr.children],pick=r=>({id:r.dataset.id,si:r.dataset.si??null,j:null});
+  if(dir==="tab"||dir==="stab"){const st=dir==="tab"?1:-1;for(let k=j+st;k>=0&&k<tds.length;k+=st)if(tds[k].dataset.f)return {...pick(tr),j:k};return null}
+  let r=tr.nextElementSibling;while(r&&!(r.dataset.id&&r.children[j]?.dataset.f))r=r.nextElementSibling;return r?{...pick(r),j}:null;
+}
+function openPending(){
+  if(!pendingEdit)return;const p=pendingEdit;pendingEdit=null;
+  const tr=$("logBody").querySelector(`tr[data-id="${p.id}"]`+(p.si!=null?`[data-si="${p.si}"]`:":not([data-si])"));
+  const td=tr?.children[p.j];if(td?.dataset.f)startEdit(td);
+}
+function startEdit(td){
+  if(editingCell||!canWrite||!db||markMode)return;
+  const tr=td.parentElement,id=tr.dataset.id,si=tr.dataset.si!=null?+tr.dataset.si:null,f=td.dataset.f,j=[...tr.children].indexOf(td);
+  const c=allCalls.find(x=>x.id===id);if(!c)return;
+  const orig=rawVal(c,si,f);
+  const inp=el("input",{class:"cin"+(["vessel","agent","remark"].includes(f)?"":" mono"),value:orig,autocomplete:"off","aria-label":"แก้ไข "+f,placeholder:f==="move"?"จาก > ไป":f==="loa"?"ฟุต/เมตร":""});
+  let done=false;
+  const finish=async(save,dir)=>{
+    if(done)return;done=true;pop.hidden=true;editingCell=null;
+    let v=inp.value.trim();if(F_UPPER.has(f))v=v.toUpperCase();
+    pendingEdit=dir?cellTarget(tr,j,dir):null;
+    if(!save||v===orig){renderLog();return}
+    await commitCell(c,si,f,v);
+  };
+  inp.addEventListener("keydown",e=>{
+    e.stopPropagation();
+    const popOpen=!pop.hidden&&comboCur===inp;
+    if(e.key==="Tab"){e.preventDefault();setTimeout(()=>finish(true,e.shiftKey?"stab":"tab"));return}
+    if(popOpen&&(e.key==="Enter"||e.key==="Escape"||e.key==="ArrowDown"||e.key==="ArrowUp"))return;
+    if(e.key==="Enter"){e.preventDefault();finish(true,"down")}
+    else if(e.key==="Escape"){e.preventDefault();finish(false)}
+  });
+  const o=F_OPTS()[f];if(o&&!(f==="agent"&&si!=null))combo(inp,o[0],o[1]?{upper:true}:{});
+  inp.addEventListener("blur",()=>setTimeout(()=>finish(true),130));
+  inp.addEventListener("click",e=>e.stopPropagation());
+  editingCell={td,inp};td.classList.add("editing");td.replaceChildren(inp);inp.focus();inp.select();
+}
+async function commitCell(c,si,f,v){
+  const {id,...d}=c,doc=JSON.parse(JSON.stringify(d));
+  if(si!=null){const s=(doc.shifts||[])[si];if(!s)return;
+    if(f==="move"){const m=v.split(/\s*(?:→|>)\s*/);s.fromBerth=(m.length>1?m[0]:"").toUpperCase();s.berth=(m.length>1?m[1]:m[0]).toUpperCase()}else s[f]=v}
+  else if(f==="loa"){const [a,b]=v.split("/");doc.loa=(a||"").trim();doc.loaM=(b||"").trim()}
+  else{
+    if(f==="eta"&&(c.order||"")===(c.eta||""))doc.order=v;
+    if(f==="order"&&(c.eta||"")===(c.order||""))doc.eta=v;
+    if(f==="vessel"){const r=vByName.get(norm(v));if(r){if(r.loa)doc.loa=r.loa;if(r.agent)doc.agent=r.agent}}
+    doc[f]=v;
+  }
+  doc.updated=Date.now();
+  try{await db.collection("calls").doc(id).set(doc)}catch(e){pendingEdit=null;toast("บันทึกไม่สำเร็จ ("+(e.code||"error")+")");renderLog()}
+}
+$("logBody").addEventListener("click",e=>{
+  if(markMode||e.target.closest("input,button"))return;
+  const td=e.target.closest("td[data-f]");
+  if(td&&canWrite){startEdit(td);return}
+  const tr=e.target.closest("tr[data-id]");if(tr&&!canWrite){const c=allCalls.find(x=>x.id===tr.dataset.id);if(c)openEditor(c)}
+});
 
 /* ---------- highlighter: colour individual cells like a marker pen ---------- */
 const CELL_KEYS=["job","vessel","from","eta","order","pilotIn","berth","draughtIn","loa","lbp","ng","agent","atd","paknam","pilotOut","draughtOut","remark","status"];
