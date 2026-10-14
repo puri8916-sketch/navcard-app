@@ -97,13 +97,24 @@ body.marking .log tbody td[data-k]:hover{outline:2px solid var(--accent);outline
 .sw[aria-pressed="true"]{box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--accent)}
 .log tbody tr:is(.main,.shift) td,.log tbody tr:is(.main,.shift) td .jobno,.log .mv .ar{color:var(--pen)}
 .log tbody tr.shift td,.log tbody tr.shift .mv .ar{color:var(--pen-shift,var(--pen-red))}
-.log tbody tr.shift td.ship{color:var(--pen-shift,var(--pen-red));opacity:.8}
+.log tbody tr.shift td.ship{color:color-mix(in srgb,var(--pen-shift,var(--pen-red)) 80%,var(--rb))}
 body.shift-plain{--pen-shift:var(--pen)}
 body.ink-black{--pen:var(--ink)}
 .inkseg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .inkdot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:-1px}
 .loam{color:var(--pen-red);margin-left:2px}.ft{opacity:.9}
 label.f input.lm{color:var(--pen-red)}
+.cfwrap{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted)}
+.cfwrap input{width:96px;border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:5px 8px;font-family:var(--f-mono)}
+.cfwrap input:not(:placeholder-shown){border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+.cno{display:flex;align-items:center;gap:6px}
+.cno input{width:72px;border:1px dashed var(--line);background:transparent;border-radius:5px;padding:2px 6px;font-family:var(--f-mono);font-size:13px;color:var(--pen)}
+.cno input:hover{border-style:solid}
+.cno input:focus{border:1px solid var(--accent);outline:none;background:var(--surface);box-shadow:0 0 0 2px var(--accent-soft)}
+.cno input::placeholder{color:var(--muted);opacity:.55}
+.cno .val{font-family:var(--f-mono);color:var(--pen);font-weight:600}
+.dsub{display:block;font-size:11px;color:var(--muted);font-family:var(--f-mono)}
+.gapnote{color:var(--danger);font-weight:500}
 .jobno{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
 .chip{display:inline-block;padding:1px 9px;border-radius:999px;font-size:12px;font-weight:500}
 .chip.ok{background:var(--ok-bg);color:var(--ok-ink)}
@@ -254,6 +265,7 @@ table.reg{border-collapse:collapse;width:100%;min-width:520px}
         <button type="button" data-v="day" aria-pressed="true">วันที่เลือก</button>
         <button type="button" data-v="all" aria-pressed="false">ทุกวัน</button>
       </div>
+      <label class="cfwrap" for="cf">ลำดับการปิด<input id="cf" type="search" placeholder="เช่น 14" autocomplete="off"></label>
       <button class="linkbtn" id="clearF" type="button" hidden>ล้างตัวกรอง</button>
       <span class="hint" id="resN"></span>
     </div>
@@ -371,8 +383,9 @@ table.reg{border-collapse:collapse;width:100%;min-width:520px}
     </section>
     <section class="blk">
       <div class="g g6">
-        <label class="f s4">Remark<input id="fRemark"></label>
-        <div class="stbox s2">ลำดับการปิด
+        <label class="f s3">Remark<input id="fRemark"></label>
+        <label class="f">ลำดับการปิด<input id="fCloseNo" class="mono" placeholder="14/1" autocomplete="off"></label>
+        <div class="stbox s2">สถานะการ์ด
           <div class="seg" id="fStatus">
             <button type="button" class="none" data-v="">ยังไม่ระบุ</button>
             <button type="button" class="wait" data-v="รอยืนยัน">รอยืนยัน</button>
@@ -434,8 +447,8 @@ $("datePick").onchange=e=>{if(e.target.value){toDay();setDate(e.target.value)}};
 function setDate(iso){curDate=iso;$("datePick").value=iso;$("sheetTab").textContent=beTab(iso);expanded.clear();renderLog()}
 
 /* ---------- daily log ---------- */
-const isOpen=c=>c.status!=="ปิดการเงิน";
-function matchQ(c){if(!searchQ)return true;const hay=norm([c.vessel,c.job,c.agent,c.berth,c.from,c.remark,...(c.shifts||[]).map(x=>x.agent)].join(" "));return searchQ.split(" ").every(t=>hay.includes(t))}
+const isOpen=c=>c.status!=="ปิดการเงิน"&&!String(c.closeNo||"").trim();
+function matchQ(c){if(!searchQ)return true;const hay=norm([c.vessel,c.job,c.agent,c.berth,c.from,c.remark,c.closeNo,...(c.shifts||[]).map(x=>x.agent)].join(" "));return searchQ.split(" ").every(t=>hay.includes(t))}
 function matchS(c){return fStatus==="all"||(fStatus==="open"?isOpen(c):c.status===fStatus)}
 function setSeg(id,v){document.querySelectorAll("#"+id+" button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.v===v))}
 function hl(text){
@@ -453,11 +466,12 @@ function renderLog(){
   $("sOk").textContent=calls.filter(c=>c.status==="ปิดการเงิน").length;
   $("openN").textContent=allCalls.filter(isOpen).length;
   const base=scope==="all"?allCalls:calls;
-  const rows=base.filter(c=>matchQ(c)&&matchS(c)).sort((a,b)=>scope==="all"?(b.date||"").localeCompare(a.date||"")||(a.t||0)-(b.t||0):(a.t||0)-(b.t||0));
+  const rows=base.filter(c=>matchQ(c)&&matchS(c)&&matchC(c)).sort((a,b)=>closeF?cnCompare(a,b):scope==="all"?(b.date||"").localeCompare(a.date||"")||(a.t||0)-(b.t||0):(a.t||0)-(b.t||0));
   lastRows=rows;
-  const filtered=!!searchQ||fStatus!=="all"||scope==="all";
+  const filtered=!!searchQ||fStatus!=="all"||scope==="all"||!!closeF;
   $("clearF").hidden=!filtered;
-  $("resN").textContent=filtered?`พบ ${rows.length} รายการ`+(scope==="all"?" จากทุกวัน":" ในวันที่ "+beTab(curDate)):"";
+  {const r=$("resN");r.replaceChildren();if(filtered){r.append(`พบ ${rows.length} รายการ`+(scope==="all"?" จากทุกวัน":" ในวันที่ "+beTab(curDate)));
+    if(closeF){const sm=cnSummary(rows);if(sm){r.append(sm.txt);if(sm.miss)r.append(el("span",{class:"gapnote"},sm.miss));if(sm.dup)r.append(el("span",{class:"gapnote"},sm.dup))}}}}
   if(!rows.length){
     let title,sub;
     if(filtered){title="ไม่พบรายการที่ตรงกับตัวกรอง";sub=fStatus==="open"?"การ์ดทุกใบปิดการเงินแล้ว":"ลองพิมพ์ชื่อเรือสั้นลง หรือกด “ล้างตัวกรอง”"}
@@ -466,8 +480,8 @@ function renderLog(){
     return;
   }
   let lastDate=null,gi=0;
-  for(const c of rows){
-    if(scope==="all"&&c.date!==lastDate){
+  for(const [ri,c] of rows.entries()){
+    if(scope==="all"&&!closeF&&c.date!==lastDate){
       lastDate=c.date;gi=0;const n=rows.filter(r=>r.date===c.date).length;
       body.append(el("tr",{class:"dgroup"},el("td",{colspan:18},
         el("button",{class:"linkbtn",type:"button",title:"เปิดวันนี้",onclick:()=>{scope="day";setSeg("scopeSeg","day");setDate(c.date)}},beTab(c.date||"")),
@@ -478,11 +492,11 @@ function renderLog(){
     if(n){ship.append(el("button",{class:"shiftbtn","aria-expanded":expanded.has(c.id),title:"แสดง/ซ่อนการย้ายท่า",onclick:e=>{e.stopPropagation();expanded.has(c.id)?expanded.delete(c.id):expanded.add(c.id);renderLog()}},(expanded.has(c.id)?"▾":"▸")+" ย้ายท่า "+n))}
     const alt=(gi++%2)?" alt":"",showShifts=n&&expanded.has(c.id);
     const tr=el("tr",{class:"main"+alt+(showShifts?"":" grp-end"),"data-id":c.id,tabindex:0,onclick:()=>openEditor(c),onkeydown:e=>{if(e.key==="Enter")openEditor(c)}},
-      cell(el("span",{class:"jobno"},hl(c.job||"")),""), ship, cell(c.from,"mono"),
+      cell(el("span",{class:"jobno"},hl(c.job||""),closeF&&c.date?el("span",{class:"dsub"},beTab(c.date)):null),""), ship, cell(c.from,"mono"),
       cell(c.eta,"mono div"), cell(c.order,"mono"), cell(pilotChip(c.pilotIn),"mono"), cell(c.berth,"mono"), cell(c.draughtIn,"mono"),
       cell(loaEl(c),"mono div"), cell(c.lbp,"mono"), cell(c.ng,"mono"), cell(c.agent?hl(c.agent):""),
       cell(c.atd,"mono div"), cell(c.paknam,"mono"), cell(pilotChip(c.pilotOut),"mono"), cell(c.draughtOut,"mono"),
-      cell(c.remark?el("span",{class:"remark"},c.remark):"","div"), cell(statusChip(c.status)));
+      cell(c.remark?el("span",{class:"remark"},c.remark):"","div"), cell(closeCell(c,rows,ri)));
     body.append(tr);
     if(n&&expanded.has(c.id)){
       c.shifts.forEach((s,i)=>{
@@ -493,6 +507,7 @@ function renderLog(){
     }
   }
   paintMarks(rows);
+  if(focusAfter){const id=focusAfter;focusAfter=null;focusRow(id)}
 }
 
 /* ---------- table ink colour (per browser) ---------- */
@@ -502,6 +517,48 @@ try{setInk(localStorage.getItem("pl.ink")||"blue")}catch(e){setInk("blue")}
 function setShiftRed(on){document.body.classList.toggle("shift-plain",!on);$("shiftRed").checked=on;try{localStorage.setItem("pl.shiftRed",on?"1":"0")}catch(e){}}
 $("shiftRed").addEventListener("change",e=>setShiftRed(e.target.checked));
 try{setShiftRed(localStorage.getItem("pl.shiftRed")!=="0")}catch(e){setShiftRed(true)}
+
+/* ---------- ลำดับการปิด: typed closing number, filter by prefix (e.g. 14 -> 14/1..14/n) ---------- */
+let closeF="",focusAfter=null;
+function cnParts(v){const m=String(v||"").trim().match(/^(.*?)\s*\/\s*(\d+)\s*$/);return m?{p:m[1].trim(),n:+m[2]}:null}
+function matchC(c){if(!closeF)return true;const v=String(c.closeNo||"").trim();if(!v)return false;
+  if(closeF.includes("/"))return v.replace(/\s+/g,"").toUpperCase().startsWith(closeF.replace(/\s+/g,"").toUpperCase());
+  const pp=cnParts(v);return pp?pp.p.toUpperCase()===closeF.toUpperCase():v.toUpperCase()===closeF.toUpperCase()}
+function cnCompare(a,b){const x=cnParts(a.closeNo),y=cnParts(b.closeNo);if(x&&y)return x.p.localeCompare(y.p,undefined,{numeric:true})||x.n-y.n;return String(a.closeNo||"").localeCompare(String(b.closeNo||""),undefined,{numeric:true})}
+function cnSummary(rows){
+  const pp=rows.map(c=>cnParts(c.closeNo)).filter(Boolean);if(!pp.length)return "";
+  const nums=[...new Set(pp.map(x=>x.n))].sort((a,b)=>a-b),pre=pp[0].p,lo=nums[0],hi=nums[nums.length-1];
+  const miss=[];for(let i=1;i<hi&&miss.length<30;i++)if(!nums.includes(i))miss.push(i);
+  const dup=pp.length-nums.length;
+  return {txt:` · ${pre}/${lo}–${pre}/${hi}`,miss:miss.length?` · ไม่มี ${miss.map(n=>pre+"/"+n).join(", ")}`:"",dup:dup>0?` · เลขซ้ำ ${dup}`:""};
+}
+function nextCloseNo(){
+  let best=null;for(const c of allCalls){const pp=cnParts(c.closeNo);if(!pp)continue;const u=c.cnAt||0;if(!best||u>best.u)best={p:pp.p,u}}
+  if(!best)return "";let max=0;for(const c of allCalls){const pp=cnParts(c.closeNo);if(pp&&pp.p===best.p)max=Math.max(max,pp.n)}
+  return best.p+"/"+(max+1);
+}
+async function saveCloseNo(c,val,nextId){
+  val=val.trim();if(val===(c.closeNo||"")){if(nextId)focusRow(nextId);return}
+  if(!canWrite||!db)return;
+  const {id,...rest}=c;focusAfter=nextId||null;
+  try{await db.collection("calls").doc(id).set({...rest,closeNo:val,cnAt:val?Date.now():0})}catch(e){toast("บันทึกลำดับการปิดไม่สำเร็จ ("+(e.code||"error")+")")}
+}
+function focusRow(id){const i=$("logBody").querySelector(`input[data-cid="${id}"]`);if(i){i.focus();i.select?.()}}
+function closeCell(c,rows,idx){
+  const wrap=el("div",{class:"cno"});
+  if(canWrite&&!markMode){
+    const inp=el("input",{class:"cnin","data-cid":c.id,"aria-label":"ลำดับการปิด "+(c.vessel||""),value:c.closeNo||"",placeholder:"",autocomplete:"off",
+      onclick:e=>e.stopPropagation(),onkeydown:e=>{e.stopPropagation();
+        if(e.key==="Enter"){e.preventDefault();if(!inp.value.trim()&&inp.placeholder)inp.value=inp.placeholder;const nx=rows.slice(idx+1).find(r=>!r.closeNo);inp.dataset.done="1";saveCloseNo(c,inp.value,nx?.id)}
+        else if(e.key==="Escape"){inp.value=c.closeNo||"";inp.blur()}},
+      onfocus:()=>{if(!inp.value)inp.placeholder=nextCloseNo()},
+      onblur:()=>{inp.placeholder="";if(inp.dataset.done){delete inp.dataset.done;return}saveCloseNo(c,inp.value)}});
+    wrap.append(inp);
+  }else if(c.closeNo)wrap.append(el("span",{class:"val"},hl(c.closeNo)));
+  if(c.status)wrap.append(statusChip(c.status));
+  return wrap.childNodes.length?wrap:"";
+}
+$("cf").addEventListener("input",()=>{closeF=$("cf").value.trim();if(closeF&&scope!=="all"){scope="all";setSeg("scopeSeg","all")}renderLog()});
 
 /* ---------- highlighter: colour individual cells like a marker pen ---------- */
 const CELL_KEYS=["job","vessel","from","eta","order","pilotIn","berth","draughtIn","loa","lbp","ng","agent","atd","paknam","pilotOut","draughtOut","remark","status"];
@@ -513,7 +570,7 @@ function paintMarks(rows){
     [...tr.children].forEach((td,j)=>{const k=pre+CELL_KEYS[j];td.dataset.k=k;const m=c.marks?.[k];if(m)td.dataset.hl=m;else delete td.dataset.hl});
   });
 }
-function setMarkMode(on){markMode=on;$("hlToggle").setAttribute("aria-pressed",on);$("hlColors").hidden=!on;document.body.classList.toggle("marking",on)}
+function setMarkMode(on){markMode=on;setTimeout(renderLog);$("hlToggle").setAttribute("aria-pressed",on);$("hlColors").hidden=!on;document.body.classList.toggle("marking",on)}
 $("hlToggle").onclick=()=>setMarkMode(!markMode);
 document.querySelectorAll("#hlColors [data-c]").forEach(b=>b.addEventListener("click",()=>{markColor=b.dataset.c;document.querySelectorAll("#hlColors [data-c]").forEach(x=>x.setAttribute("aria-pressed",x===b))}));
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&markMode&&$("sheet").hidden)setMarkMode(false)});
@@ -532,7 +589,7 @@ $("logBody").addEventListener("click",async e=>{
 $("q").addEventListener("input",()=>{searchQ=norm($("q").value);if(searchQ&&scope!=="all"){scope="all";setSeg("scopeSeg","all")}renderLog()});
 document.querySelectorAll("#fSeg button").forEach(b=>b.addEventListener("click",()=>{fStatus=b.dataset.v;setSeg("fSeg",fStatus);if(fStatus==="open"&&scope!=="all"){scope="all";setSeg("scopeSeg","all")}renderLog()}));
 document.querySelectorAll("#scopeSeg button").forEach(b=>b.addEventListener("click",()=>{scope=b.dataset.v;setSeg("scopeSeg",scope);renderLog()}));
-$("clearF").onclick=()=>{searchQ="";$("q").value="";fStatus="all";scope="day";setSeg("fSeg","all");setSeg("scopeSeg","day");renderLog()};
+$("clearF").onclick=()=>{searchQ="";$("q").value="";closeF="";$("cf").value="";fStatus="all";scope="day";setSeg("fSeg","all");setSeg("scopeSeg","day");renderLog()};
 
 function subscribeCalls(){
   if(!db||unsubCalls){renderLog();return}
@@ -632,7 +689,7 @@ async function openEditor(c){
   $("fEta").value=v.eta||"";$("fOrder").value=v.order||"";$("etaSync").checked=(v.eta||"")===(v.order||"");$("fDraughtIn").value=v.draughtIn||"";
   $("fAtd").value=v.atd||"";$("fPaknam").value=v.paknam||"";$("fDraughtOut").value=v.draughtOut||"";$("fRemark").value=v.remark||"";
   $("fFrom").value=v.from||"";$("fBerth").value=v.berth||"";$("fPilotIn").value=v.pilotIn||"";$("fPilotOut").value=v.pilotOut||"";pop.hidden=true;
-  $("fLoaM").value=v.loaM||"";shifts=(v.shifts||[]).map(s=>({...s}));renderShifts();setStatus(v.status||"");checkShip();
+  $("fLoaM").value=v.loaM||"";shifts=(v.shifts||[]).map(s=>({...s}));renderShifts();setStatus(v.status||"");$("fCloseNo").value=v.closeNo||"";checkShip();
   $("scrim").hidden=false;$("sheet").hidden=false;placeSheet();$("fShip").focus();
   if(!v.job&&db){const j=await nextJob(v.date||curDate);
     if(editing===(c||null)&&!$("fJob").value){$("fJob").value=j.v;if(j.caret!=null){$("fJob").focus();$("fJob").setSelectionRange(j.caret,j.caret)}}}
@@ -691,7 +748,7 @@ $("edSave").onclick=async()=>{
   const g=id=>$(id).value.trim();
   const data={date:editing?.date||curDate,by:beYY(editing?.date||curDate),fy:fyYY(editing?.date||curDate),job:g("fJob"),vessel,from:g("fFrom"),loa:g("fLoa"),loaM:g("fLoaM"),lbp:g("fLbp"),ng:g("fNg"),agent:g("fAgent"),
     eta:g("fEta"),order:g("fOrder"),pilotIn:g("fPilotIn"),berth:g("fBerth"),draughtIn:g("fDraughtIn"),
-    atd:g("fAtd"),paknam:g("fPaknam"),pilotOut:g("fPilotOut"),draughtOut:g("fDraughtOut"),remark:g("fRemark"),status,
+    atd:g("fAtd"),paknam:g("fPaknam"),pilotOut:g("fPilotOut"),draughtOut:g("fDraughtOut"),remark:g("fRemark"),status,closeNo:g("fCloseNo"),cnAt:g("fCloseNo")!==(editing?.closeNo||"")?(g("fCloseNo")?Date.now():0):(editing?.cnAt||0),
     shifts:shifts.filter(s=>s.order||s.pilot||s.fromBerth||s.berth||s.draught||s.agent),t:editing?.t||Date.now(),updated:Date.now(),marks:Object.fromEntries(Object.entries(editing?.marks||{}).filter(([k])=>{const m=k.match(/^s(\d+):/);return !m||+m[1]<shifts.filter(s=>s.order||s.pilot||s.fromBerth||s.berth||s.draught||s.agent).length}))};
   $("edSave").disabled=true;
   try{
@@ -709,12 +766,12 @@ $("edDelete").onclick=async()=>{
 
 /* ---------- export ---------- */
 $("exportBtn").onclick=async()=>{
-  const H=["วันที่","No.","Ship's Name","From","ETA Bar","Order for Entering","Pilot No.","Berth","Draught","LOA","LBP","Net/Gross","Agent","ATD Bar","Passing Paknam","Pilot No.","Draught","Remark","ลำดับการปิด"];
+  const H=["วันที่","No.","Ship's Name","From","ETA Bar","Order for Entering","Pilot No.","Berth","Draught","LOA","LBP","Net/Gross","Agent","ATD Bar","Passing Paknam","Pilot No.","Draught","Remark","ลำดับการปิด","สถานะการ์ด"];
   const q=v=>{v=String(v??"");return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
   const lines=[H.map(q).join(",")];
   for(const c of lastRows){
-    lines.push([c.date?beTab(c.date):"",c.job,c.vessel,c.from,c.eta,c.order,c.pilotIn,c.berth,c.draughtIn,c.loa+(c.loaM?"/"+c.loaM:""),c.lbp,c.ng,c.agent,c.atd,c.paknam,c.pilotOut,c.draughtOut,c.remark,c.status].map(q).join(","));
-    (c.shifts||[]).forEach((s,i)=>lines.push(["","","↳ ย้ายท่า "+(i+1),"","",s.order,s.pilot,moveTxt(s),s.draught,"","","",s.agent||"","","","","","",""].map(q).join(",")));
+    lines.push([c.date?beTab(c.date):"",c.job,c.vessel,c.from,c.eta,c.order,c.pilotIn,c.berth,c.draughtIn,c.loa+(c.loaM?"/"+c.loaM:""),c.lbp,c.ng,c.agent,c.atd,c.paknam,c.pilotOut,c.draughtOut,c.remark,c.closeNo||"",c.status].map(q).join(","));
+    (c.shifts||[]).forEach((s,i)=>lines.push(["","","↳ ย้ายท่า "+(i+1),"","",s.order,s.pilot,moveTxt(s),s.draught,"","","",s.agent||"","","","","","","",""].map(q).join(",")));
   }
   try{await downloads.save({filename:"pilot-log-"+(scope==="all"?"all":beTab(curDate))+".csv",data:new Blob(["﻿"+lines.join("\n")],{type:"text/csv"})})}catch(e){toast("ส่งออกไม่สำเร็จ")}
 };
