@@ -1204,8 +1204,9 @@ $("addShipFromForm").onclick=async()=>{
   try{await db.collection("vessels").doc(slug(name)).set({name,loa:$("fLoa").value.trim(),agent:$("fAgent").value.trim()});toast("เพิ่ม "+name+" เข้าทะเบียนแล้ว")}catch(e){toast("เพิ่มเรือไม่สำเร็จ: "+e.code)}
 };
 $("insOver").onclick=()=>{
-  const ft=parseFloat($("fLoa").value);
-  $("fRemark").value=isFinite(ft)?`เรือยาวเกินกำหนด ${(ft*0.3048).toFixed(2)} เมตร (${ft} ฟุต)`:"เรือยาวเกินกำหนด เมตร( ฟุต)";
+  const ft=parseFloat($("fLoa").value),mIn=$("fLoaM").value.trim();
+  const m=mIn||(isFinite(ft)?(ft*0.3048).toFixed(2):"");
+  $("fRemark").value=`เรือยาวเกินกำหนด ${m} เมตร (${isFinite(ft)?$("fLoa").value.trim():""} ฟุต)`;
 };
 
 function renderShifts(){
