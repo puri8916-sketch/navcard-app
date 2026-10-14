@@ -113,16 +113,27 @@ def _sync_script():
             "<script>" + js + "</script>\n")
 
 
-_PAGES = ["⚓ รวมการ์ด", "🧮 เครื่องคิดเลข ×3.2808", "📒 บันทึกนำร่องประจำวัน"]
+_P_LOG, _P_MERGE, _P_CALC = "📒 บันทึกนำร่องประจำวัน", "⚓ รวมการ์ด", "🧮 เครื่องคิดเลข ×3.2808"
+_PAGES = [_P_LOG, _P_MERGE, _P_CALC]
+if st.session_state.get("page_choice") not in _PAGES:
+    st.session_state["page_choice"] = _PAGES[0]
+
+
+def _go(p):
+    st.session_state["page_choice"] = p
+
 
 with st.sidebar:
     st.markdown("### เมนู")
-    _page = st.radio("เมนู", _PAGES, key="page_choice", label_visibility="collapsed")
+    for _i, _p in enumerate(_PAGES):
+        st.button(_p, key=f"nav_{_i}", on_click=_go, args=(_p,), width="stretch",
+                  type="primary" if st.session_state["page_choice"] == _p else "secondary")
+    _page = st.session_state["page_choice"]
     st.divider()
     _theme_choice = st.radio("โหมดการแสดงผล", _THEME_OPTIONS, key="theme_choice", index=0)
 apply_theme(_theme_choice)
 
-if _page == _PAGES[2]:
+if _page == _P_LOG:
     # Daily pilot log (replaces the per-day tabs of the Google Sheet "เล่มบันทึกข้อมูล").
     # Data lives in this browser's localStorage; the page has its own backup/restore buttons.
     import csv as _csv
@@ -147,7 +158,7 @@ if _page == _PAGES[2]:
     components.html(_log_html, height=1100, scrolling=True)
     st.stop()
 
-if _page == _PAGES[1]:
+if _page == _P_CALC:
     st.title("🧮 เครื่องคิดเลข ×3.2808")
     st.caption("ความยาวเรือที่บันทึกที่นี่จะถูกใช้ในเมนู ⚓ รวมการ์ด โดยอัตโนมัติ "
                "(ถ้าเชื่อมต่อ Google Sheet ในเมนู 📒 › ตั้งค่า แล้ว จะใช้ข้อมูลเดียวกันทุกเครื่อง)")
