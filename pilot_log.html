@@ -830,7 +830,7 @@ async function buildPdfBlob(rows,title,sub,onPage){
           const cy=y+r.h/2,o={c:col,pt:isS?7:7.5,mono:!["vessel","agent","agentOut","remark"].includes(k)};if(i>=3&&i<=14)o.align="center";
           if(!isS&&k==="loa"){if(!c.loa&&!c.loaM)return;{let pt=7.5;font(pt,400,mono);while(pt>5.9&&g.measureText(String(c.loa||"")+"′/"+(c.loaM||"")).width>(cc[1]-5)*S){pt-=.3;font(pt,400,mono)}}const ft=(/^\d+(\.\d+)?$/.test(String(c.loa||"").trim())?c.loa+"′":c.loa||"");
             g.textBaseline="middle";g.textAlign="left";g.fillStyle=PDF_C.ink;const lx=xs[i]+Math.max(2.5,(cc[1]-g.measureText(ft+(c.loaM?"/"+c.loaM:"")).width/S)/2);g.fillText(fit(ft,(cc[1]-5)*S),lx*S,cy*S);
-            if(c.loaM){const w1=g.measureText(ft+"/").width/S;g.fillText(ft?"/":"",(lx+g.measureText(ft).width/S)*S,cy*S);g.fillStyle=PDF_C.red;g.fillText(fit(c.loaM,(cc[1]-5-w1)*S),(lx+w1)*S,cy*S)}return}
+            if(c.loaM){const w1=g.measureText(ft+"/").width/S;g.fillStyle=PDF_C.red;g.fillText(ft?"/":"",(lx+g.measureText(ft).width/S)*S,cy*S);g.fillStyle=PDF_C.red;g.fillText(fit(c.loaM,(cc[1]-5-w1)*S),(lx+w1)*S,cy*S)}return}
           if(!isS&&k==="closeNo"){const v=c.closeNo||(c.status==="ปิดการเงิน"?"ปิดเงิน":"");if(v)txt(v,xs[i],cy,cc[1],{...o,mono:!!c.closeNo});return}
           if(!isS&&(k==="eta"||k==="atd")){const t=timeOf(c[k]),inv=k==="eta"?invIn(c):invOut(c);
             if(inv){if(t)txt(t,xs[i],cy-4,cc[1],{...o,c:PDF_C.green});txt(INV_TXT,xs[i],cy+4.4,cc[1],{c:PDF_C.red,pt:7.2,mono:false,w:600,align:"center"})}else if(t)txt(t,xs[i],cy,cc[1],o);return}
@@ -1073,7 +1073,7 @@ function subscribeCalls(){
 /* LOA: feet′ and, when typed in, metres in red */
 function loaEl(c){if(!c.loa&&!c.loaM)return "";const f=el("span",{});
   if(c.loa)f.append(el("span",{class:"ft"},/^\d+(\.\d+)?$/.test(String(c.loa).trim())?c.loa+"′":c.loa));
-  if(c.loaM)f.append("/",el("span",{class:"loam"},c.loaM));return f}
+  if(c.loaM)f.append(el("span",{class:"loam"},"/"+c.loaM));return f}
 /* แยกใบแจ้งหนี้: a flag per leg; text typed after a time ("…แยก…" or "/i") is split off into the flag */
 const INV_TXT="แยกใบแจ้งหนี้";
 function invSplit(v){v=String(v||"");const m=v.match(/\s*(แยก.*|\/i\s*)$/i);return m?{t:v.slice(0,m.index).trim(),inv:true}:{t:v.trim(),inv:false}}
