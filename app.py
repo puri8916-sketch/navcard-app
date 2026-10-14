@@ -130,7 +130,14 @@ with st.sidebar:
                   type="primary" if st.session_state["page_choice"] == _p else "secondary")
     _page = st.session_state["page_choice"]
     st.divider()
-    _theme_choice = st.radio("โหมดการแสดงผล", _THEME_OPTIONS, key="theme_choice", index=0)
+    st.markdown("**โหมดการแสดงผล**")
+    if st.session_state.get("theme_choice") not in _THEME_OPTIONS:
+        st.session_state["theme_choice"] = _THEME_OPTIONS[0]
+    for _t in _THEME_OPTIONS:
+        st.button(_t, key=f"theme_{_t}", width="stretch",
+                  on_click=lambda t=_t: st.session_state.__setitem__("theme_choice", t),
+                  type="primary" if st.session_state["theme_choice"] == _t else "secondary")
+    _theme_choice = st.session_state["theme_choice"]
 apply_theme(_theme_choice)
 
 if _page == _P_LOG:
