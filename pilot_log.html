@@ -420,10 +420,10 @@ table.reg{border-collapse:collapse;width:100%;min-width:520px}
         <label class="f">No. (เลขการ์ด)<input id="fJob" class="mono" placeholder="SGZ40/70" autocomplete="off"></label>
         <label class="f s2">Ship's Name<input id="fShip" placeholder="พิมพ์ชื่อเรือ"></label>
         <label class="f s2">Agent<input id="fAgent"></label>
-        <label class="f">From<input id="fFrom" class="mono" placeholder="รหัสเขตท่า"></label>
+        <label class="f">From<input id="fFrom" class="mono" placeholder="เขตท่า"></label>
         <label class="f">LOA (ft)<input id="fLoa" class="mono" autocomplete="off"></label>
         <label class="f">LOA (m)<input id="fLoaM" class="mono lm" inputmode="decimal" autocomplete="off"></label>
-        <label class="f">LBP<input id="fLbp" class="mono" placeholder="รหัสเขตท่า"></label>
+        <label class="f">LBP<input id="fLbp" class="mono" placeholder="เขตท่า"></label>
         <div id="newShipHint" class="hint warn s2" hidden>เรือนี้ยังไม่อยู่ในทะเบียน <button class="linkbtn" id="addShipFromForm" type="button">เพิ่มเข้าทะเบียนเรือ</button></div>
       </div>
     </section>
@@ -487,7 +487,7 @@ const DEF = {
 const CFG_META = [
   {key:"pilots", title:"Pilot No.", hint:"-CAP- = นายเรือนำเอง"},
   {key:"berths", title:"ท่าเรือ (Berth)"},
-  {key:"ports",  title:"รหัสเขตท่า (From / LBP)"}
+  {key:"ports",  title:"เขตท่า"}
 ];
 const $ = id => document.getElementById(id);
 let db=null, cfg={...DEF}, vessels=[], vByName=new Map(), calls=[], allCalls=[], lastRows=[], unsubCalls=null, searchQ="", fStatus="all", scope="day";
