@@ -135,7 +135,7 @@ label.f input.lm{color:var(--pen-red)}
 .pdfbar #pdfMsg{color:var(--accent);font-weight:500}
 .log td.ctr{text-align:center}
 .log tbody tr:is(.main,.shift) td:nth-child(n+4):nth-child(-n+15),.log thead tr:not(.grp) th:nth-child(n+4):nth-child(-n+15){text-align:center}
-.log td .invtime{color:var(--pen-red)}
+.log td .invtime{color:var(--pen-green)}
 .invtag{display:block;color:var(--pen-red);font-family:var(--f-body);font-size:13px;font-weight:600;line-height:1.2;margin-top:1px}
 .jobno{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
 .chip{display:inline-block;padding:1px 9px;border-radius:999px;font-size:12px;font-weight:500}
@@ -787,7 +787,7 @@ async function buildPdfBlob(rows,title,sub,onPage){
             if(c.loaM){const w1=g.measureText(ft+"/").width/S;g.fillText(ft?"/":"",(lx+g.measureText(ft).width/S)*S,cy*S);g.fillStyle=PDF_C.red;g.fillText(fit(c.loaM,(cc[1]-5-w1)*S),(lx+w1)*S,cy*S)}return}
           if(!isS&&k==="closeNo"){const v=c.closeNo||(c.status==="ปิดการเงิน"?"ปิดเงิน":"");if(v)txt(v,xs[i],cy,cc[1],{...o,mono:!!c.closeNo});return}
           if(!isS&&(k==="eta"||k==="atd")){const t=timeOf(c[k]),inv=k==="eta"?invIn(c):invOut(c);
-            if(inv){if(t)txt(t,xs[i],cy-4,cc[1],{...o,c:PDF_C.red});txt(INV_TXT,xs[i],cy+4.4,cc[1],{c:PDF_C.red,pt:7.2,mono:false,w:600,align:"center"})}else if(t)txt(t,xs[i],cy,cc[1],o);return}
+            if(inv){if(t)txt(t,xs[i],cy-4,cc[1],{...o,c:PDF_C.green});txt(INV_TXT,xs[i],cy+4.4,cc[1],{c:PDF_C.red,pt:7.2,mono:false,w:600,align:"center"})}else if(t)txt(t,xs[i],cy,cc[1],o);return}
           if(!isS&&k==="order"&&invIn(c)){txt("-",xs[i],cy,cc[1],{...o,align:"center"});return}
           if(!isS&&k==="vessel")o.w=600;
           {const ct=k==="pilotIn"?(isS?(r.s.pilot==="-CAP-"&&r.s.capTime):(c.pilotIn==="-CAP-"&&c.capIn)):k==="pilotOut"&&!isS?(c.pilotOut==="-CAP-"&&c.capOut):"";
