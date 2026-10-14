@@ -258,7 +258,6 @@ table.reg{border-collapse:collapse;width:100%;min-width:520px}
     <div class="stats">
       <span class="stat">เรือ <b id="sCount">0</b></span>
       <span class="stat">ย้ายท่า <b id="sShift">0</b></span>
-      <span class="stat">รอยืนยัน <b id="sWait">0</b></span>
       <span class="stat">ปิดการเงิน <b id="sOk">0</b></span>
       <div class="spacer"></div>
       <div class="hlbar">
@@ -301,7 +300,6 @@ table.reg{border-collapse:collapse;width:100%;min-width:520px}
       <div class="seg" id="fSeg" role="group" aria-label="สถานะการ์ด">
         <button type="button" data-v="all" aria-pressed="true">ทั้งหมด</button>
         <button type="button" data-v="open" aria-pressed="false">ยังไม่ปิดการ์ด<b class="cnt" id="openN">0</b></button>
-        <button type="button" data-v="รอยืนยัน" aria-pressed="false">รอยืนยัน</button>
         <button type="button" data-v="ปิดการเงิน" aria-pressed="false">ปิดการเงิน</button>
       </div>
       <div class="seg" id="scopeSeg" role="group" aria-label="ช่วงวันที่">
@@ -453,7 +451,6 @@ table.reg{border-collapse:collapse;width:100%;min-width:520px}
         <div class="stbox s2">สถานะการ์ด
           <div class="seg" id="fStatus">
             <button type="button" class="none" data-v="">ยังไม่ระบุ</button>
-            <button type="button" class="wait" data-v="รอยืนยัน">รอยืนยัน</button>
             <button type="button" class="ok" data-v="ปิดการเงิน">ปิดการเงิน</button>
           </div>
         </div>
@@ -495,7 +492,7 @@ function slug(s){const x=norm(s).replace(/[^A-Z0-9._~:@+-]+/g,"-").replace(/^-+|
 function el(tag,attrs={},...kids){const e=document.createElement(tag);for(const[k,v]of Object.entries(attrs)){if(k==="class")e.className=v;else if(k.startsWith("on"))e.addEventListener(k.slice(2),v);else if(v!==undefined&&v!==null)e.setAttribute(k,v)}for(const k of kids.flat()){if(k==null)continue;e.append(k instanceof Node?k:document.createTextNode(String(k)))}return e}
 function cell(v,cls){const td=el("td",cls?{class:cls}:{});if(v===""||v==null){td.classList.add("ctr");td.append(el("span",{class:"dash"},"–"))}else{if(v==="-")td.classList.add("ctr");td.append(v instanceof Node?v:String(v))}return td}
 function pilotChip(p){if(!p)return "";return p==="-CAP-"?el("span",{class:"chip cap"},"-CAP-"):p}
-function statusChip(s){if(!s)return "";return el("span",{class:"chip "+(s==="ปิดการเงิน"?"ok":"wait")},s)}
+function statusChip(s){if(s!=="ปิดการเงิน")return "";return el("span",{class:"chip "+(s==="ปิดการเงิน"?"ok":"wait")},s)}
 let toastT;function toast(msg){const t=$("toast");t.textContent=msg;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>t.hidden=true,2400)}
 function notice(msg){const n=$("notice");n.textContent=msg||"";n.hidden=!msg}
 
@@ -527,7 +524,6 @@ function renderLog(){
   const body=$("logBody");body.replaceChildren();
   $("sCount").textContent=calls.length;
   $("sShift").textContent=calls.reduce((n,c)=>n+(c.shifts?.length||0),0);
-  $("sWait").textContent=calls.filter(c=>c.status==="รอยืนยัน").length;
   $("sOk").textContent=calls.filter(c=>c.status==="ปิดการเงิน").length;
   $("openN").textContent=allCalls.filter(isOpen).length;
   const base=scope==="all"?allCalls:calls;
@@ -776,7 +772,7 @@ async function buildPdfBlob(rows,title,sub,onPage){
           if(!isS&&k==="loa"){if(!c.loa&&!c.loaM)return;{let pt=7.5;font(pt,400,mono);while(pt>5.9&&g.measureText(String(c.loa||"")+"′/"+(c.loaM||"")).width>(cc[1]-5)*S){pt-=.3;font(pt,400,mono)}}const ft=(/^\d+(\.\d+)?$/.test(String(c.loa||"").trim())?c.loa+"′":c.loa||"");
             g.textBaseline="middle";g.textAlign="left";g.fillStyle=PDF_C.ink;const lx=xs[i]+Math.max(2.5,(cc[1]-g.measureText(ft+(c.loaM?"/"+c.loaM:"")).width/S)/2);g.fillText(fit(ft,(cc[1]-5)*S),lx*S,cy*S);
             if(c.loaM){const w1=g.measureText(ft+"/").width/S;g.fillText(ft?"/":"",(lx+g.measureText(ft).width/S)*S,cy*S);g.fillStyle=PDF_C.red;g.fillText(fit(c.loaM,(cc[1]-5-w1)*S),(lx+w1)*S,cy*S)}return}
-          if(!isS&&k==="closeNo"){const v=c.closeNo||(c.status==="ปิดการเงิน"?"ปิดเงิน":c.status||"");if(v)txt(v,xs[i],cy,cc[1],{...o,mono:!!c.closeNo});return}
+          if(!isS&&k==="closeNo"){const v=c.closeNo||(c.status==="ปิดการเงิน"?"ปิดเงิน":"");if(v)txt(v,xs[i],cy,cc[1],{...o,mono:!!c.closeNo});return}
           if(!isS&&(k==="eta"||k==="atd")){const t=timeOf(c[k]),inv=k==="eta"?invIn(c):invOut(c);
             if(inv){if(t)txt(t,xs[i],cy-4,cc[1],o);txt(INV_TXT,xs[i],cy+4.4,cc[1],{c:PDF_C.red,pt:7.2,mono:false,w:600,align:"center"})}else if(t)txt(t,xs[i],cy,cc[1],o);return}
           if(!isS&&k==="order"&&invIn(c)){txt("-",xs[i],cy,cc[1],{...o,align:"center"});return}
@@ -1110,7 +1106,7 @@ async function openEditor(c){
   $("fEta").value=timeOf(v.eta);$("fOrder").value=timeOf(v.order);$("etaSync").checked=timeOf(v.eta)===timeOf(v.order);$("invIn").checked=invIn(v);$("invOut").checked=invOut(v);$("fDraughtIn").value=v.draughtIn||"";
   $("fAtd").value=timeOf(v.atd);$("fDraughtOut").value=v.draughtOut||"";$("fAgentOut").value=v.agentOut||"";$("fRemark").value=v.remark||"";
   $("fFrom").value=v.from||"";$("fBerth").value=v.berth||"";$("fPilotIn").value=v.pilotIn||"";$("fPilotOut").value=v.pilotOut||"";pop.hidden=true;
-  $("fLoaM").value=v.loaM||"";shifts=(v.shifts||[]).map(s=>({...s}));renderShifts();setStatus(v.status||"");$("fCloseNo").value=v.closeNo||"";checkShip();
+  $("fLoaM").value=v.loaM||"";shifts=(v.shifts||[]).map(s=>({...s}));renderShifts();setStatus(v.status==="ปิดการเงิน"?"ปิดการเงิน":"");$("fCloseNo").value=v.closeNo||"";checkShip();
   $("scrim").hidden=false;$("sheet").hidden=false;placeSheet();$("fShip").focus();
   if(!v.job&&db){const j=await nextJob(v.date||curDate);
     if(editing===(c||null)&&!$("fJob").value){$("fJob").value=j.v;if(j.caret!=null){$("fJob").focus();$("fJob").setSelectionRange(j.caret,j.caret)}}}
@@ -1196,7 +1192,7 @@ $("exportBtn").onclick=async()=>{
   let f=$("csvFrom").value,t=$("csvTo").value;if(!f||!t){toast("เลือกเดือนก่อน");return}if(f>t)[f,t]=[t,f];
   const rows=ymRangeCalls(f,t);if(!rows.length){toast("ไม่มีข้อมูลในช่วงนี้");return}
   for(const c of rows){
-    lines.push([c.date?beTab(c.date):"",c.job,c.vessel,c.from,timeOf(c.eta),invIn(c)?"-":timeOf(c.order),c.pilotIn,c.berth,c.draughtIn,c.loa+(c.loaM?"/"+c.loaM:""),c.lbp,c.agent,timeOf(c.atd),c.pilotOut,c.draughtOut,c.agentOut||"",c.remark,c.closeNo||"",c.status,invIn(c)?"ใช่":"",invOut(c)?"ใช่":""].map(q).join(","));
+    lines.push([c.date?beTab(c.date):"",c.job,c.vessel,c.from,timeOf(c.eta),invIn(c)?"-":timeOf(c.order),c.pilotIn,c.berth,c.draughtIn,c.loa+(c.loaM?"/"+c.loaM:""),c.lbp,c.agent,timeOf(c.atd),c.pilotOut,c.draughtOut,c.agentOut||"",c.remark,c.closeNo||"",c.status==="ปิดการเงิน"?c.status:"",invIn(c)?"ใช่":"",invOut(c)?"ใช่":""].map(q).join(","));
     (c.shifts||[]).forEach((s,i)=>lines.push(["","","↳ ย้ายท่า "+(i+1),"","",s.order,s.pilot,moveTxt(s),s.draught,"","",s.agent||"","","","","","","","",""].map(q).join(",")));
   }
   try{await downloads.save({filename:"บันทึกเรือประจำเดือน "+(f===t?ymLabel(f):ymLabel(f)+" - "+ymLabel(t))+".csv",data:new Blob(["﻿"+lines.join("\n")],{type:"text/csv"})})}catch(e){if(e?.code!=="declined")toast("ส่งออกไม่สำเร็จ")}
