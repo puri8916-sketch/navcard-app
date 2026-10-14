@@ -274,7 +274,6 @@ table.reg{border-collapse:collapse;width:100%;min-width:520px}
       </div>
       <button class="btn" id="wordBtn" type="button" hidden title="ไฟล์ Word รายการเรือ เข้า-ออก (SAMARN)">ส่งSMS</button>
       <button class="btn" id="pdfBtn" type="button" hidden>PDF</button>
-      <button class="btn" id="exportBtn" hidden>ส่งออก CSV</button>
       <button class="btn primary" id="addBtn">+ เพิ่มเรือ</button>
     </div>
     <div class="pdfbar" id="pdfBar" hidden>
@@ -366,6 +365,16 @@ table.reg{border-collapse:collapse;width:100%;min-width:520px}
           <button class="btn danger" id="syncOff" type="button" hidden>ยกเลิกการเชื่อมต่อ</button>
         </div>
         <span class="hint" id="syncMsg" role="status"></span>
+      </div>
+      <div class="cfgcard" id="csvCard" hidden>
+        <h3>ส่งออก CSV (เปิดใน Excel)</h3>
+        <span class="hint">ข้อมูลบันทึกประจำวันเป็นตาราง สำหรับทำต่อใน Excel หรือส่งให้คนที่ไม่ได้ใช้แอปนี้</span>
+        <div class="toolbar">
+          <label class="f" style="flex:0 1 170px">จากเดือน<input type="month" id="csvFrom"></label>
+          <label class="f" style="flex:0 1 170px">ถึงเดือน<input type="month" id="csvTo"></label>
+          <button class="btn primary" id="exportBtn" type="button">ส่งออก CSV</button>
+        </div>
+        <span class="hint" id="csvInfo"></span>
       </div>
       <div class="cfgcard">
         <h3>สีตัวอักษรในตาราง</h3>
@@ -1184,12 +1193,17 @@ $("exportBtn").onclick=async()=>{
   const H=["วันที่","No.","Ship's Name","From","ETA Bar","Order for Entering","Pilot No.","Berth","Draught","LOA","LBP","Agent","ATD Bar","Pilot No.","Draught","Agent (ขาออก)","Remark","ลำดับการปิด","สถานะการ์ด","แยกใบแจ้งหนี้ขาเข้า","แยกใบแจ้งหนี้ขาออก"];
   const q=v=>{v=String(v??"");return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
   const lines=[H.map(q).join(",")];
-  for(const c of lastRows){
+  let f=$("csvFrom").value,t=$("csvTo").value;if(!f||!t){toast("เลือกเดือนก่อน");return}if(f>t)[f,t]=[t,f];
+  const rows=ymRangeCalls(f,t);if(!rows.length){toast("ไม่มีข้อมูลในช่วงนี้");return}
+  for(const c of rows){
     lines.push([c.date?beTab(c.date):"",c.job,c.vessel,c.from,timeOf(c.eta),invIn(c)?"-":timeOf(c.order),c.pilotIn,c.berth,c.draughtIn,c.loa+(c.loaM?"/"+c.loaM:""),c.lbp,c.agent,timeOf(c.atd),c.pilotOut,c.draughtOut,c.agentOut||"",c.remark,c.closeNo||"",c.status,invIn(c)?"ใช่":"",invOut(c)?"ใช่":""].map(q).join(","));
     (c.shifts||[]).forEach((s,i)=>lines.push(["","","↳ ย้ายท่า "+(i+1),"","",s.order,s.pilot,moveTxt(s),s.draught,"","",s.agent||"","","","","","","","",""].map(q).join(",")));
   }
-  try{await downloads.save({filename:"pilot-log-"+(scope==="all"?"all":beTab(curDate))+".csv",data:new Blob(["﻿"+lines.join("\n")],{type:"text/csv"})})}catch(e){toast("ส่งออกไม่สำเร็จ")}
+  try{await downloads.save({filename:"บันทึกเรือประจำเดือน "+(f===t?ymLabel(f):ymLabel(f)+" - "+ymLabel(t))+".csv",data:new Blob(["﻿"+lines.join("\n")],{type:"text/csv"})})}catch(e){if(e?.code!=="declined")toast("ส่งออกไม่สำเร็จ")}
 };
+function csvInfo(){const f=$("csvFrom").value,t=$("csvTo").value;if(!f||!t){$("csvInfo").textContent="";return}const r=ymRangeCalls(f<=t?f:t,f<=t?t:f);$("csvInfo").textContent=`${f===t?ymLabel(f):ymLabel(f<=t?f:t)+" – "+ymLabel(f<=t?t:f)} · ${r.length} รายการ`}
+$("csvFrom").addEventListener("input",csvInfo);$("csvTo").addEventListener("input",csvInfo);
+$("tab-cfg").addEventListener("click",()=>{const ym=curDate.slice(0,7);if(!$("csvFrom").value)$("csvFrom").value=ym;if(!$("csvTo").value)$("csvTo").value=ym;csvInfo()});
 
 /* ---------- vessels ---------- */
 function rebuildVessels(){
@@ -1331,7 +1345,7 @@ listeners.add(bkInfo);
   db=localDb;subscribeCalls();
   db.collection("vessels").onSnapshot(s=>{vessels=s.docs.map(x=>({id:x.id,...x.data()}));rebuildVessels()});
   db.doc("config/lists").onSnapshot(s=>{const d=s.exists?s.data():{};cfg={ports:d.ports||DEF.ports,berths:d.berths||DEF.berths,pilots:d.pilots||DEF.pilots};renderCfg()});
-  $("exportBtn").hidden=false;$("pdfBtn").hidden=false;$("wordBtn").hidden=false;
+  $("csvCard").hidden=false;$("pdfBtn").hidden=false;$("wordBtn").hidden=false;
 })();
 </script>
 
