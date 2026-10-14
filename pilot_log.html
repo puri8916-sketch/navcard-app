@@ -1093,7 +1093,7 @@ const agentOpts=()=>[...new Set(vessels.map(v=>(v.agent||"").trim()).filter(Bool
 const portOpts=()=>cfg.ports.map(v=>({v}));
 const berthOpts=()=>cfg.berths.map(v=>({v}));
 const pilotOpts=()=>cfg.pilots.map(v=>v==="-CAP-"?{v,keys:"000 CAP",meta:"นายเรือนำเอง"}:{v});
-const remarkOpts=()=>[{v:"ทำเที่ยวครบ"},{v:"เรือยาวเกินกำหนด เมตร( ฟุต)"}];
+const remarkOpts=()=>[{v:"ทำเที่ยวครบ"}];
 function combo(inp,getOpts,o={}){
   inp.setAttribute("autocomplete","off");inp.setAttribute("role","combobox");inp.setAttribute("aria-autocomplete","list");
   const st={items:[],act:-1};let quiet=false;
@@ -1418,7 +1418,7 @@ listeners.add(bkInfo);
   if(window.__THEME__)document.documentElement.setAttribute("data-theme",window.__THEME__);
   let t="log";try{t=localStorage.getItem("pl.tab")||"log"}catch(e){}
   setTab(t);setDate(curDate);renderCfg();renderVessels();bkInfo();
-  $("remarkList").append(el("option",{value:"ทำเที่ยวครบ"}),el("option",{value:"เรือยาวเกินกำหนด เมตร( ฟุต)"}));
+  $("remarkList").append(el("option",{value:"ทำเที่ยวครบ"}));
   SS.onStatus(renderSync);
   { const c=SS.config(); if(c.url)$("syncUrl").value=c.url; }
   SS.start().then(()=>{
