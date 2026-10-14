@@ -1369,7 +1369,7 @@ const localDb={collection:c=>query(c),doc:p=>{const [c,id]=p.split("/");return d
 function renderSync(st,err,pend){
   const chip=$("syncChip"),n=pend||0;
   const txt={local:"เก็บในเครื่องนี้",syncing:"⟳ กำลังซิงก์",online:"☁ ซิงก์แล้ว",offline:"⚠ ออฟไลน์",error:"⚠ ซิงก์ไม่ได้"}[st]||st;
-  chip.textContent=txt+(n&&st!=="online"?` · รอส่ง ${n}`:"");chip.dataset.st=st;chip.title=err||"";
+  chip.textContent=txt+(n&&st!=="online"?` · รอส่ง ${n}`:"");chip.dataset.st=st;chip.title=err||"";chip.hidden=st==="online"||st==="syncing";
   const c=SS.config();
   $("syncState").textContent=c.url?(st==="online"?"เชื่อมต่อแล้ว ข้อมูลตรงกันทุกเครื่องที่ใช้รหัสเดียวกัน":st==="error"?"เชื่อมต่อไม่ได้: "+err:st==="offline"?"ออฟไลน์อยู่ จะส่งข้อมูลเมื่อกลับมาออนไลน์":"กำลังซิงก์…"):"ยังไม่ได้เชื่อมต่อ ข้อมูลเก็บเฉพาะเบราว์เซอร์นี้";
   $("syncOff").hidden=!c.url;$("syncNow").hidden=!c.url;
