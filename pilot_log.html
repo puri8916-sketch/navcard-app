@@ -142,9 +142,9 @@ label.f input.lm{color:var(--pen-red)}
 .chip.ok{background:var(--ok-bg);color:var(--ok-ink)}
 .chip.wait{background:var(--warn-bg);color:var(--warn-ink)}
 .chip.cap{background:var(--cap-bg);color:var(--cap-ink);font-family:var(--f-mono)}
-.captime{display:block;color:var(--pen-green);font-family:var(--f-mono);font-size:12.5px;font-weight:600;line-height:1.2;margin-bottom:2px;white-space:nowrap}
+.captime{display:block;color:var(--pen-green);font-family:var(--f-mono);font-size:12.5px;font-weight:400;line-height:1.2;margin-bottom:2px;white-space:nowrap}
 .log tbody tr.shift td .captime{color:var(--pen-green)}
-label.f input.capt{color:var(--pen-green);font-weight:600}
+label.f input.capt{color:var(--pen-green)}
 .shiftbtn{margin-left:6px;border:1px solid var(--accent);color:var(--accent);background:var(--accent-soft);border-radius:999px;padding:0 7px;font-size:11px;cursor:pointer;font-family:var(--f-mono)}
 .remark{display:block;min-width:170px;max-width:260px;white-space:normal;font-size:12px;color:var(--muted)}
 .empty{padding:48px 16px;text-align:center;color:var(--muted)}
@@ -791,7 +791,7 @@ async function buildPdfBlob(rows,title,sub,onPage){
           if(!isS&&k==="order"&&invIn(c)){txt("-",xs[i],cy,cc[1],{...o,align:"center"});return}
           if(!isS&&k==="vessel")o.w=600;
           {const ct=k==="pilotIn"?(isS?(r.s.pilot==="-CAP-"&&r.s.capTime):(c.pilotIn==="-CAP-"&&c.capIn)):k==="pilotOut"&&!isS?(c.pilotOut==="-CAP-"&&c.capOut):"";
-            if(ct){let pt=6.5;font(pt,600,mono);while(pt>4.6&&g.measureText(ct).width>(cc[1]-2)*S){pt-=.2;font(pt,600,mono)}g.fillStyle=PDF_C.green;g.textBaseline="middle";g.textAlign="center";g.fillText(ct,(xs[i]+cc[1]/2)*S,(cy-4)*S);
+            if(ct){let pt=6.5;font(pt,400,mono);while(pt>4.6&&g.measureText(ct).width>(cc[1]-2)*S){pt-=.2;font(pt,400,mono)}g.fillStyle=PDF_C.green;g.textBaseline="middle";g.textAlign="center";g.fillText(ct,(xs[i]+cc[1]/2)*S,(cy-4)*S);
               txt("-CAP-",xs[i],cy+4.4,cc[1],{...o,c:PDF_C.red,pt:7});return}}
           if(!isS&&(k==="pilotIn"||k==="pilotOut")&&c[k]==="-CAP-")o.c=PDF_C.red;
           if(isS&&k==="vessel"){o.mono=false;o.c=PDF_C.red}
