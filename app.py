@@ -123,6 +123,13 @@ def _go(p):
     st.session_state["page_choice"] = p
 
 
+# Streamlit hides the sidebar's collapse (<<) button until hover; keep it visible so the
+# menu can be hidden for more room, and make the reopen (>>) button easy to see.
+st.markdown("""<style>
+[data-testid="stSidebarCollapseButton"],[data-testid="stSidebarCollapseButton"] *{opacity:1!important;visibility:visible!important;display:inline-flex!important}
+[data-testid="stSidebarCollapseButton"] button,[data-testid="stExpandSidebarButton"]{border:1px solid rgba(128,128,128,.45)!important;border-radius:8px!important}
+</style>""", unsafe_allow_html=True)
+
 with st.sidebar:
     if st.session_state.get("theme_choice") not in _THEME_OPTIONS:
         st.session_state["theme_choice"] = _THEME_OPTIONS[0]
@@ -158,7 +165,7 @@ if _page == _P_LOG:
     if _log_theme:
         _inject += "window.__THEME__='" + _log_theme + "';"
     _log_html = _log_html.replace("<script>", "<script>" + _inject + "</script>\n" + _sync_script() + "<script>", 1)
-    st.markdown("""<style>[data-testid="stMainBlockContainer"]{padding-top:2.5rem;max-width:100%}</style>""",
+    st.markdown("""<style>[data-testid="stMainBlockContainer"]{padding-top:2.5rem;padding-left:1rem;padding-right:1rem;max-width:100%}</style>""",
                 unsafe_allow_html=True)
     components.html(_log_html, height=1100, scrolling=True)
     st.stop()
