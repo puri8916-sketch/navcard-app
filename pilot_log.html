@@ -307,6 +307,7 @@ table.reg{border-collapse:collapse;width:100%;min-width:520px}
       <button class="btn" id="wH1" type="button">1–15</button>
       <button class="btn" id="wH2" type="button">16–สิ้นเดือน</button>
       <button class="btn primary" id="wGo" type="button">สร้างไฟล์ Word</button>
+      <button class="btn" id="wSent" type="button" title="จำว่าขาเข้า/ย้าย/ออกในรายงานช่วงนี้ส่งไปแล้ว — ถ้าเติมขาใหม่ทีหลัง รายงานครั้งต่อไปจะเพิ่มเป็นแถวใหม่ต่อท้าย">บันทึกว่าส่งแล้ว</button>
       <button class="linkbtn" id="wClose" type="button">ปิด</button>
       <span class="hint" id="wInfo"></span>
       <span class="hint" id="wMsg" role="status"></span>
@@ -915,8 +916,22 @@ function wordRows(from,to){
     else if(invOut(c)&&dIn(c))tout=W_CHANGE;
     const agent=(inLeg&&!invIn(c))?(c.agent||c.agentOut||""):(c.agentOut||c.agent||"");
     const firstIn=[eT,aT,...sh].filter(inP).map(t=>t.key).sort()[0]||c.date;
-    out.push({c,key:inLeg&&eT?"1"+eT.key:"0"+firstIn+String(c.t||0).padStart(14,"0"),tin,tout,berth:c.berth||"",agent,
-      shifts:(c.shifts||[]).map((s,i)=>({t:inP(sh[i])?(s.pilot==="-CAP-"?"-CAP-":sh[i].txt):"-",from:s.fromBerth||"",to:s.berth||""}))});
+    const shAll=(c.shifts||[]).map((s,i)=>({i,t:inP(sh[i])?(s.pilot==="-CAP-"?"-CAP-":sh[i].txt):"-",from:s.fromBerth||"",to:s.berth||""}));
+    // legs of this call that belong in this report (used to remember what was sent)
+    const legs={in:tin!=="-",out:!!tout&&tout!=="-",sh:shAll.filter(x=>x.t!=="-").map(x=>x.i)};
+    const key=inLeg&&eT?"1"+eT.key:"0"+firstIn+String(c.t||0).padStart(14,"0");
+    // what was already sent (each "บันทึกว่าส่งแล้ว" adds a batch): every batch keeps its own row; legs filled in later go to a new row at the end
+    const batches=c.sms?(c.sms.b||[c.sms]):[],seen={in:false,out:false,sh:[]},parts=[];
+    for(const b of batches){const p={in:!!b.in&&legs.in&&!seen.in,out:!!b.out&&legs.out&&!seen.out,sh:legs.sh.filter(i=>(b.sh||[]).includes(i)&&!seen.sh.includes(i)),at:b.at||0};
+      if(p.in)seen.in=true;if(p.out)seen.out=true;seen.sh.push(...p.sh);if(p.in||p.out||p.sh.length)parts.push(p)}
+    const late={in:legs.in&&!seen.in,out:legs.out&&!seen.out,sh:legs.sh.filter(i=>!seen.sh.includes(i)),late:true};
+    if(late.in||late.out||late.sh.length)parts.push(late);
+    if(parts.length<2){out.push({c,key,tin,tout,berth:c.berth||"",agent,legs,shifts:shAll});continue}
+    parts.forEach((p,k)=>{
+      const first=k===0,ts=[p.in&&eT,p.out&&aT,...p.sh.map(i=>sh[i])].filter(Boolean).map(t=>t.key).sort()[0]||"";
+      out.push({c,key:first?key:"9"+(p.late?"99999999999999":String(p.at).padStart(14,"0"))+ts+String(c.t||0).padStart(14,"0"),late:!!p.late&&!first,
+        tin:p.in?tin:"-",tout:p.out?tout:"",berth:c.berth||"",agent:p.out&&!p.in?(c.agentOut||c.agent||""):agent,legs:{in:p.in,out:p.out,sh:p.sh},
+        shifts:shAll.filter(x=>first?(x.t==="-"||p.sh.includes(x.i)):p.sh.includes(x.i))})});
   }
   out.sort((a,b)=>a.key<b.key?-1:a.key>b.key?1:0);
   return out;
@@ -929,7 +944,8 @@ function wPeriod(from,to){const [y1,m1,d1]=from.split("-").map(Number),[y2,m2,d2
 function wordInfo(){
   const f=$("wFrom").value,t=$("wTo").value;if(!f||!t){$("wInfo").textContent="";return}
   const [a,b]=f<=t?[f,t]:[t,f],rows=wordRows(a,b),n=wordCounts(rows);
-  $("wInfo").textContent=`${wPeriod(a,b).title} · ${rows.length} รายการ · เข้า ${n.i} · ย้าย ${n.s} · ออก ${n.o} · รวม ${n.all}`;
+  const nl=rows.filter(r=>r.late).length,ns=rows.filter(r=>!r.late&&r.c.sms).length;
+  $("wInfo").textContent=`${wPeriod(a,b).title} · ${rows.length} รายการ · เข้า ${n.i} · ย้าย ${n.s} · ออก ${n.o} · รวม ${n.all}`+(ns?` · ส่งแล้ว ${ns}`:"")+(nl?` · เติมทีหลัง ${nl} (ต่อท้าย)`:"");
   $("wGo").disabled=!rows.length;
 }
 function wSetHalf(h){const [y,m]=(($("wFrom").value||curDate).slice(0,7)).split("-").map(Number),last=new Date(y,m,0).getDate(),ym=y+"-"+String(m).padStart(2,"0");
@@ -1016,6 +1032,20 @@ async function buildDocx(docXml){
   const cdSize=cd.reduce((n,x)=>n+x.length,0),e=[];u32(e,0x06054b50);u16(e,0);u16(e,0);u16(e,files.length);u16(e,files.length);u32(e,cdSize);u32(e,off);u16(e,0);
   return new Blob([...chunks,...cd,new Uint8Array(e)],{type:"application/vnd.openxmlformats-officedocument.wordprocessingml.document"});
 }
+$("wSent").onclick=async()=>{
+  let f=$("wFrom").value,t=$("wTo").value;if(!f||!t||!db)return;if(f>t)[f,t]=[t,f];
+  const rows=wordRows(f,t),by=new Map();
+  // new batch per call = the legs in this report that no earlier batch has
+  for(const r of rows){const bs=r.c.sms?(r.c.sms.b||[r.c.sms]):[],had=k=>bs.some(b=>k==="in"?b.in:k==="out"?b.out:(b.sh||[]).includes(k));
+    const m=by.get(r.c.id)||{c:r.c,bs,in:false,out:false,sh:[]};
+    if(r.legs.in&&!had("in"))m.in=true;if(r.legs.out&&!had("out"))m.out=true;r.legs.sh.forEach(i=>{if(!had(i)&&!m.sh.includes(i))m.sh.push(i)});by.set(r.c.id,m)}
+  let n=0;
+  try{for(const m of by.values()){if(!(m.in||m.out||m.sh.length))continue;
+      const sms={b:[...m.bs.map(b=>({in:!!b.in,out:!!b.out,sh:b.sh||[],at:b.at||0})),{in:m.in,out:m.out,sh:m.sh.sort((a,b)=>a-b),at:Date.now()}]};
+      const {id,...d}=m.c;await db.collection("calls").doc(id).set({...JSON.parse(JSON.stringify(d)),sms,updated:Date.now()});n++}
+    $("wMsg").textContent=n?`บันทึกแล้ว: ${n} ลำ ส่ง SMS ช่วง ${wPeriod(f,t).title}`:"ไม่มีขาใหม่ที่ต้องบันทึก";wordInfo()}
+  catch(e){$("wMsg").textContent="บันทึกไม่สำเร็จ ("+(e?.code||e?.message||"error")+")"}
+};
 $("wGo").onclick=async()=>{
   let f=$("wFrom").value,t=$("wTo").value;if(!f||!t)return;if(f>t)[f,t]=[t,f];
   const rows=wordRows(f,t);if(!rows.length){$("wMsg").textContent="ไม่มีข้อมูลในช่วงนี้";return}
@@ -1236,7 +1266,7 @@ $("edSave").onclick=async()=>{
   const pIn=capSplit(g("fPilotIn")),pOut=capSplit(g("fPilotOut"));
   const data={date:editing?.date||curDate,by:beYY(editing?.date||curDate),fy:fyYY(editing?.date||curDate),job:g("fJob"),vessel,from:g("fFrom"),loa:g("fLoa"),loaM:g("fLoaM"),lbp:g("fLbp"),ng:editing?.ng||"",agent:g("fAgent"),
     eta:timeOf(g("fEta")),order:timeOf(g("fOrder")),invIn:$("invIn").checked||invSplit(g("fEta")).inv||invSplit(g("fOrder")).inv,pilotIn:pIn.p,capIn:pIn.p==="-CAP-"?(pIn.t||g("fCapIn")):"",berth:g("fBerth"),draughtIn:g("fDraughtIn"),
-    atd:timeOf(g("fAtd")),invOut:$("invOut").checked||invSplit(g("fAtd")).inv,paknam:editing?.paknam||"",pilotOut:pOut.p,capOut:pOut.p==="-CAP-"?(pOut.t||g("fCapOut")):"",draughtOut:g("fDraughtOut"),agentOut:g("fAgentOut"),remark:g("fRemark"),status,closeNo:g("fCloseNo"),cnAt:g("fCloseNo")!==(editing?.closeNo||"")?(g("fCloseNo")?Date.now():0):(editing?.cnAt||0),
+    atd:timeOf(g("fAtd")),invOut:$("invOut").checked||invSplit(g("fAtd")).inv,paknam:editing?.paknam||"",...(editing?.sms?{sms:editing.sms}:{}),pilotOut:pOut.p,capOut:pOut.p==="-CAP-"?(pOut.t||g("fCapOut")):"",draughtOut:g("fDraughtOut"),agentOut:g("fAgentOut"),remark:g("fRemark"),status,closeNo:g("fCloseNo"),cnAt:g("fCloseNo")!==(editing?.closeNo||"")?(g("fCloseNo")?Date.now():0):(editing?.cnAt||0),
     shifts:shifts.filter(s=>s.order||s.pilot||s.fromBerth||s.berth||s.draught||s.agent),t:editing?.t||Date.now(),updated:Date.now(),marks:Object.fromEntries(Object.entries(editing?.marks||{}).filter(([k])=>{const m=k.match(/^s(\d+):/);return !m||+m[1]<shifts.filter(s=>s.order||s.pilot||s.fromBerth||s.berth||s.draught||s.agent).length}))};
   $("edSave").disabled=true;
   try{
