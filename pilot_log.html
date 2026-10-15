@@ -574,7 +574,7 @@ function renderLog(){
       cell(el("span",{},canReorder()?el("button",{class:"grip",type:"button",title:"ลากเพื่อเลื่อนลำดับ (หรือกด ↑ ↓)","aria-label":"เลื่อนลำดับ "+(c.vessel||""),onkeydown:e=>{if(e.key==="ArrowUp"||e.key==="ArrowDown"){e.preventDefault();e.stopPropagation();moveRow(c.id,e.key==="ArrowUp"?-1:1)}}},"⠿"):null,el("button",{class:"edbtn",type:"button",title:"เปิดฟอร์มแก้ไข","aria-label":"เปิดฟอร์มแก้ไข "+(c.vessel||""),onclick:e=>{e.stopPropagation();openEditor(c)}},"✎"),el("span",{class:"jobno"},hl(c.job||"")),closeF&&c.date?el("span",{class:"dsub"},beTab(c.date)):null),""), ship, cell(c.from,"mono"),
       cell(timeInv(timeOf(c.eta),invIn(c)),"mono div"), cell(invIn(c)?"-":timeOf(c.order),"mono"+(invIn(c)?" ctr":"")), cell(capCell(c.pilotIn,c.capIn),"mono"), cell(c.berth,"mono"), cell(c.draughtIn,"mono"),
       cell(loaEl(c),"mono div"), cell(c.lbp,"mono"), cell(c.agent?hl(c.agent):""),
-      cell(timeInv(timeOf(c.atd),invOut(c)),"mono div"), cell(capCell(c.pilotOut,c.capOut),"mono"), cell(c.draughtOut,"mono"), cell(c.agentOut?hl(c.agentOut):""),
+      cell(timeInv(timeOf(c.atd),invOut(c)),"mono div"), cell(capCell(c.pilotOut,c.capOut),"mono"), cell(c.draughtOut,"mono"), cell((c.agentOut||c.agent)?hl(c.agentOut||c.agent):""),
       cell(c.remark?el("span",{class:"remark"},c.remark):"","div"), cell(closeCell(c,rows,ri)));
     body.append(tr);
     if(n&&!collapsed.has(c.id)){
@@ -684,6 +684,7 @@ function rawVal(c,si,f){
   if(si!=null){const s=(c.shifts||[])[si]||{};if(f==="move")return (s.fromBerth||s.berth)?(s.fromBerth||"")+" > "+(s.berth||""):"";if(f==="pilot")return capRaw(s.pilot,s.capTime);return s[f]||""}
   if(f==="pilotIn")return capRaw(c.pilotIn,c.capIn);
   if(f==="pilotOut")return capRaw(c.pilotOut,c.capOut);
+  if(f==="agentOut")return c.agentOut||c.agent||"";
   if(f==="loa")return c.loa?c.loa+(c.loaM?"/"+c.loaM:""):"";
   if(f==="eta")return timeOf(c.eta)+(invIn(c)?INV_TXT:"");
   if(f==="order")return timeOf(c.order);
@@ -740,7 +741,9 @@ async function commitCell(c,si,f,v){
       v=pv.t}
     if(f==="atd"){const pv=invSplit(v);doc.invOut=pv.inv;v=pv.t}
     if(f==="pilotIn"||f==="pilotOut"){const p=capSplit(v);doc[f==="pilotIn"?"capIn":"capOut"]=p.t;v=p.p}
-    if(f==="vessel"){const r=vByName.get(norm(v));if(r){if(r.loa)doc.loa=r.loa;if(r.agent)doc.agent=r.agent}}
+    if(f==="vessel"){const r=vByName.get(norm(v));if(r){if(r.loa)doc.loa=r.loa;if(r.agent){if(!c.agentOut||c.agentOut===c.agent)doc.agentOut=r.agent;doc.agent=r.agent}}}
+    if(f==="agent"&&(!c.agentOut||c.agentOut===c.agent))doc.agentOut=v;
+    if(f==="agentOut"&&!v)v=doc.agent||"";
     doc[f]=v;
   }
   doc.updated=Date.now();
@@ -819,7 +822,7 @@ async function buildPdfBlob(rows,title,sub,onPage){
         y+=it.h;line(M,y,M+TW,y,PDF_C.grid);continue}
       for(const r of it.g){
         const c=r.c,isS=r.k==="s",col=isS?PDF_C.red:PDF_C.ink;
-        const val=k=>{if(!isS){if(k==="loa")return null;return (k==="order"?(invIn(c)?"-":timeOf(c[k])):c[k])||""}
+        const val=k=>{if(!isS){if(k==="loa")return null;return (k==="order"?(invIn(c)?"-":timeOf(c[k])):k==="agentOut"?(c.agentOut||c.agent):c[k])||""}
           const s=r.s;return {job:"",vessel:"↳ ย้ายท่า "+(r.i+1),order:s.order,pilotIn:s.pilot,berth:moveTxt(s),draughtIn:s.draught,agent:s.agent}[k]||""};
         PDF_COLS.forEach((cc,i)=>{
           const k=cc[2],mk=(isS?"s"+r.i+":":"")+(k==="closeNo"?"status":k),m=c.marks?.[mk];
@@ -1193,7 +1196,7 @@ async function openEditor(c){
   const v=c||{};
   $("fJob").value=v.job||"";$("fShip").value=v.vessel||"";$("fLoa").value=v.loa||"";$("fLbp").value=v.lbp||"";$("fAgent").value=v.agent||"";
   $("fEta").value=timeOf(v.eta);$("fOrder").value=timeOf(v.order);$("etaSync").checked=timeOf(v.eta)===timeOf(v.order);$("invIn").checked=invIn(v);$("invOut").checked=invOut(v);$("fDraughtIn").value=v.draughtIn||"";
-  $("fAtd").value=timeOf(v.atd);$("fDraughtOut").value=v.draughtOut||"";$("fAgentOut").value=v.agentOut||"";$("fRemark").value=v.remark||"";
+  $("fAtd").value=timeOf(v.atd);$("fDraughtOut").value=v.draughtOut||"";$("fAgentOut").value=v.agentOut||v.agent||"";$("fRemark").value=v.remark||"";
   $("fFrom").value=v.from||"";$("fBerth").value=v.berth||"";$("fPilotIn").value=v.pilotIn||"";$("fPilotOut").value=v.pilotOut||"";$("fCapIn").value=v.capIn||"";$("fCapOut").value=v.capOut||"";capToggle();pop.hidden=true;
   $("fLoaM").value=v.loaM||"";shifts=(v.shifts||[]).map(s=>({...s}));renderShifts();setStatus(v.status==="ปิดการเงิน"?"ปิดการเงิน":"");$("fCloseNo").value=v.closeNo||"";checkShip();
   $("scrim").hidden=false;$("sheet").hidden=false;placeSheet();$("fShip").focus();
@@ -1214,7 +1217,9 @@ function linkEtaOrder(){const a=$("fEta"),b=$("fOrder"),sw=$("etaSync");
   sw.addEventListener("change",()=>{if(sw.checked){const v=a.value||b.value;a.value=v;b.value=v}});}
 linkEtaOrder();
 
-combo($("fShip"),shipOpts);combo($("fAgent"),agentOpts);combo($("fFrom"),portOpts,{upper:true});combo($("fLbp"),portOpts,{upper:true});combo($("fBerth"),berthOpts,{upper:true});
+combo($("fShip"),shipOpts);combo($("fAgent"),agentOpts);
+{let prevAgent="";$("fAgent").addEventListener("focus",()=>prevAgent=$("fAgent").value);
+ $("fAgent").addEventListener("input",()=>{const o=$("fAgentOut");if(!o.value.trim()||o.value.trim()===prevAgent.trim())o.value=$("fAgent").value;prevAgent=$("fAgent").value})}combo($("fFrom"),portOpts,{upper:true});combo($("fLbp"),portOpts,{upper:true});combo($("fBerth"),berthOpts,{upper:true});
 combo($("fPilotIn"),pilotOpts);combo($("fPilotOut"),pilotOpts);
 function capToggle(e){[["fPilotIn","capInF","fCapIn"],["fPilotOut","capOutF","fCapOut"]].forEach(([a,b,t])=>{const p=capSplit($(a).value);if(e?.type!=="input"&&p.p==="-CAP-"&&p.t&&$(a).value.trim()!=="-CAP-"){$(t).value=p.t;$(a).value="-CAP-"}$(b).hidden=p.p!=="-CAP-"})}
 ["fPilotIn","fPilotOut"].forEach(id=>{$(id).addEventListener("input",capToggle);$(id).addEventListener("change",capToggle)});
@@ -1224,7 +1229,7 @@ function closePop(){pop.hidden=true}
 function checkShip(){const v=vByName.get(norm($("fShip").value));$("newShipHint").hidden=!$("fShip").value.trim()||!!v||!db}
 $("fShip").addEventListener("input",()=>{
   const v=vByName.get(norm($("fShip").value));
-  if(v){$("fLoa").value=v.loa||"";$("fAgent").value=v.agent||""}
+  if(v){$("fLoa").value=v.loa||"";const o=$("fAgent").value;$("fAgent").value=v.agent||"";if(!$("fAgentOut").value.trim()||$("fAgentOut").value.trim()===o.trim())$("fAgentOut").value=v.agent||""}
   checkShip();
 });
 $("addShipFromForm").onclick=async()=>{
@@ -1266,7 +1271,7 @@ $("edSave").onclick=async()=>{
   const pIn=capSplit(g("fPilotIn")),pOut=capSplit(g("fPilotOut"));
   const data={date:editing?.date||curDate,by:beYY(editing?.date||curDate),fy:fyYY(editing?.date||curDate),job:g("fJob"),vessel,from:g("fFrom"),loa:g("fLoa"),loaM:g("fLoaM"),lbp:g("fLbp"),ng:editing?.ng||"",agent:g("fAgent"),
     eta:timeOf(g("fEta")),order:timeOf(g("fOrder")),invIn:$("invIn").checked||invSplit(g("fEta")).inv||invSplit(g("fOrder")).inv,pilotIn:pIn.p,capIn:pIn.p==="-CAP-"?(pIn.t||g("fCapIn")):"",berth:g("fBerth"),draughtIn:g("fDraughtIn"),
-    atd:timeOf(g("fAtd")),invOut:$("invOut").checked||invSplit(g("fAtd")).inv,paknam:editing?.paknam||"",...(editing?.sms?{sms:editing.sms}:{}),pilotOut:pOut.p,capOut:pOut.p==="-CAP-"?(pOut.t||g("fCapOut")):"",draughtOut:g("fDraughtOut"),agentOut:g("fAgentOut"),remark:g("fRemark"),status,closeNo:g("fCloseNo"),cnAt:g("fCloseNo")!==(editing?.closeNo||"")?(g("fCloseNo")?Date.now():0):(editing?.cnAt||0),
+    atd:timeOf(g("fAtd")),invOut:$("invOut").checked||invSplit(g("fAtd")).inv,paknam:editing?.paknam||"",...(editing?.sms?{sms:editing.sms}:{}),pilotOut:pOut.p,capOut:pOut.p==="-CAP-"?(pOut.t||g("fCapOut")):"",draughtOut:g("fDraughtOut"),agentOut:g("fAgentOut")||g("fAgent"),remark:g("fRemark"),status,closeNo:g("fCloseNo"),cnAt:g("fCloseNo")!==(editing?.closeNo||"")?(g("fCloseNo")?Date.now():0):(editing?.cnAt||0),
     shifts:shifts.filter(s=>s.order||s.pilot||s.fromBerth||s.berth||s.draught||s.agent),t:editing?.t||Date.now(),updated:Date.now(),marks:Object.fromEntries(Object.entries(editing?.marks||{}).filter(([k])=>{const m=k.match(/^s(\d+):/);return !m||+m[1]<shifts.filter(s=>s.order||s.pilot||s.fromBerth||s.berth||s.draught||s.agent).length}))};
   $("edSave").disabled=true;
   try{
