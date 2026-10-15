@@ -763,7 +763,7 @@ function ymRangeCalls(from,to){if(from>to)[from,to]=[to,from];return allCalls.fi
 function pdfInfo(){
   const f=$("pdfFrom").value,t=$("pdfTo").value;if(!f||!t){$("pdfInfo").textContent="";return}
   const rows=ymRangeCalls(f,t),sh=rows.reduce((n,c)=>n+(c.shifts?.length||0),0);
-  $("pdfInfo").textContent=(f===t?ymLabel(f):ymLabel(f<t?f:t)+" – "+ymLabel(f<t?t:f))+` · เรือ ${rows.length} ลำ · ย้ายท่า ${sh} ครั้ง`;
+  $("pdfInfo").textContent=(f===t?ymLabel(f):ymLabel(f<t?f:t)+" – "+ymLabel(f<t?t:f))+" · "+monthTotals(f<t?f:t,f<t?t:f);
   $("pdfGo").disabled=!rows.length;
 }
 $("pdfBtn").onclick=()=>{const b=$("pdfBar");b.hidden=!b.hidden;if(!b.hidden){const ym=curDate.slice(0,7);if(!$("pdfFrom").value)$("pdfFrom").value=ym;if(!$("pdfTo").value)$("pdfTo").value=ym;$("pdfMsg").textContent="";pdfInfo()}};
@@ -775,7 +775,7 @@ const PDF_COLS=[["No.",46,"job"],["Ship's Name",92,"vessel"],["เขตท่�
 (()=>{const t=PDF_COLS.reduce((s,c)=>s+c[1],0);PDF_COLS.forEach(c=>c[1]=c[1]*794/t)})();
 const PDF_C={ink:"#1c3fa6",red:"#c2261e",green:"#16612a",text:"#132029",muted:"#5a6872",grid:"#c3ced3",gridDark:"#7d8f97",head:"#e8f2f3",date:"#eef1f2",accent:"#0a6672",
   hl:{y:"#fff59a",p:"#ffc6e0",g:"#c9f2b5",b:"#c4e4ff"}};
-async function buildPdfBlob(rows,title,sub,onPage,sumMonths){
+async function buildPdfBlob(rows,title,sub,onPage){
   const S=2.5,PW=842,PH=595,M=24,TOP=M+34,FOOT=16,ROW=15,SROW=13,DROW=14,GH=11,HH=20;
   const fam='"IBM Plex Sans Thai","Noto Sans Thai",Tahoma,sans-serif',mono='"IBM Plex Mono",ui-monospace,monospace';
   try{await document.fonts.ready}catch(e){}
@@ -854,48 +854,10 @@ async function buildPdfBlob(rows,title,sub,onPage,sumMonths){
     line(M+TW,top,M+TW,y,PDF_C.gridDark,.7);line(M,top,M+TW,top,PDF_C.gridDark,.7);
     // footer
     font(7);g.fillStyle=PDF_C.muted;g.textBaseline="alphabetic";g.textAlign="left";g.fillText("บันทึกนำร่องสงขลา · "+sub.split(" · ")[0]+" · พิมพ์ "+printed,M*S,(PH-M+4)*S);
-    g.textAlign="right";g.fillText(`หน้า ${pi+1} / ${pages.length+(sumMonths||[]).length}`,(PW-M)*S,(PH-M+4)*S);
+    g.textAlign="right";g.fillText(`หน้า ${pi+1} / ${pages.length}`,(PW-M)*S,(PH-M+4)*S);
     const b64=cv.toDataURL("image/jpeg",.9).split(",")[1],bin=atob(b64),u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);
     jpegs.push({u,w:cv.width,h:cv.height});
     if(onPage)onPage(pi+1,pages.length);await new Promise(r=>setTimeout(r));
-  }
-  // 2b) summary page per month: movements by their own date (เข้า = ETA, ออก = ATD, ย้ายท่า = Order of the shift)
-  for(const [si,ym] of (sumMonths||[]).entries()){
-    const [yy,mm]=ym.split("-").map(Number),last=new Date(yy,mm,0).getDate();
-    const D=Array.from({length:last+1},()=>({i:0,o:0,s:0,cap:0,inv:0}));
-    const add=(t,k)=>{if(t&&t.iso.slice(0,7)===ym)D[t.day][k]++};
-    for(const c of allCalls){
-      const eT=wParse(c.eta,c.date),aT=wParse(c.atd,c.date);
-      add(eT,invIn(c)?"inv":c.pilotIn==="-CAP-"?"cap":"i");
-      add(aT,invOut(c)?"inv":c.pilotOut==="-CAP-"?"cap":"o");
-      (c.shifts||[]).forEach(s=>add(wParse(s.order,c.date),s.pilot==="-CAP-"?"cap":"s"));
-    }
-    const T={i:0,o:0,s:0,cap:0,inv:0};D.slice(1).forEach(d=>{for(const k in T)T[k]+=d[k]});
-    g.fillStyle="#fff";g.fillRect(0,0,cv.width,cv.height);
-    font(15,600);g.fillStyle=PDF_C.text;g.textBaseline="alphabetic";g.textAlign="left";g.fillText("สรุปจำนวนเรือประจำเดือน "+ymLabel(ym),M*S,(M+12)*S);
-    font(8.5);g.fillStyle=PDF_C.muted;g.fillText(`เข้า ${T.i} · ออก ${T.o} · ย้ายท่า ${T.s} · รวม ${T.i+T.o+T.s} เที่ยว`+(T.cap?` · -CAP- ${T.cap}`:"")+(T.inv?` · แยกใบแจ้งหนี้ ${T.inv}`:""),M*S,(M+26)*S);
-    const cols=[["วันที่",70],["เข้า",60],["ออก",60],["ย้ายท่า",60],["รวม",64],["-CAP-",56],["แยกใบแจ้งหนี้",80]],R=13.2,HX=18;
-    const tw=cols.reduce((n,c)=>n+c[1],0),x0=(PW-tw)/2;let yy0=TOP;
-    const cx=[];{let xx=x0;for(const c of cols){cx.push(xx);xx+=c[1]}}
-    g.fillStyle=PDF_C.head;g.fillRect(x0*S,yy0*S,tw*S,HX*S);
-    cols.forEach((c,i)=>txt(c[0],cx[i],yy0+HX/2,c[1],{pt:7.5,w:600,c:PDF_C.muted,align:"center"}));
-    yy0+=HX;line(x0,yy0,x0+tw,yy0,PDF_C.gridDark,.8);
-    const dow=["อา","จ","อ","พ","พฤ","ศ","ส"];
-    const rowsS=[...Array.from({length:last},(_,k)=>{const d=D[k+1],w=new Date(yy,mm-1,k+1).getDay();return {lab:`${k+1} (${dow[w]})`,d,we:w===0||w===6}}),{lab:"รวม",d:T,tot:true}];
-    for(const r of rowsS){
-      if(r.we||r.tot){g.fillStyle=r.tot?PDF_C.head:"#f6f8f9";g.fillRect(x0*S,yy0*S,tw*S,R*S)}
-      const v=[r.d.i,r.d.o,r.d.s,r.d.i+r.d.o+r.d.s,r.d.cap,r.d.inv],cy=yy0+R/2,o={pt:7.5,w:r.tot?700:400,align:"center"};
-      txt(r.lab,cx[0],cy,cols[0][1],{...o,c:PDF_C.text,mono:false});
-      v.forEach((n,i)=>txt(n?String(n):"–",cx[i+1],cy,cols[i+1][1],{...o,mono:true,c:n?(i>=4?PDF_C.red:i===3?PDF_C.text:PDF_C.ink):PDF_C.muted}));
-      yy0+=R;line(x0,yy0,x0+tw,yy0,r.tot?PDF_C.gridDark:PDF_C.grid,r.tot?.8:.4);
-    }
-    cx.forEach((xx,i)=>line(xx,TOP,xx,yy0,i===4?PDF_C.gridDark:PDF_C.grid,i?.4:.7));line(x0+tw,TOP,x0+tw,yy0,PDF_C.gridDark,.7);line(x0,TOP,x0+tw,TOP,PDF_C.gridDark,.7);
-    font(7);g.fillStyle=PDF_C.muted;g.textBaseline="alphabetic";g.textAlign="left";
-    g.fillText("นับตามวันที่ของแต่ละขา (ETA = เข้า, ATD = ออก, Order ย้ายท่า) · รวม ไม่นับ -CAP- และแยกใบแจ้งหนี้",x0*S,(yy0+12)*S);
-    g.fillText("บันทึกนำร่องสงขลา · "+sub.split(" · ")[0]+" · พิมพ์ "+printed,M*S,(PH-M+4)*S);
-    g.textAlign="right";g.fillText(`หน้า ${pages.length+si+1} / ${pages.length+sumMonths.length}`,(PW-M)*S,(PH-M+4)*S);
-    const b64=cv.toDataURL("image/jpeg",.9).split(",")[1],bin=atob(b64),u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);
-    jpegs.push({u,w:cv.width,h:cv.height});await new Promise(r=>setTimeout(r));
   }
   // 3) write a minimal PDF (one full-page JPEG per page)
   const enc=new TextEncoder(),chunks=[],offs=[];let len=0;
@@ -913,14 +875,23 @@ async function buildPdfBlob(rows,title,sub,onPage,sumMonths){
   push(xr+`trailer\n<< /Size ${total} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`);
   return new Blob(chunks,{type:"application/pdf"});
 }
+// totals for the month range, by each leg's own date (เข้า = ETA, ออก = ATD, ย้ายท่า = Order); -CAP- / แยกใบแจ้งหนี้ not in รวม
+function monthTotals(f,t){
+  const T={i:0,o:0,s:0,cap:0,inv:0},inR=x=>x&&x.iso.slice(0,7)>=f&&x.iso.slice(0,7)<=t,add=(x,k)=>{if(inR(x))T[k]++};
+  for(const c of allCalls){
+    add(wParse(c.eta,c.date),invIn(c)?"inv":c.pilotIn==="-CAP-"?"cap":"i");
+    add(wParse(c.atd,c.date),invOut(c)?"inv":c.pilotOut==="-CAP-"?"cap":"o");
+    (c.shifts||[]).forEach(s=>add(wParse(s.order,c.date),s.pilot==="-CAP-"?"cap":"s"));
+  }
+  return `เข้า ${T.i} · ออก ${T.o} · ย้ายท่า ${T.s} · รวม ${T.i+T.o+T.s} เที่ยว`+(T.cap?` · -CAP- ${T.cap}`:"")+(T.inv?` · แยกใบแจ้งหนี้ ${T.inv}`:"");
+}
 $("pdfGo").onclick=async()=>{
   let f=$("pdfFrom").value,t=$("pdfTo").value;if(!f||!t)return;if(f>t)[f,t]=[t,f];
   const rows=ymRangeCalls(f,t);if(!rows.length){$("pdfMsg").textContent="ไม่มีข้อมูลในช่วงนี้";return}
   const sh=rows.reduce((n,c)=>n+(c.shifts?.length||0),0),range=f===t?ymLabel(f):ymLabel(f)+" – "+ymLabel(t);
   $("pdfGo").disabled=true;$("pdfMsg").textContent="กำลังสร้าง PDF…";
   try{
-    const months=[];for(let ym=f;ym<=t;){months.push(ym);const [a,b]=ym.split("-").map(Number);ym=b===12?(a+1)+"-01":a+"-"+String(b+1).padStart(2,"0")}
-    const blob=await buildPdfBlob(rows,"บันทึกนำร่องสงขลา",`${range} · เรือ ${rows.length} ลำ · ย้ายท่า ${sh} ครั้ง`,(i,n)=>{$("pdfMsg").textContent=`กำลังสร้าง PDF… หน้า ${i}/${n}`},months);
+    const blob=await buildPdfBlob(rows,"บันทึกนำร่องสงขลา",`${range} · ${monthTotals(f,t)}`,(i,n)=>{$("pdfMsg").textContent=`กำลังสร้าง PDF… หน้า ${i}/${n}`});
     const name="บันทึกเรือประจำเดือน "+(f===t?ymLabel(f):ymLabel(f)+" - "+ymLabel(t))+".pdf";
     await downloads.save({filename:name,data:blob});
     $("pdfMsg").textContent=`ดาวน์โหลดแล้ว: ${name}`;
