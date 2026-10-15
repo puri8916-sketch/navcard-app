@@ -161,11 +161,26 @@ def render(ship_store):
             t = days[d]
             rows.append({"แท็บ": _label(d), "การ์ด": len(t.get("cards", [])),
                          "สรุป": rc.counts_text(t.get("cards", [])).replace("รวมทั้งหมด ", ""),
-                         "ส่งการเงินแล้ว (แท็บเขียว)": bool(t.get("sent"))})
+                         "ส่งการเงินแล้ว (แท็บเขียว)": bool(t.get("sent")), "ลบ": False})
         nsent = sum(r["ส่งการเงินแล้ว (แท็บเขียว)"] for r in rows)
         with st.expander(f"รายการแท็บ ({len(rows)} แท็บ · ส่งการเงินแล้ว {nsent} · ยังไม่ส่ง {len(rows) - nsent})"):
-            ed = st.data_editor(rows, key=f"rep_tabs_{ym}", hide_index=True, width="stretch",
-                                disabled=["แท็บ", "การ์ด", "สรุป"])
+            ed = st.data_editor(rows, key=f"rep_tabs_{ym}_{st.session_state.get('rep_del_n', 0)}", hide_index=True,
+                                width="stretch", disabled=["แท็บ", "การ์ด", "สรุป"],
+                                column_config={"ลบ": st.column_config.CheckboxColumn("ลบ", width="small",
+                                                                                    help="ติ๊กแท็บที่บันทึกผิด แล้วกดยืนยันด้านล่าง")})
+            dels = [d for d, r in zip(mdays, ed) if r.get("ลบ")]
+            if dels:
+                st.warning("ลบแท็บ " + ", ".join(_label(d) for d in dels) + " ออกจากรายงาน? (ใช้กับแท็บที่บันทึกผิดวัน — "
+                           "ถ้าแค่ข้อมูลผิด วางไฟล์วันนั้นซ้ำได้เลย ระบบแทนที่ให้)")
+                if st.button(f"ยืนยันลบ {len(dels)} แท็บ", key="rep_del_go"):
+                    try:
+                        db.delete_days(dels)
+                        st.session_state.rep_del_n = st.session_state.get("rep_del_n", 0) + 1
+                        st.session_state.rep_msg = "ลบแท็บ " + ", ".join(_label(d) for d in dels) + " แล้ว"
+                        _load(db, force=True)
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"ลบไม่สำเร็จ: {e}")
         changed = [dict(days[d], sent=r["ส่งการเงินแล้ว (แท็บเขียว)"]) for d, r in zip(mdays, ed)
                    if bool(days[d].get("sent")) != r["ส่งการเงินแล้ว (แท็บเขียว)"]]
         if changed:
@@ -182,14 +197,6 @@ def render(ship_store):
         st.download_button(f"⬇️ ดาวน์โหลด {fname}", data=rc.build_month([days[d] for d in mdays], sig, signer, pngs),
                            file_name=fname, type="primary",
                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-        with st.expander("ลบแท็บ"):
-            dsel = st.selectbox("แท็บที่จะลบ", mdays, format_func=_label, key="rep_del_sel")
-            ok = st.checkbox(f"ยืนยันลบแท็บ {_label(dsel)}", key="rep_del_ok")
-            if st.button("ลบแท็บนี้", disabled=not ok):
-                db.delete_day(dsel)
-                st.session_state.rep_msg = f"ลบแท็บ {_label(dsel)} แล้ว"
-                _load(db, force=True)
-                st.rerun()
 
     # ------------------------------------------------------------ 3) signer + one-time import
     st.subheader("3. ผู้เซ็น / นำเข้าไฟล์เดือนเดิม")

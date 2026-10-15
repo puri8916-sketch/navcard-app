@@ -375,8 +375,9 @@ class SheetStore:
         for i in range(0, len(ops), 20):
             self._post(ops[i:i + 20])
 
-    def delete_day(self, iso):
-        self._post([{"op": "del", "col": COL_DAYS, "id": iso, "updated": int(_time.time() * 1000)}])
+    def delete_days(self, isos):
+        now = int(_time.time() * 1000)
+        self._post([{"op": "del", "col": COL_DAYS, "id": d, "updated": now} for d in isos])
 
     def put_signer(self, rank, name, png=None, cur_id=""):
         """Save the current signer; a new picture is stored once under its own id (old tabs keep theirs)."""
