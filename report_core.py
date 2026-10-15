@@ -109,10 +109,12 @@ def _signature_from_zip(data):
                 re.search(r'Target="([^"]+)"[^>]*Id="%s"' % m.group(1), rels)
             if not t:
                 continue
-            img = Image.open(io.BytesIO(z.read("xl/" + t.group(1).replace("../", ""))))
-            sr = re.search(r"<a:srcRect([^/]*)/>", x)
+            tgt = t.group(1)
+            path = tgt.lstrip("/") if tgt.startswith("/") else os.path.normpath("xl/drawings/" + tgt).replace("\\", "/")
+            img = Image.open(io.BytesIO(z.read(path)))
+            sr = re.search(r"<a:srcRect[^>]*>", x)
             if sr:
-                g = {k: int(v) / 100000 for k, v in re.findall(r'(\w)="(\d+)"', sr.group(1))}
+                g = {k: int(v) / 100000 for k, v in re.findall(r'\s([ltrb])="(\d+)"', sr.group(0))}
                 W, H = img.size
                 img = img.crop((round(W * g.get("l", 0)), round(H * g.get("t", 0)),
                                 round(W * (1 - g.get("r", 0))), round(H * (1 - g.get("b", 0)))))

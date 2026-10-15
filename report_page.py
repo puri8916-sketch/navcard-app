@@ -77,36 +77,57 @@ def render(ship_store):
             st.error(str(e))
             cards = None
         if cards:
-            span = [(date.fromisoformat(d0) + timedelta(days=i)).isoformat()
-                    for i in range((date.fromisoformat(d1) - date.fromisoformat(d0)).days + 1)]
+            # which tab days does this file cover? the file's own range, widened back to the day after the
+            # last saved tab when days were skipped (weekend / days not closed)
+            last = max((d for d in days if d < d0), default=None)
+            start0 = date.fromisoformat(d0)
+            if last and 1 < (start0 - date.fromisoformat(last)).days <= 10:
+                start0 = date.fromisoformat(last) + timedelta(days=1)
+            k = f"{up.name}_{up.size}"
+            c1, c2 = st.columns(2)
+            ds = c1.date_input("แท็บตั้งแต่วันที่", value=start0, key=f"rep_ds_{k}", format="DD/MM/YYYY")
+            de = c2.date_input("ถึงวันที่", value=date.fromisoformat(d1), key=f"rep_de_{k}", format="DD/MM/YYYY")
+            if de < ds:
+                ds, de = de, ds
+            span = [(ds + timedelta(days=i)).isoformat() for i in range((de - ds).days + 1)]
+            n = len(cards)
             if len(span) == 1:
-                assign = [d1] * len(cards)
-                st.caption(f"ไฟล์วันที่ {_label(d1)} · {len(cards)} การ์ด")
+                assign = [span[0]] * n
             else:
-                st.info(f"ไฟล์นี้ครอบคลุม {len(span)} วัน ({_label(d0)} ถึง {_label(d1)}) — เลือกว่าการ์ดไหนเป็นของแท็บวันไหน "
-                        "(ระบบเดาให้จากวันที่เรือออก/เคลื่อนไหวล่าสุด +1 วัน แก้ได้ในคอลัมน์ แท็บ)")
-                sugg = rc.suggest_days(d0, d1, cards)
-                labels = [_label(x) for x in span]
-                rows = [{"การ์ด": c["no"], "เรือ": c["ship"].strip(), "การเคลื่อนไหว": _moves(c), "แท็บ": _label(s)}
-                        for c, s in zip(cards, sugg)]
-                ed = st.data_editor(rows, key=f"rep_split_{up.name}_{d0}_{d1}", hide_index=True, width="stretch",
-                                    disabled=["การ์ด", "เรือ", "การเคลื่อนไหว"],
-                                    column_config={"แท็บ": st.column_config.SelectboxColumn("แท็บ", options=labels,
-                                                                                         required=True, width="small")})
-                lab2iso = dict(zip(labels, span))
-                assign = [lab2iso[r["แท็บ"]] for r in ed]
+                st.info(f"แยกการ์ดเป็น {len(span)} แท็บ ({_label(span[0])} ถึง {_label(span[-1])}) — "
+                        "เลือกลำแรกของแต่ละวัน ระบบเลือกไว้ให้ก่อน (เดาจากวันที่เรือเคลื่อนไหวล่าสุด) ตรวจ/แก้ได้")
+                sugg = rc.suggest_days(span[0], span[-1], cards)
+                opts = list(range(n + 1))
+                fmt = lambda i: "(ไม่มีการ์ดวันนี้)" if i == n else f"{i + 1}. {cards[i]['no']}  {cards[i]['ship'].strip()}  ·  {_moves(cards[i])}"
+                starts = [0]
+                st.caption(f"แท็บ {_label(span[0])} เริ่มที่ลำแรกของไฟล์: {fmt(0)}")
+                for jj, d in enumerate(span[1:], 1):
+                    dflt = next((i for i, x in enumerate(sugg) if x >= d), n)
+                    dflt = max(dflt, starts[-1])
+                    starts.append(st.selectbox(f"แท็บ {_label(d)} เริ่มที่ลำ", opts, index=dflt, format_func=fmt,
+                                               key=f"rep_st_{k}_{d}"))
+                if any(b < a for a, b in zip(starts, starts[1:])):
+                    st.error("ลำดับไม่ถูกต้อง: ลำแรกของวันหลังต้องอยู่ถัดจากลำแรกของวันก่อน")
+                    return
+                assign = []
+                for jj, d in enumerate(span):
+                    end = starts[jj + 1] if jj + 1 < len(starts) else n
+                    assign += [d] * (end - starts[jj])
 
             groups = {}
             for c, d in zip(cards, assign):
                 groups.setdefault(d, []).append(c)
             known = {c["no"]: iso for iso, t in days.items() for c in t.get("cards", [])}
             for d, cs in sorted(groups.items()):
-                n, en, sa, sh = rc.counts(cs)
+                nn, en, sa, sh = rc.counts(cs)
                 warn = ""
                 if d in days:
                     warn = f" · ⚠ แท็บนี้มีอยู่แล้ว ({len(days[d].get('cards', []))} การ์ด) จะถูกแทนที่"
                 st.markdown(f"**แท็บ {_label(d)}** — {len(cs)} การ์ด: {cs[0]['no']} ({cs[0]['ship'].strip()}) "
-                            f"ถึง {cs[-1]['no']} ({cs[-1]['ship'].strip()}) · {n} ลำ เข้า {en} ออก {sa} เลื่อน {sh}{warn}")
+                            f"ถึง {cs[-1]['no']} ({cs[-1]['ship'].strip()}) · {nn} ลำ เข้า {en} ออก {sa} เลื่อน {sh}{warn}")
+            empty = [d for d in span if d not in groups]
+            if empty:
+                st.caption("ไม่มีการ์ด (ไม่สร้างแท็บ): " + ", ".join(_label(d) for d in empty))
             dup = sorted({f"{c['no']} (อยู่ในแท็บ {_label(known[c['no']])})" for d, cs in groups.items() for c in cs
                           if c["no"] in known and known[c["no"]] != d})
             if dup:
