@@ -114,7 +114,8 @@ def _sync_script():
 
 
 _P_LOG, _P_MERGE, _P_CALC = "📒 บันทึกเรือ", "⚓ รวมการ์ด", "🧮 เครื่องคิดเลข ×3.2808"
-_PAGES = [_P_LOG, _P_MERGE, _P_CALC]
+_P_REP = "📑 รายงานการปิดการ์ดนำร่อง"
+_PAGES = [_P_LOG, _P_REP, _P_MERGE, _P_CALC]
 if st.session_state.get("page_choice") not in _PAGES:
     st.session_state["page_choice"] = _PAGES[0]
 
@@ -182,6 +183,15 @@ if _page == _P_LOG:
     components.html(_log_html, height=1100, scrolling=True)
     st.stop()
 
+# Bridge to this browser: calculator ship lengths + its Google Sheet connection.
+_ship_store = components.declare_component(
+    "ship_store", path=os.path.join(_HERE, "ship_store_component"))
+
+if _page == _P_REP:
+    import report_page
+    report_page.render(_ship_store)
+    st.stop()
+
 if _page == _P_CALC:
     st.title("🧮 เครื่องคิดเลข ×3.2808")
     st.caption("ความยาวเรือที่บันทึกที่นี่จะถูกใช้ในเมนู ⚓ รวมการ์ด โดยอัตโนมัติ "
@@ -205,9 +215,6 @@ if _page == _P_CALC:
 
 st.title("⚓ Navigation Card Merger")
 
-# Bridge: reads the calculator's remembered ship lengths from this browser.
-_ship_store = components.declare_component(
-    "ship_store", path=os.path.join(_HERE, "ship_store_component"))
 _store = _ship_store(key="ship_store", default=None)
 # ship lengths come from the calculator store only (ships.csv defaults now live in the sheet of the original port)
 _ship_memory = dict(nc.ship_memory_from_store(_store))

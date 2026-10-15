@@ -12,14 +12,18 @@
   }
   function readJSON(k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } }
 
+  function syncCfg() {   // the Google Sheet connection of this browser (for pages built in Python)
+    const c = readJSON(CFG);
+    return c && !c.off && c.url ? { url: c.url, key: c.key || '' } : null;
+  }
   function readLocal() {
     const ships = {};
     try {
       const c = readJSON(CACHE);
       if (c && c.cols && c.cols.calcShips) Object.assign(ships, c.cols.calcShips);
-      return { ships: ships };
+      return { ships: ships, cfg: syncCfg() };
     } catch (err) {
-      return { ships: ships, error: String(err) };
+      return { ships: ships, cfg: syncCfg(), error: String(err) };
     }
   }
 
@@ -35,7 +39,7 @@
       if (d.col !== 'calcShips') continue;
       if (d.deleted) delete ships[d.id]; else ships[d.id] = d.doc;
     }
-    return { ships: ships, source: 'sheet' };
+    return { ships: ships, source: 'sheet', cfg: syncCfg() };
   }
 
   let lastSent = null;
