@@ -21,8 +21,12 @@ def _cfg(store):
 
 def _load(db, force=False):
     if force or "rep_days" not in st.session_state:
-        st.session_state.rep_days, st.session_state.rep_sig = db.load()
-    return st.session_state.rep_days, st.session_state.rep_sig
+        st.session_state.rep_days, st.session_state.rep_signer, st.session_state.rep_pngs = db.load()
+    return st.session_state.rep_days, st.session_state.rep_signer, st.session_state.rep_pngs
+
+
+def _sref(signer):
+    return {"id": signer.get("id", ""), "rank": signer["rank"], "name": signer["name"]}
 
 
 def _label(iso):
@@ -55,7 +59,8 @@ def render(ship_store):
         return
     db = rc.SheetStore(*cfg)
     try:
-        days, sig = _load(db)
+        days, signer, pngs = _load(db)
+        sig = signer.get("png")
     except Exception as e:
         st.error(f"อ่านข้อมูลจาก Google Sheet ไม่ได้: {e}")
         if st.button("ลองอีกครั้ง"):
@@ -134,7 +139,8 @@ def render(ship_store):
                 st.warning("การ์ดเหล่านี้มีอยู่แล้วในแท็บอื่น: " + ", ".join(dup))
             if st.button("บันทึกลงรายงาน", type="primary"):
                 try:
-                    db.put_days([{"date": d, "sent": False, "cards": cs} for d, cs in sorted(groups.items())])
+                    db.put_days([{"date": d, "sent": False, "cards": cs, "signer": _sref(signer)}
+                                 for d, cs in sorted(groups.items())])
                     st.session_state.rep_up_n = st.session_state.get("rep_up_n", 0) + 1
                     st.session_state.rep_msg = "บันทึกแล้ว: แท็บ " + ", ".join(_label(d) for d in sorted(groups))
                     _load(db, force=True)
@@ -172,8 +178,8 @@ def render(ship_store):
         y, m = (int(x) for x in ym.split("-"))
         fname = rc.month_file_name(y, m)
         if sig is None:
-            st.warning("ยังไม่มีรูปลายเซ็น — ไฟล์จะมีชื่อผู้เซ็นแต่ไม่มีลายเซ็น (เพิ่มได้ในข้อ 3)")
-        st.download_button(f"⬇️ ดาวน์โหลด {fname}", data=rc.build_month([days[d] for d in mdays], sig),
+            st.warning("ยังไม่มีรูปลายเซ็น — ไฟล์จะมีชื่อผู้เซ็นแต่ไม่มีลายเซ็น (เพิ่มได้ในข้อ 3 ผู้เซ็น)")
+        st.download_button(f"⬇️ ดาวน์โหลด {fname}", data=rc.build_month([days[d] for d in mdays], sig, signer, pngs),
                            file_name=fname, type="primary",
                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
         with st.expander("ลบแท็บ"):
@@ -185,10 +191,38 @@ def render(ship_store):
                 _load(db, force=True)
                 st.rerun()
 
-    # ------------------------------------------------------------ 3) one-time import + signature
-    st.subheader("3. นำเข้าไฟล์เดือนเดิม / ลายเซ็น")
+    # ------------------------------------------------------------ 3) signer + one-time import
+    st.subheader("3. ผู้เซ็น / นำเข้าไฟล์เดือนเดิม")
+    with st.expander(f"ผู้เซ็นท้ายรายงาน: {signer['rank']} ({signer['name']})" + ("" if sig else " · ยังไม่มีรูปลายเซ็น")):
+        c1, c2 = st.columns([1, 3])
+        if sig:
+            c1.image(sig, width=200)
+        else:
+            c1.caption("ยังไม่มีรูปลายเซ็น")
+        rank = c2.text_input("คำนำหน้า (ยศ)", value=signer["rank"], key="rep_rank")
+        name = c2.text_input("ชื่อ-สกุล (ในวงเล็บ)", value=signer["name"], key="rep_name")
+        c2.caption("ตำแหน่ง: หัวหน้าสำนักงานนำร่องสงขลา (คงที่)")
+        sf = st.file_uploader("รูปลายเซ็นใหม่ (PNG/JPG เฉพาะส่วนลายเซ็น) — เว้นว่างถ้าใช้รูปเดิม",
+                              type=["png", "jpg", "jpeg"], key="rep_sig_up")
+        unsent = sorted(d for d, t in days.items() if not t.get("sent"))
+        also = st.checkbox(f"ใช้กับแท็บที่ยังไม่ส่งการเงินด้วย ({', '.join(_label(d) for d in unsent) or 'ไม่มี'})",
+                           value=False, key="rep_sig_also", disabled=not unsent)
+        st.caption("แท็บที่บันทึกไปแล้วจะเก็บผู้เซ็นของแท็บนั้นไว้ เปลี่ยนผู้เซ็นแล้วมีผลกับแท็บที่บันทึกต่อจากนี้")
+        if st.button("บันทึกผู้เซ็น", type="primary", key="rep_sig_save"):
+            try:
+                png = rc.shrink_signature(sf.getvalue()) if sf is not None else None
+                sid = db.put_signer(rank.strip(), name.strip(), png, signer.get("id", ""))
+                if also and unsent:
+                    ref = {"id": sid, "rank": rank.strip(), "name": name.strip()}
+                    db.put_days([dict(days[d], signer=ref) for d in unsent])
+                st.session_state.rep_msg = "บันทึกผู้เซ็นแล้ว"
+                _load(db, force=True)
+                st.rerun()
+            except Exception as e:
+                st.error(str(e))
     with st.expander("นำเข้าไฟล์รายงานเดือนเดิม (เช่น ต.ค.69.xlsx) — ใช้ครั้งแรก"):
-        st.caption("อ่านทุกแท็บ (d-m) พร้อมสถานะแท็บเขียว = ส่งการเงินแล้ว และรูปลายเซ็นในไฟล์ แท็บวันที่ซ้ำจะถูกแทนที่")
+        st.caption("อ่านทุกแท็บ (d-m) พร้อมสถานะแท็บเขียว = ส่งการเงินแล้ว, ผู้เซ็นของแต่ละแท็บ และรูปลายเซ็นในไฟล์ "
+                   "แท็บวันที่ซ้ำจะถูกแทนที่")
         mf = st.file_uploader("ไฟล์รายงานเดือน", type=["xlsx"], key="rep_month_up", label_visibility="collapsed")
         if mf is not None:
             try:
@@ -197,31 +231,24 @@ def render(ship_store):
                 st.error(f"อ่านไฟล์ไม่ได้: {e}")
                 tabs, msig = [], None
             if tabs:
+                last = (sorted(tabs, key=lambda t: t["date"])[-1].get("signer") or rc.DEFAULT_SIGNER)
                 st.write(f"พบ {len(tabs)} แท็บ: " + ", ".join(_label(t["date"]) + ("✅" if t["sent"] else "")
                                                             for t in sorted(tabs, key=lambda t: t["date"]))
+                         + f" · ผู้เซ็น {last['rank']} ({last['name']})"
                          + (" · มีรูปลายเซ็น" if msig else " · ไม่พบรูปลายเซ็น"))
                 if st.button("นำเข้า", type="primary", key="rep_import"):
                     try:
-                        db.put_days(tabs)
+                        sid = signer.get("id", "")
                         if msig:
-                            db.put_signature(msig)
+                            sid = db.put_signer(last["rank"], last["name"], msig, sid)
+                        for t in tabs:
+                            t["signer"] = dict(rc.DEFAULT_SIGNER, **(t.get("signer") or {}), id=sid)
+                        db.put_days(tabs)
                         st.session_state.rep_msg = f"นำเข้าแล้ว {len(tabs)} แท็บ"
                         _load(db, force=True)
                         st.rerun()
                     except Exception as e:
                         st.error(f"นำเข้าไม่สำเร็จ: {e}")
-    with st.expander("รูปลายเซ็น"):
-        if sig:
-            st.image(sig, width=260)
-        sf = st.file_uploader("เปลี่ยนรูปลายเซ็น (PNG/JPG เฉพาะส่วนลายเซ็น)", type=["png", "jpg", "jpeg"], key="rep_sig_up")
-        if sf is not None and st.button("บันทึกรูปลายเซ็น"):
-            try:
-                db.put_signature(rc.shrink_signature(sf.getvalue()))
-                st.session_state.rep_msg = "บันทึกรูปลายเซ็นแล้ว"
-                _load(db, force=True)
-                st.rerun()
-            except Exception as e:
-                st.error(str(e))
     if st.button("🔄 โหลดข้อมูลจากชีตใหม่"):
         _load(db, force=True)
         st.rerun()

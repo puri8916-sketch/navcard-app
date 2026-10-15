@@ -139,7 +139,13 @@ def parse_month(data):
         cards = _read_cards(ws, 4, lambda ws, r: "เรือเอก" in _s(ws.cell(r, 8).value)
                             or not any(_s(ws.cell(r, c).value).strip() for c in range(1, 15))
                             and not any(_s(ws.cell(r + k, c).value).strip() for k in (1, 2) for c in (1, 8)))
-        tabs.append({"date": _dmy(m.group(1)), "sent": sent, "cards": cards})
+        tab = {"date": _dmy(m.group(1)), "sent": sent, "cards": cards}
+        for r in range(4, ws.max_row + 1):
+            if "หัวหน้า" in _s(ws.cell(r, 8).value) and r > 6:
+                tab["signer"] = {"rank": _s(ws.cell(r - 2, 8).value).strip(),
+                                 "name": _s(ws.cell(r - 1, 8).value).strip().strip("()").strip()}
+                break
+        tabs.append(tab)
     return tabs, _signature_from_zip(data)
 
 
@@ -204,7 +210,10 @@ def _style(dst, src):
     dst._style = copy.copy(src._style)
 
 
-def _fill_sheet(ws, tpl, tab, sig_png):
+DEFAULT_SIGNER = {"rank": "เรือเอก", "name": "ธงชัย  มาบางยาง"}
+
+
+def _fill_sheet(ws, tpl, tab, sig_png, rank, name):
     # clear everything below the header that came with the copied template
     for mr in [m for m in ws.merged_cells.ranges if m.min_row >= 4]:
         ws.unmerge_cells(str(mr))
@@ -267,6 +276,8 @@ def _fill_sheet(ws, tpl, tab, sig_png):
             t.value = s.value
     for off, c0, c1 in _SIG_MERGES:
         ws.merge_cells(start_row=L + off, start_column=c0, end_row=L + off, end_column=c1)
+    ws.cell(L + 4, 8).value = "     " + rank          # same leading spaces as the office file
+    ws.cell(L + 5, 8).value = "    (" + name + ")"
     if sig_png:
         img = XLImage(io.BytesIO(sig_png))
         img.anchor = OneCellAnchor(
@@ -277,8 +288,12 @@ def _fill_sheet(ws, tpl, tab, sig_png):
     ws.sheet_properties.tabColor = Color(rgb=SENT_RGB) if tab.get("sent") else Color(theme=0)
 
 
-def build_month(tabs, sig_png=None):
-    """tabs (any order) -> xlsx bytes, one sheet per day named d-m, oldest first."""
+def build_month(tabs, sig_png=None, signer=None, pngs=None):
+    """tabs (any order) -> xlsx bytes, one sheet per day named d-m, oldest first.
+    Each tab is signed by the signer saved with it (tab['signer'] = {id, rank, name}); tabs without one use
+    `signer` (the current one) and `sig_png`. pngs = {signature id: png bytes}."""
+    cur = dict(DEFAULT_SIGNER, **(signer or {}))
+    pngs = pngs or {}
     wb = openpyxl.load_workbook(TEMPLATE)
     tpl = wb["TPL"]
     zoom = tpl.sheet_view.zoomScale
@@ -287,7 +302,9 @@ def build_month(tabs, sig_png=None):
         ws.title = tab_name(tab["date"])
         ws.sheet_view.zoomScale = zoom
         ws.sheet_view.tabSelected = False
-        _fill_sheet(ws, tpl, tab, sig_png)
+        ts = tab.get("signer") or {}
+        png = pngs.get(ts.get("id")) if ts.get("id") else None
+        _fill_sheet(ws, tpl, tab, png or sig_png, ts.get("rank") or cur["rank"], ts.get("name") or cur["name"])
     wb.remove(tpl)
     if wb.worksheets:
         wb.active = len(wb.worksheets) - 1
@@ -332,20 +349,25 @@ class SheetStore:
         return j
 
     def load(self):
-        """-> (days {iso: doc}, signature_png or None)"""
+        """-> (days {iso: doc}, signer {id, rank, name, png}, pngs {id: png})"""
         docs = self._get(action="load", since=0)["docs"]
-        days, sig = {}, None
+        days, pngs, signer = {}, {}, None
         for d in docs:
             if d.get("deleted") or not d.get("doc"):
                 continue
             if d["col"] == COL_DAYS:
                 days[d["id"]] = d["doc"]
-            elif d["col"] == COL_CFG and d["id"] == "signature":
+            elif d["col"] == COL_CFG and (d["id"].startswith("sig-") or d["id"] == "signature"):
                 try:
-                    sig = _b64.b64decode(d["doc"].get("png", ""))
+                    pngs["legacy" if d["id"] == "signature" else d["id"][4:]] = _b64.b64decode(d["doc"].get("png", ""))
                 except Exception:
-                    sig = None
-        return days, sig
+                    pass
+            elif d["col"] == COL_CFG and d["id"] == "signer":
+                signer = dict(d["doc"])
+        if signer is None:
+            signer = dict(DEFAULT_SIGNER, id="legacy" if "legacy" in pngs else "")
+        signer["png"] = pngs.get(signer.get("id"))
+        return days, signer, pngs
 
     def put_days(self, days):
         now = int(_time.time() * 1000)
@@ -356,12 +378,21 @@ class SheetStore:
     def delete_day(self, iso):
         self._post([{"op": "del", "col": COL_DAYS, "id": iso, "updated": int(_time.time() * 1000)}])
 
-    def put_signature(self, png):
-        b = _b64.b64encode(png).decode("ascii")
-        if len(b) > 48000:
-            raise ValueError("รูปลายเซ็นใหญ่เกินไป (ต้องไม่เกินประมาณ 35 KB) ลองครอปให้เหลือเฉพาะลายเซ็น")
-        self._post([{"op": "put", "col": COL_CFG, "id": "signature", "doc": {"png": b},
-                     "updated": int(_time.time() * 1000)}])
+    def put_signer(self, rank, name, png=None, cur_id=""):
+        """Save the current signer; a new picture is stored once under its own id (old tabs keep theirs)."""
+        now = int(_time.time() * 1000)
+        ops, sid = [], cur_id
+        if png:
+            import hashlib
+            sid = hashlib.sha1(png).hexdigest()[:10]
+            b = _b64.b64encode(png).decode("ascii")
+            if len(b) > 48000:
+                raise ValueError("รูปลายเซ็นใหญ่เกินไป (ต้องไม่เกินประมาณ 35 KB) ลองครอปให้เหลือเฉพาะลายเซ็น")
+            ops.append({"op": "put", "col": COL_CFG, "id": "sig-" + sid, "doc": {"png": b}, "updated": now})
+        ops.append({"op": "put", "col": COL_CFG, "id": "signer", "doc": {"id": sid, "rank": rank, "name": name},
+                    "updated": now})
+        self._post(ops)
+        return sid
 
 
 def shrink_signature(data, max_w=600):
