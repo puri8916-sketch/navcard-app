@@ -975,7 +975,7 @@ function wSummary(n){
 function wordDocXml(rows,from,to){
   const lines=[];let no=0;
   for(const r of rows){no++;
-    lines.push([String(no),r.c.vessel||"",r.tin||"-",r.tout||"-",r.berth,r.agent?`(${r.agent})`:""]);
+    lines.push([String(no),r.c.vessel||"",r.tin||"-",r.tout||"",r.berth,r.agent?`(${r.agent})`:""]);
     for(const s of r.shifts)lines.push(["","","",s.t||"-",s.from,s.to]);
   }
   const PER=31,pages=[];for(let i=0;i<lines.length;i+=PER)pages.push(lines.slice(i,i+PER));if(!pages.length)pages.push([]);
