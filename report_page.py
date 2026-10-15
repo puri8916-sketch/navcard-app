@@ -156,8 +156,10 @@ def render(ship_store):
             rows.append({"แท็บ": _label(d), "การ์ด": len(t.get("cards", [])),
                          "สรุป": rc.counts_text(t.get("cards", [])).replace("รวมทั้งหมด ", ""),
                          "ส่งการเงินแล้ว (แท็บเขียว)": bool(t.get("sent"))})
-        ed = st.data_editor(rows, key=f"rep_tabs_{ym}", hide_index=True, width="stretch",
-                            disabled=["แท็บ", "การ์ด", "สรุป"])
+        nsent = sum(r["ส่งการเงินแล้ว (แท็บเขียว)"] for r in rows)
+        with st.expander(f"รายการแท็บ ({len(rows)} แท็บ · ส่งการเงินแล้ว {nsent} · ยังไม่ส่ง {len(rows) - nsent})"):
+            ed = st.data_editor(rows, key=f"rep_tabs_{ym}", hide_index=True, width="stretch",
+                                disabled=["แท็บ", "การ์ด", "สรุป"])
         changed = [dict(days[d], sent=r["ส่งการเงินแล้ว (แท็บเขียว)"]) for d, r in zip(mdays, ed)
                    if bool(days[d].get("sent")) != r["ส่งการเงินแล้ว (แท็บเขียว)"]]
         if changed:
