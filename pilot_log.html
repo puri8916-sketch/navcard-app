@@ -411,6 +411,15 @@ table.reg{border-collapse:collapse;width:100%;min-width:520px}
         </div>
         <div id="bkConfirm" class="hint warn" hidden></div>
       </div>
+      <div class="cfgcard">
+        <h3>นำเข้าจากสมุดบันทึก</h3>
+        <span class="hint">ไฟล์ .json ที่ Claude ทำให้จากรูปถ่ายสมุด — เพิ่มรายการลงตามวันที่ของแต่ละรายการ ไม่ลบ/ไม่ทับของเดิม (รายการที่มีอยู่แล้ว วันเดียวกัน+ชื่อเรือเดียวกัน จะข้าม)</span>
+        <div class="toolbar">
+          <label class="btn" for="impFile">เลือกไฟล์นำเข้า…</label>
+          <input type="file" id="impFile" accept=".json,application/json" hidden>
+        </div>
+        <div id="impBox" class="hint" hidden></div>
+      </div>
     </div>
   </section>
 </div>
@@ -1453,6 +1462,37 @@ $("bkFile").onchange=async e=>{
     el("button",{class:"btn danger armed",onclick:()=>{for(const c of ["calls","vessels","config"])SS.replaceAll(c,parsed.data[c]||{});toast("กู้คืนข้อมูลแล้ว"+(SS.connected()?" กำลังซิงก์ขึ้น Google Sheet":""));box.hidden=true}},"แทนที่ข้อมูล"),
     " ",el("button",{class:"btn",onclick:()=>box.hidden=true},"ยกเลิก"));
   box.hidden=false;
+};
+/* ---------- import from the paper log (file prepared by Claude from photos): add only, never overwrite ---------- */
+const IMP_F=["job","vessel","from","eta","order","pilotIn","capIn","berth","draughtIn","loa","loaM","lbp","agent","atd","pilotOut","capOut","draughtOut","agentOut","remark","closeNo"];
+$("impFile").onchange=async e=>{
+  const f=e.target.files[0];e.target.value="";if(!f)return;
+  let list;try{const j=JSON.parse(await f.text());list=Array.isArray(j)?j:j.calls;if(!Array.isArray(list))throw 0}catch(_){toast("อ่านไฟล์นำเข้าไม่ได้");return}
+  const key=c=>c.date+"|"+norm(c.vessel||"");
+  const have=new Set(allCalls.map(key)),add=[],skip=[];
+  for(const r of list){
+    if(!r||!/^\d{4}-\d{2}-\d{2}$/.test(r.date||"")||!(r.vessel||"").trim()){skip.push((r&&r.vessel)||"?");continue}
+    if(have.has(key(r))){skip.push(beTab(r.date)+" "+r.vessel);continue}
+    have.add(key(r));add.push(r);
+  }
+  const box=$("impBox");box.replaceChildren();box.hidden=false;
+  const byDay={};add.forEach(r=>(byDay[r.date]=byDay[r.date]||[]).push(r.vessel));
+  box.append(el("div",{},`จะเพิ่ม ${add.length} รายการ`+(skip.length?` · ข้าม ${skip.length} (มีอยู่แล้ว/ข้อมูลไม่ครบ)`:"")),
+    ...Object.keys(byDay).sort().map(d=>el("div",{},`${beTab(d)}: ${byDay[d].join(", ")}`)),
+    skip.length?el("div",{},"ข้าม: "+skip.join(", ")):"");
+  if(!add.length)return;
+  box.append(el("div",{class:"toolbar"},el("button",{class:"btn primary",onclick:async ev=>{
+    ev.target.disabled=true;let i=0;
+    for(const r of add){
+      const d={date:r.date,by:beYY(r.date),fy:fyYY(r.date),t:Date.now()+i++,updated:Date.now(),status:r.status==="ปิดการเงิน"?"ปิดการเงิน":"",
+        invIn:!!r.invIn,invOut:!!r.invOut,shifts:(r.shifts||[]).map(s=>({order:s.order||"",pilot:s.pilot||"",capTime:s.capTime||"",fromBerth:(s.fromBerth||"").toUpperCase(),berth:(s.berth||"").toUpperCase(),draught:s.draught||"",agent:s.agent||""})),src:"สมุด"};
+      for(const k of IMP_F)d[k]=String(r[k]??"").trim();
+      ["from","lbp","berth"].forEach(k=>d[k]=d[k].toUpperCase());
+      if(!d.agentOut)d.agentOut=d.agent;
+      await db.collection("calls").add(d);
+    }
+    box.replaceChildren(`นำเข้าแล้ว ${add.length} รายการ`);toast(`นำเข้าแล้ว ${add.length} รายการ`);
+  }},"นำเข้า "+add.length+" รายการ"),el("button",{class:"btn",onclick:()=>box.hidden=true},"ยกเลิก")));
 };
 listeners.add(bkInfo);
 
