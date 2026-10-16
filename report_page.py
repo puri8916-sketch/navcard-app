@@ -209,6 +209,9 @@ def render(ship_store):
         rank = c2.text_input("คำนำหน้า (ยศ)", value=signer["rank"], key="rep_rank")
         name = c2.text_input("ชื่อ-สกุล (ในวงเล็บ)", value=signer["name"], key="rep_name")
         c2.caption("ตำแหน่ง: หัวหน้าสำนักงานนำร่องสงขลา (คงที่)")
+        d1, d2 = c2.columns(2)
+        dx = d1.number_input("เลื่อนลายเซ็น ขวา(+) / ซ้าย(−) px", value=int(signer.get("dx", rc.SIG_DX)), step=5, key="rep_dx")
+        dy = d2.number_input("เลื่อนลายเซ็น ลง(+) / ขึ้น(−) px", value=int(signer.get("dy", 0)), step=5, key="rep_dy")
         sf = st.file_uploader("รูปลายเซ็นใหม่ (PNG/JPG เฉพาะส่วนลายเซ็น) — เว้นว่างถ้าใช้รูปเดิม",
                               type=["png", "jpg", "jpeg"], key="rep_sig_up")
         unsent = sorted(d for d, t in days.items() if not t.get("sent"))
@@ -218,7 +221,7 @@ def render(ship_store):
         if st.button("บันทึกผู้เซ็น", type="primary", key="rep_sig_save"):
             try:
                 png = rc.shrink_signature(sf.getvalue()) if sf is not None else None
-                sid = db.put_signer(rank.strip(), name.strip(), png, signer.get("id", ""))
+                sid = db.put_signer(rank.strip(), name.strip(), png, signer.get("id", ""), int(dx), int(dy))
                 if also and unsent:
                     ref = {"id": sid, "rank": rank.strip(), "name": name.strip()}
                     db.put_days([dict(days[d], signer=ref) for d in unsent])
@@ -247,7 +250,8 @@ def render(ship_store):
                     try:
                         sid = signer.get("id", "")
                         if msig:
-                            sid = db.put_signer(last["rank"], last["name"], msig, sid)
+                            sid = db.put_signer(last["rank"], last["name"], msig, sid,
+                                                int(signer.get("dx", rc.SIG_DX)), int(signer.get("dy", 0)))
                         for t in tabs:
                             t["signer"] = dict(rc.DEFAULT_SIGNER, **(t.get("signer") or {}), id=sid)
                         db.put_days(tabs)

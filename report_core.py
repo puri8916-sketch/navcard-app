@@ -28,6 +28,8 @@ TH_MONTHS = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "
 _FIRST, _MID, _LAST = 4, 7, 5       # card first row / middle continuation row / last continuation row
 _SIG0, _SIG_N = 24, 6               # signature block = 6 rows starting right after the last data row
 _SIG_MERGES = [(3, 2, 4), (4, 2, 6), (5, 2, 6), (4, 8, 10), (5, 8, 12), (6, 8, 12)]   # (row offset, first col, last col)
+_PX = 9525                          # EMU per screen pixel
+SIG_DX = 18                         # default nudge (px) so the signature sits over the (name), not to its left
 _SIG_IMG = dict(col=7, col_off=688363, row_off=160883, cx=1707300, cy=818512)        # anchored on the 1st row after the data
 
 
@@ -213,7 +215,7 @@ def _style(dst, src):
 DEFAULT_SIGNER = {"rank": "เรือเอก", "name": "ธงชัย  มาบางยาง"}
 
 
-def _fill_sheet(ws, tpl, tab, sig_png, rank, name):
+def _fill_sheet(ws, tpl, tab, sig_png, rank, name, dx=0, dy=0):
     # clear everything below the header that came with the copied template
     for mr in [m for m in ws.merged_cells.ranges if m.min_row >= 4]:
         ws.unmerge_cells(str(mr))
@@ -281,7 +283,8 @@ def _fill_sheet(ws, tpl, tab, sig_png, rank, name):
     if sig_png:
         img = XLImage(io.BytesIO(sig_png))
         img.anchor = OneCellAnchor(
-            _from=AnchorMarker(col=_SIG_IMG["col"], colOff=_SIG_IMG["col_off"], row=L, rowOff=_SIG_IMG["row_off"]),
+            _from=AnchorMarker(col=_SIG_IMG["col"], colOff=max(0, _SIG_IMG["col_off"] + int(dx * _PX)), row=L,
+                               rowOff=max(0, _SIG_IMG["row_off"] + int(dy * _PX))),
             ext=XDRPositiveSize2D(_SIG_IMG["cx"], _SIG_IMG["cy"]))
         ws.add_image(img)
 
@@ -304,7 +307,8 @@ def build_month(tabs, sig_png=None, signer=None, pngs=None):
         ws.sheet_view.tabSelected = False
         ts = tab.get("signer") or {}
         png = pngs.get(ts.get("id")) if ts.get("id") else None
-        _fill_sheet(ws, tpl, tab, png or sig_png, ts.get("rank") or cur["rank"], ts.get("name") or cur["name"])
+        _fill_sheet(ws, tpl, tab, png or sig_png, ts.get("rank") or cur["rank"], ts.get("name") or cur["name"],
+                    cur.get("dx", SIG_DX), cur.get("dy", 0))
     wb.remove(tpl)
     if wb.worksheets:
         wb.active = len(wb.worksheets) - 1
@@ -379,7 +383,7 @@ class SheetStore:
         now = int(_time.time() * 1000)
         self._post([{"op": "del", "col": COL_DAYS, "id": d, "updated": now} for d in isos])
 
-    def put_signer(self, rank, name, png=None, cur_id=""):
+    def put_signer(self, rank, name, png=None, cur_id="", dx=SIG_DX, dy=0):
         """Save the current signer; a new picture is stored once under its own id (old tabs keep theirs)."""
         now = int(_time.time() * 1000)
         ops, sid = [], cur_id
@@ -390,7 +394,7 @@ class SheetStore:
             if len(b) > 48000:
                 raise ValueError("รูปลายเซ็นใหญ่เกินไป (ต้องไม่เกินประมาณ 35 KB) ลองครอปให้เหลือเฉพาะลายเซ็น")
             ops.append({"op": "put", "col": COL_CFG, "id": "sig-" + sid, "doc": {"png": b}, "updated": now})
-        ops.append({"op": "put", "col": COL_CFG, "id": "signer", "doc": {"id": sid, "rank": rank, "name": name},
+        ops.append({"op": "put", "col": COL_CFG, "id": "signer", "doc": {"id": sid, "rank": rank, "name": name, "dx": dx, "dy": dy},
                     "updated": now})
         self._post(ops)
         return sid
