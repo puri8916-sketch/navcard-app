@@ -25,6 +25,19 @@ def _load(db, force=False):
     return st.session_state.rep_days, st.session_state.rep_signer, st.session_state.rep_pngs
 
 
+def _month_xlsx(tabs, signer, pngs):
+    """Build the month workbook only when its content changed (building takes seconds; every click reruns the page)."""
+    import hashlib
+    import json
+    key = hashlib.md5(json.dumps([tabs, {k: v for k, v in signer.items() if k != "png"}, sorted(pngs)],
+                                 sort_keys=True, ensure_ascii=False, default=str).encode()).hexdigest()
+    c = st.session_state.get("rep_xlsx")
+    if not c or c[0] != key:
+        c = (key, rc.build_month(tabs, signer.get("png"), signer, pngs))
+        st.session_state.rep_xlsx = c
+    return c[1]
+
+
 def _sref(signer):
     return {"id": signer.get("id", ""), "rank": signer["rank"], "name": signer["name"]}
 
@@ -139,11 +152,13 @@ def render(ship_store):
                 st.warning("การ์ดเหล่านี้มีอยู่แล้วในแท็บอื่น: " + ", ".join(dup))
             if st.button("บันทึกลงรายงาน", type="primary"):
                 try:
-                    db.put_days([{"date": d, "sent": False, "cards": cs, "signer": _sref(signer)}
-                                 for d, cs in sorted(groups.items())])
+                    new = [{"date": d, "sent": False, "cards": cs, "signer": _sref(signer)}
+                           for d, cs in sorted(groups.items())]
+                    db.put_days(new)
+                    for t in new:                      # update the local copy instead of re-reading the whole sheet
+                        days[t["date"]] = t
                     st.session_state.rep_up_n = st.session_state.get("rep_up_n", 0) + 1
                     st.session_state.rep_msg = "บันทึกแล้ว: แท็บ " + ", ".join(_label(d) for d in sorted(groups))
-                    _load(db, force=True)
                     st.rerun()
                 except Exception as e:
                     st.error(f"บันทึกไม่สำเร็จ: {e}")
@@ -175,9 +190,10 @@ def render(ship_store):
                 if st.button(f"ยืนยันลบ {len(dels)} แท็บ", key="rep_del_go"):
                     try:
                         db.delete_days(dels)
+                        for d in dels:
+                            days.pop(d, None)
                         st.session_state.rep_del_n = st.session_state.get("rep_del_n", 0) + 1
                         st.session_state.rep_msg = "ลบแท็บ " + ", ".join(_label(d) for d in dels) + " แล้ว"
-                        _load(db, force=True)
                         st.rerun()
                     except Exception as e:
                         st.error(f"ลบไม่สำเร็จ: {e}")
@@ -194,7 +210,7 @@ def render(ship_store):
         fname = rc.month_file_name(y, m)
         if sig is None:
             st.warning("ยังไม่มีรูปลายเซ็น — ไฟล์จะมีชื่อผู้เซ็นแต่ไม่มีลายเซ็น (เพิ่มได้ในข้อ 3 ผู้เซ็น)")
-        st.download_button(f"⬇️ ดาวน์โหลด {fname}", data=rc.build_month([days[d] for d in mdays], sig, signer, pngs),
+        st.download_button(f"⬇️ ดาวน์โหลด {fname}", data=_month_xlsx([days[d] for d in mdays], signer, pngs),
                            file_name=fname, type="primary",
                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
