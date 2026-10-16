@@ -411,6 +411,7 @@
     font-size: 12px;
     white-space: nowrap;
   }
+  .history-header, ul#historyList, #exportShipsBtn, #importBtn { display: none !important; }
 </style>
 </head>
 <body>
@@ -484,7 +485,8 @@
   const THEME_KEY = 'calc3_2808_theme';
 
   // ---------- Persistence ----------
-  function loadHistory() {
+  // history list was removed from this page (ship lengths are still saved and synced)
+  function loadHistory() { history = []; return;
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
@@ -496,7 +498,7 @@
     }
   }
 
-  function saveHistory() {
+  function saveHistory() { return;
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
     } catch (err) {

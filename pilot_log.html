@@ -420,6 +420,16 @@ table.reg{border-collapse:collapse;width:100%;min-width:520px}
         </div>
         <div id="impBox" class="hint" hidden></div>
       </div>
+      <div class="cfgcard">
+        <h3>ความยาวเรือ (เครื่องคิดเลข ×3.2808)</h3>
+        <span class="hint" id="calcInfo"></span>
+        <div class="toolbar">
+          <button class="btn" id="calcExport" type="button">ส่งออกข้อมูลเรือ (.csv)</button>
+          <label class="btn" for="calcImport">นำเข้าจาก CSV…</label>
+          <input type="file" id="calcImport" accept=".csv,text/csv" multiple hidden>
+        </div>
+        <span class="hint" id="calcMsg" role="status"></span>
+      </div>
     </div>
   </section>
 </div>
@@ -1494,13 +1504,41 @@ $("impFile").onchange=async e=>{
     box.replaceChildren(`นำเข้าแล้ว ${add.length} รายการ`);toast(`นำเข้าแล้ว ${add.length} รายการ`);
   }},"นำเข้า "+add.length+" รายการ"),el("button",{class:"btn",onclick:()=>box.hidden=true},"ยกเลิก")));
 };
+/* ---------- calculator ship lengths (collection calcShips, shared with the ×3.2808 calculator) ---------- */
+const CALC_F=3.2808;
+function calcShips(){const o={};for(const [k,v] of Object.entries(SS.all("calcShips")))if(v&&!v.hidden)o[k]=v;return o}
+function calcInfo(){$("calcInfo").textContent=`จำไว้ ${Object.keys(calcShips()).length} ลำ (ใช้ในเมนู ⚓ รวมการ์ด)`}
+listeners.add(calcInfo);
+$("calcExport").onclick=()=>{
+  const sh=calcShips(),names=Object.keys(sh).sort();if(!names.length){$("calcMsg").textContent="ยังไม่มีข้อมูลเรือ";return}
+  const q=v=>/[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;
+  let c="ชื่อเรือ,ความยาว (เลขที่กรอก),ผลลัพธ์ (× 3.2808),บันทึกล่าสุด\n";
+  names.forEach(n=>{const d=sh[n];c+=[q(n),q(String(d.value??"")),q(String(d.result??"").replace(/,/g,"")),q(d.time||"")].join(",")+"\n"});
+  saveFile("ข้อมูลเรือ_"+new Date().toISOString().slice(0,10)+".csv",new Blob(["\uFEFF"+c],{type:"text/csv;charset=utf-8"}));
+};
+function csvLine(line){const out=[];let cur="",q=false;for(let i=0;i<line.length;i++){const ch=line[i];
+  if(q){if(ch==='"'){if(line[i+1]==='"'){cur+='"';i++}else q=false}else cur+=ch}else if(ch==='"')q=true;else if(ch===","){out.push(cur);cur=""}else cur+=ch}
+  out.push(cur);return out}
+$("calcImport").onchange=async e=>{
+  const files=[...e.target.files].sort((a,b)=>a.name.localeCompare(b.name));e.target.value="";if(!files.length)return;
+  const cur=SS.all("calcShips");let added=0,rows=0,skipped=0;
+  for(const f of files){
+    const lines=(await f.text()).replace(/^\uFEFF/,"").split(/\r?\n/).filter(l=>l.trim());if(!lines.length){skipped++;continue}
+    const h=csvLine(lines[0]).map(x=>x.trim()),iN=h.indexOf("ชื่อเรือ"),iV=h.findIndex(x=>x.startsWith("ตัวเลขที่กรอก")||x.includes("ความยาว")||x.includes("เลขที่กรอก")),iT=h.findIndex(x=>x==="เวลา"||x.includes("บันทึกล่าสุด"));
+    if(iN<0||iV<0){skipped++;continue}
+    for(const l of lines.slice(1)){const c=csvLine(l),name=(c[iN]||"").replace(/\s+/g," ").trim(),raw=(c[iV]||"").trim(),v=parseFloat(raw);
+      if(!name||isNaN(v))continue;if(!cur[name]||cur[name].hidden)added++;
+      SS.put("calcShips",name,{value:raw,result:Number((v*CALC_F).toFixed(4)).toLocaleString(),time:iT>=0?(c[iT]||"").trim():""},{quiet:true});rows++}
+  }
+  emit();$("calcMsg").textContent=`นำเข้าแล้ว: เรือใหม่ ${added} ลำ (อ่าน ${rows} แถว)`+(skipped?` · ข้าม ${skipped} ไฟล์ที่ไม่มีคอลัมน์ชื่อเรือ`:"");
+};
 listeners.add(bkInfo);
 
 /* ---------- boot ---------- */
 (function init(){
   if(window.__THEME__)document.documentElement.setAttribute("data-theme",window.__THEME__);
   let t="log";try{t=localStorage.getItem("pl.tab")||"log"}catch(e){}
-  setTab(t);setDate(curDate);renderCfg();renderVessels();bkInfo();
+  setTab(t);setDate(curDate);renderCfg();renderVessels();bkInfo();calcInfo();
   $("remarkList").append(el("option",{value:"ทำเที่ยวครบ"}));
   SS.onStatus(renderSync);
   { const c=SS.config(); if(c.url)$("syncUrl").value=c.url; }

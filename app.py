@@ -113,9 +113,9 @@ def _sync_script():
             "<script>" + js + "</script>\n")
 
 
-_P_LOG, _P_MERGE, _P_CALC = "📒 บันทึกเรือ", "⚓ รวมการ์ด", "🧮 เครื่องคิดเลข ×3.2808"
+_P_LOG, _P_MERGE = "📒 บันทึกเรือ", "⚓ รวมการ์ด"
 _P_REP = "📑 รายงานการปิดการ์ดนำร่อง"
-_PAGES = [_P_LOG, _P_REP, _P_MERGE, _P_CALC]
+_PAGES = [_P_LOG, _P_REP, _P_MERGE]
 if st.session_state.get("page_choice") not in _PAGES:
     st.session_state["page_choice"] = _PAGES[0]
 
@@ -192,13 +192,10 @@ if _page == _P_REP:
     report_page.render(_ship_store)
     st.stop()
 
-if _page == _P_CALC:
-    st.title("🧮 เครื่องคิดเลข ×3.2808")
-    st.caption("ความยาวเรือที่บันทึกที่นี่จะถูกใช้ในเมนู ⚓ รวมการ์ด โดยอัตโนมัติ "
-               "(ถ้าเชื่อมต่อ Google Sheet ในเมนู 📒 › ตั้งค่า แล้ว จะใช้ข้อมูลเดียวกันทุกเครื่อง)")
+def _calc_component(height):
+    """The ×3.2808 calculator (same synced ship lengths), shown beside the card merger."""
     with open(os.path.join(_HERE, "calc_3_2808.html"), encoding="utf-8") as _f:
         _calc_html = _f.read()
-    # follow the app's theme choice (the calculator keeps its own ☀️/🌙 button too)
     _defaults = nc.load_default_ships(os.path.join(_HERE, "ships.csv"))
     _calc_html = _calc_html.replace(
         "<script>", "<script>window.__DEFAULT_SHIPS__=" + json.dumps(_defaults, ensure_ascii=False).replace("</", "<\\/") + ";</script>\n<script>", 1)
@@ -207,243 +204,247 @@ if _page == _P_CALC:
         _calc_html = _calc_html.replace(
             "<script>",
             "<script>try{localStorage.setItem('calc3_2808_theme','" + _calc_theme + "');}catch(e){}</script>\n<script>", 1)
-    _l, _m, _r = st.columns([1, 2, 1])
-    with _m:
-        _calc_html = _calc_html.replace("<script>", _sync_script() + "<script>", 1)
-        components.html(_calc_html, height=900, scrolling=True)
-    st.stop()   # the card-merger UI below is only for the first page
-
-st.title("⚓ Navigation Card Merger")
-
-_store = _ship_store(key="ship_store", default=None)
-# ship lengths come from the calculator store only (ships.csv defaults now live in the sheet of the original port)
-_ship_memory = dict(nc.ship_memory_from_store(_store))
-for _nm, _d in ((_store or {}).get("ships") or {}).items():   # ships removed in the calculator
-    if isinstance(_d, dict) and _d.get("hidden"):
-        _ship_memory.pop(_nm, None)
-
-st.caption("อัปโหลดไฟล์ zip (NavigationCard PDFs + ReportCardIsClosedDaily.xlsx + CSV ตัวเลข) "
-           "ระบบจะตรวจสอบความครบถ้วนและรวมเป็น PDF เดียว")
-
-def _add_remarks():
-    """Button callback: parse the pasted '<card no> <message>' lines."""
-    rep = st.session_state.report
-    valid = [s["card_no"] for s in rep["ships"]] if rep else []
-    new_remarks, new_texts, notes = nc.parse_remark_lines(
-        st.session_state.get("remark_bulk_input", ""), valid)
-    replaced = [cn for cn in new_remarks if cn in st.session_state.remarks]
-    st.session_state.remarks.update(new_remarks)
-    st.session_state.remark_texts.update(new_texts)
-    st.session_state.remark_msg = {"added": list(new_remarks), "replaced": replaced, "notes": notes}
-    if new_remarks:
-        st.session_state.remark_bulk_input = ""   # clear the box once something was added
+    _calc_html = _calc_html.replace("<script>", _sync_script() + "<script>", 1)
+    components.html(_calc_html, height=height, scrolling=True)
 
 
-if "workdir" not in st.session_state:
-    st.session_state.workdir = tempfile.mkdtemp(prefix="navcard_")
-    st.session_state.report = None
-    st.session_state.remarks = {}
-    st.session_state.remark_texts = {}
-    st.session_state.loa_overrides = {}
-    st.session_state.data_fixes = {}
-    st.session_state.row_overrides = {}
+_main, _side = st.columns([5, 2], gap="large")
+with _side:
+    st.markdown("#### 🧮 เครื่องคิดเลข ×3.2808")
+    _calc_component(560)
 
-workdir = st.session_state.workdir
-card_dir = os.path.join(workdir, "card_zip")
-extracted_dir = os.path.join(workdir, "extracted")
+with _main:
+    st.title("⚓ Navigation Card Merger")
 
-uploaded = st.file_uploader("ไฟล์ zip ของชุดการ์ด", type="zip")
+    _store = _ship_store(key="ship_store", default=None)
+    # ship lengths come from the calculator store only (ships.csv defaults now live in the sheet of the original port)
+    _ship_memory = dict(nc.ship_memory_from_store(_store))
+    for _nm, _d in ((_store or {}).get("ships") or {}).items():   # ships removed in the calculator
+        if isinstance(_d, dict) and _d.get("hidden"):
+            _ship_memory.pop(_nm, None)
 
-if _store is None:
-    st.caption("⏳ กำลังอ่านความยาวเรือจากเครื่องคิดเลข...")
-elif _store.get("error"):
-    st.warning("อ่านข้อมูลความยาวเรือจากเบราว์เซอร์ไม่ได้ — ใส่ไฟล์ CSV ใน zip หรือกรอกเองด้านล่างแทน")
-else:
-    st.caption(f"🧮 ความยาวเรือที่จำไว้ในเครื่องคิดเลข: **{len(_ship_memory)}** ลำ"
-               + ("" if _ship_memory else " — ยังไม่มี: ไปเมนู เครื่องคิดเลข แล้วกด “นำเข้าจาก CSV เก่า”"))
+    st.caption("อัปโหลดไฟล์ zip (NavigationCard PDFs + ReportCardIsClosedDaily.xlsx + CSV ตัวเลข) "
+               "ระบบจะตรวจสอบความครบถ้วนและรวมเป็น PDF เดียว")
 
-col_a, col_b, col_c = st.columns([1, 1, 1])
-with col_a:
-    analyze_clicked = st.button("📋 ตรวจสอบความครบถ้วน", type="primary", disabled=uploaded is None)
-with col_b:
-    recheck_clicked = st.button("🔁 ตรวจสอบอีกครั้ง (ไฟล์เดิม)", disabled=st.session_state.report is None,
-                                help="ใช้หลังเพิ่มความยาวเรือในเครื่องคิดเลข ไม่ต้องอัปโหลด zip ซ้ำ")
-with col_c:
-    reset_clicked = st.button("🔄 เริ่มใหม่ (ล้างไฟล์ที่อัปโหลด)")
+    def _add_remarks():
+        """Button callback: parse the pasted '<card no> <message>' lines."""
+        rep = st.session_state.report
+        valid = [s["card_no"] for s in rep["ships"]] if rep else []
+        new_remarks, new_texts, notes = nc.parse_remark_lines(
+            st.session_state.get("remark_bulk_input", ""), valid)
+        replaced = [cn for cn in new_remarks if cn in st.session_state.remarks]
+        st.session_state.remarks.update(new_remarks)
+        st.session_state.remark_texts.update(new_texts)
+        st.session_state.remark_msg = {"added": list(new_remarks), "replaced": replaced, "notes": notes}
+        if new_remarks:
+            st.session_state.remark_bulk_input = ""   # clear the box once something was added
 
-if reset_clicked:
-    shutil.rmtree(workdir, ignore_errors=True)
-    for k in list(st.session_state.keys()):
-        del st.session_state[k]
-    st.rerun()
 
-if analyze_clicked and uploaded is not None:
-    shutil.rmtree(card_dir, ignore_errors=True)
-    shutil.rmtree(extracted_dir, ignore_errors=True)
-    os.makedirs(card_dir, exist_ok=True)
-    os.makedirs(extracted_dir, exist_ok=True)
-
-    with zipfile.ZipFile(uploaded) as z:
-        z.extractall(extracted_dir)
-
-    for fn in os.listdir(extracted_dir):
-        if fn.lower().endswith(".pdf"):
-            shutil.move(os.path.join(extracted_dir, fn), os.path.join(card_dir, fn))
-
-    xlsx_candidates = glob.glob(os.path.join(extracted_dir, "*.xlsx"))
-    csv_paths = glob.glob(os.path.join(extracted_dir, "*.csv"))
-
-    if not xlsx_candidates:
-        st.error("ไม่พบไฟล์ .xlsx ใน zip นี้ — ต้องมี ReportCardIsClosedDaily.xlsx")
-    else:
-        xlsx_path = xlsx_candidates[0]
-        report = nc.analyze_batch(card_dir, xlsx_path, csv_paths, ship_memory=_ship_memory)
-        st.session_state.report = report
-        st.session_state.upload_dt = nc.thai_now()
+    if "workdir" not in st.session_state:
+        st.session_state.workdir = tempfile.mkdtemp(prefix="navcard_")
+        st.session_state.report = None
         st.session_state.remarks = {}
         st.session_state.remark_texts = {}
         st.session_state.loa_overrides = {}
         st.session_state.data_fixes = {}
         st.session_state.row_overrides = {}
 
-if recheck_clicked and st.session_state.report is not None:
-    _x = glob.glob(os.path.join(extracted_dir, "*.xlsx"))
-    _c = glob.glob(os.path.join(extracted_dir, "*.csv"))
-    if _x and os.path.isdir(card_dir):
-        st.session_state.report = nc.analyze_batch(card_dir, _x[0], _c, ship_memory=_ship_memory)
-        st.success("ตรวจสอบใหม่แล้ว (ใช้ความยาวเรือล่าสุดจากเครื่องคิดเลข)")
+    workdir = st.session_state.workdir
+    card_dir = os.path.join(workdir, "card_zip")
+    extracted_dir = os.path.join(workdir, "extracted")
+
+    uploaded = st.file_uploader("ไฟล์ zip ของชุดการ์ด", type="zip")
+
+    if _store is None:
+        st.caption("⏳ กำลังอ่านความยาวเรือจากเครื่องคิดเลข...")
+    elif _store.get("error"):
+        st.warning("อ่านข้อมูลความยาวเรือจากเบราว์เซอร์ไม่ได้ — ใส่ไฟล์ CSV ใน zip หรือกรอกเองด้านล่างแทน")
     else:
-        st.error("ไม่พบไฟล์เดิมบนเซิร์ฟเวอร์แล้ว — กรุณาอัปโหลด zip ใหม่")
+        st.caption(f"🧮 ความยาวเรือที่จำไว้ในเครื่องคิดเลข: **{len(_ship_memory)}** ลำ"
+                   + ("" if _ship_memory else " — ยังไม่มี: เพิ่มในเครื่องคิดเลขด้านขวา หรือนำเข้าที่ 📒 บันทึกเรือ › ตั้งค่า"))
 
-report = st.session_state.report
+    col_a, col_b, col_c = st.columns([1, 1, 1])
+    with col_a:
+        analyze_clicked = st.button("📋 ตรวจสอบความครบถ้วน", type="primary", disabled=uploaded is None)
+    with col_b:
+        recheck_clicked = st.button("🔁 ตรวจสอบอีกครั้ง (ไฟล์เดิม)", disabled=st.session_state.report is None,
+                                    help="ใช้หลังเพิ่มความยาวเรือในเครื่องคิดเลข ไม่ต้องอัปโหลด zip ซ้ำ")
+    with col_c:
+        reset_clicked = st.button("🔄 เริ่มใหม่ (ล้างไฟล์ที่อัปโหลด)")
 
-if report is not None:
-    # sync manual length overrides from the input boxes first (so the messages below are never stale)
-    for _cn, _nm in report["unmatched_loa_ships"]:
-        _v = str(st.session_state.get(f"loa_{_cn}", "")).strip()
-        try:
-            if _v:
-                st.session_state.loa_overrides[_cn] = float(_v)
-            else:
-                st.session_state.loa_overrides.pop(_cn, None)
-        except ValueError:
-            st.session_state.loa_overrides.pop(_cn, None)
+    if reset_clicked:
+        shutil.rmtree(workdir, ignore_errors=True)
+        for k in list(st.session_state.keys()):
+            del st.session_state[k]
+        st.rerun()
 
-    complete = nc.is_batch_complete(report, st.session_state.loa_overrides)
-    n_ships = len(report["ships"])
-    n_matched_cards = len(report["card_map"])
+    if analyze_clicked and uploaded is not None:
+        shutil.rmtree(card_dir, ignore_errors=True)
+        shutil.rmtree(extracted_dir, ignore_errors=True)
+        os.makedirs(card_dir, exist_ok=True)
+        os.makedirs(extracted_dir, exist_ok=True)
 
-    st.subheader("ผลการตรวจสอบ")
-    st.write(f"พบ **{n_ships}** รายการใน report, **{n_matched_cards}** ไฟล์การ์ดเปล่า")
+        with zipfile.ZipFile(uploaded) as z:
+            z.extractall(extracted_dir)
 
-    problems = False
+        for fn in os.listdir(extracted_dir):
+            if fn.lower().endswith(".pdf"):
+                shutil.move(os.path.join(extracted_dir, fn), os.path.join(card_dir, fn))
 
-    if report["duplicates"]:
-        problems = True
-        st.error(f"⚠️ พบการ์ดเลขซ้ำ: {report['duplicates']}")
+        xlsx_candidates = glob.glob(os.path.join(extracted_dir, "*.xlsx"))
+        csv_paths = glob.glob(os.path.join(extracted_dir, "*.csv"))
 
-    if report["missing_card_pdf"]:
-        problems = True
-        st.error(f"⚠️ ขาดไฟล์การ์ดเปล่าสำหรับ: {', '.join(report['missing_card_pdf'])}")
-
-    if report["extra_cards_no_report_row"]:
-        st.warning(
-            f"ℹ️ การ์ดเปล่าที่ยังไม่มีแถวใน report (ตาราง For Staff จะว่าง): "
-            f"{', '.join(report['extra_cards_no_report_row'])}"
-        )
-
-    _missing = [(cn, nm) for cn, nm in report["unmatched_loa_ships"]
-                if cn not in st.session_state.loa_overrides]
-    if report["unmatched_loa_ships"]:
-        if _missing:
-            problems = True
-            st.error("⚠️ ไม่พบความยาวเรือ (ทั้งในเครื่องคิดเลขและ CSV) สำหรับ: "
-                     + ", ".join(f"{nm or cn}" for cn, nm in report["unmatched_loa_ships"]
-                                 if cn not in st.session_state.loa_overrides))
-            st.caption("ไปเพิ่มที่เมนู 🧮 เครื่องคิดเลข ×3.2808 แล้วกลับมากด “ตรวจสอบอีกครั้ง (ไฟล์เดิม)” "
-                       "หรือกรอกค่าชั่วคราวด้านล่าง")
-        _box = st.expander("กรอกความยาวเรือเอง (เฉพาะรอบนี้)", expanded=len(_missing) <= 6)
-        with _box:
-            for cn, name in report["unmatched_loa_ships"]:
-                cur = st.session_state.loa_overrides.get(cn, "")
-                val = st.text_input(f"{cn} ({name or '-'})", value=cur, key=f"loa_{cn}")
-                if val:
-                    try:
-                        st.session_state.loa_overrides[cn] = float(val)
-                    except ValueError:
-                        st.caption("ใส่ตัวเลขเท่านั้น")
-
-    if report["unused_csv_entries"]:
-        st.info(f"CSV มีรายการที่ไม่ได้ใช้ (ชื่อไม่ตรงกับเรือใดเลย): {report['unused_csv_entries']}")
-
-    st.divider()
-    st.subheader("รายการเรือทั้งหมด")
-    for s in report["ships"]:
-        cn = s["card_no"]
-        name = report["ship_names"].get(cn, "(ไม่มีไฟล์การ์ด)")
-        loa = report["loa_map"].get(cn)
-        _src = {"csv": "CSV", "memory": "เครื่องคิดเลข"}.get(report.get("loa_source", {}).get(cn), "")
-        if loa is not None:
-            loa_display = f"{loa}m ({_src})"
-        elif cn in st.session_state.loa_overrides:
-            loa_display = f"{st.session_state.loa_overrides[cn]}m (กรอกเอง)"
+        if not xlsx_candidates:
+            st.error("ไม่พบไฟล์ .xlsx ใน zip นี้ — ต้องมี ReportCardIsClosedDaily.xlsx")
         else:
-            loa_display = "❌ ไม่มี"
-        st.write(f"- **{cn}** — {name} — LOA: {loa_display} — {len(s['rows'])} legs")
+            xlsx_path = xlsx_candidates[0]
+            report = nc.analyze_batch(card_dir, xlsx_path, csv_paths, ship_memory=_ship_memory)
+            st.session_state.report = report
+            st.session_state.upload_dt = nc.thai_now()
+            st.session_state.remarks = {}
+            st.session_state.remark_texts = {}
+            st.session_state.loa_overrides = {}
+            st.session_state.data_fixes = {}
+            st.session_state.row_overrides = {}
 
-    st.divider()
-    st.subheader("✏️ เพิ่ม Remark (ถ้ามี)")
-    st.caption("วางได้หลายบรรทัดพร้อมกัน บรรทัดละ 1 การ์ด รูปแบบ: เลขการ์ด เว้นวรรค ข้อความ "
-               "— ระบบตัดบรรทัด ใส่สีแดงและฟอนต์ลายมือไทยให้เอง")
-    st.text_area(
-        "เลขการ์ด + ข้อความ Remark", key="remark_bulk_input", height=140,
-        placeholder="SGZ40/70 **แยกใบแจ้งหนี้เรือออก/ไม่มีเรือออก**\n"
-                    "SGZ41/70 แจ้งเรือออก: เปลี่ยนบริษัทหรือตัวแทนสายเรือ*แยกใบแจ้งหนี้เรือเข้า/ไม่มีเรือเข้า*",
-    )
-    st.button("➕ เพิ่ม Remark ทั้งหมดที่วาง", on_click=_add_remarks)
+    if recheck_clicked and st.session_state.report is not None:
+        _x = glob.glob(os.path.join(extracted_dir, "*.xlsx"))
+        _c = glob.glob(os.path.join(extracted_dir, "*.csv"))
+        if _x and os.path.isdir(card_dir):
+            st.session_state.report = nc.analyze_batch(card_dir, _x[0], _c, ship_memory=_ship_memory)
+            st.success("ตรวจสอบใหม่แล้ว (ใช้ความยาวเรือล่าสุดจากเครื่องคิดเลข)")
+        else:
+            st.error("ไม่พบไฟล์เดิมบนเซิร์ฟเวอร์แล้ว — กรุณาอัปโหลด zip ใหม่")
 
-    _msg = st.session_state.pop("remark_msg", None)
-    if _msg:
-        if _msg["added"]:
-            st.success("เพิ่มแล้ว: " + ", ".join(_msg["added"])
-                       + (f"  (แทนที่ของเดิม: {', '.join(_msg['replaced'])})" if _msg["replaced"] else ""))
-        for _n in _msg["notes"]:
-            st.warning(_n)
+    report = st.session_state.report
 
-    if st.session_state.remarks:
-        st.write("Remark ที่ตั้งไว้:")
-        for cn, lines in list(st.session_state.remarks.items()):
-            c1, c2 = st.columns([5, 1])
-            c1.markdown(f"**{cn}**")
-            c1.text(st.session_state.remark_texts.get(cn, " ".join(lines)))
-            if c2.button("ลบ", key=f"del_remark_{cn}"):
-                del st.session_state.remarks[cn]
-                st.session_state.remark_texts.pop(cn, None)
-                st.rerun()
+    if report is not None:
+        # sync manual length overrides from the input boxes first (so the messages below are never stale)
+        for _cn, _nm in report["unmatched_loa_ships"]:
+            _v = str(st.session_state.get(f"loa_{_cn}", "")).strip()
+            try:
+                if _v:
+                    st.session_state.loa_overrides[_cn] = float(_v)
+                else:
+                    st.session_state.loa_overrides.pop(_cn, None)
+            except ValueError:
+                st.session_state.loa_overrides.pop(_cn, None)
 
-    st.divider()
-    can_build = complete or st.checkbox(
-        "ยืนยันสร้าง PDF ทั้งที่ข้อมูลยังไม่ครบ (การ์ดที่ขาดข้อมูลจะถูกข้ามหรือเว้นว่างบางส่วน)"
-    )
+        complete = nc.is_batch_complete(report, st.session_state.loa_overrides)
+        n_ships = len(report["ships"])
+        n_matched_cards = len(report["card_map"])
 
-    if not complete:
-        st.warning("ข้อมูลยังไม่ครบตามเงื่อนไข — ตามปกติจะรอให้ครบก่อนค่อยสร้างไฟล์")
+        st.subheader("ผลการตรวจสอบ")
+        st.write(f"พบ **{n_ships}** รายการใน report, **{n_matched_cards}** ไฟล์การ์ดเปล่า")
 
-    if st.button("🛠️ สร้างไฟล์ PDF รวม", type="primary", disabled=not can_build):
-        out_path = os.path.join(workdir, "output.pdf")
-        nc.build_pdf(
-            card_dir, report,
-            loa_overrides=st.session_state.loa_overrides,
-            remarks=st.session_state.remarks,
-            data_fixes=st.session_state.data_fixes,
-            row_count_overrides=st.session_state.row_overrides,
-            output_path=out_path,
-        )
-        with open(out_path, "rb") as f:
-            st.download_button(
-                "⬇️ ดาวน์โหลดไฟล์ PDF รวม",
-                f.read(),
-                file_name=nc.thai_card_filename(st.session_state.get("upload_dt")),
-                mime="application/pdf",
+        problems = False
+
+        if report["duplicates"]:
+            problems = True
+            st.error(f"⚠️ พบการ์ดเลขซ้ำ: {report['duplicates']}")
+
+        if report["missing_card_pdf"]:
+            problems = True
+            st.error(f"⚠️ ขาดไฟล์การ์ดเปล่าสำหรับ: {', '.join(report['missing_card_pdf'])}")
+
+        if report["extra_cards_no_report_row"]:
+            st.warning(
+                f"ℹ️ การ์ดเปล่าที่ยังไม่มีแถวใน report (ตาราง For Staff จะว่าง): "
+                f"{', '.join(report['extra_cards_no_report_row'])}"
             )
-        st.success("สร้างไฟล์เสร็จแล้ว!")
+
+        _missing = [(cn, nm) for cn, nm in report["unmatched_loa_ships"]
+                    if cn not in st.session_state.loa_overrides]
+        if report["unmatched_loa_ships"]:
+            if _missing:
+                problems = True
+                st.error("⚠️ ไม่พบความยาวเรือ (ทั้งในเครื่องคิดเลขและ CSV) สำหรับ: "
+                         + ", ".join(f"{nm or cn}" for cn, nm in report["unmatched_loa_ships"]
+                                     if cn not in st.session_state.loa_overrides))
+                st.caption("เพิ่มในเครื่องคิดเลขด้านขวา แล้วกลับมากด “ตรวจสอบอีกครั้ง (ไฟล์เดิม)” "
+                           "หรือกรอกค่าชั่วคราวด้านล่าง")
+            _box = st.expander("กรอกความยาวเรือเอง (เฉพาะรอบนี้)", expanded=len(_missing) <= 6)
+            with _box:
+                for cn, name in report["unmatched_loa_ships"]:
+                    cur = st.session_state.loa_overrides.get(cn, "")
+                    val = st.text_input(f"{cn} ({name or '-'})", value=cur, key=f"loa_{cn}")
+                    if val:
+                        try:
+                            st.session_state.loa_overrides[cn] = float(val)
+                        except ValueError:
+                            st.caption("ใส่ตัวเลขเท่านั้น")
+
+        if report["unused_csv_entries"]:
+            st.info(f"CSV มีรายการที่ไม่ได้ใช้ (ชื่อไม่ตรงกับเรือใดเลย): {report['unused_csv_entries']}")
+
+        st.divider()
+        st.subheader("รายการเรือทั้งหมด")
+        for s in report["ships"]:
+            cn = s["card_no"]
+            name = report["ship_names"].get(cn, "(ไม่มีไฟล์การ์ด)")
+            loa = report["loa_map"].get(cn)
+            _src = {"csv": "CSV", "memory": "เครื่องคิดเลข"}.get(report.get("loa_source", {}).get(cn), "")
+            if loa is not None:
+                loa_display = f"{loa}m ({_src})"
+            elif cn in st.session_state.loa_overrides:
+                loa_display = f"{st.session_state.loa_overrides[cn]}m (กรอกเอง)"
+            else:
+                loa_display = "❌ ไม่มี"
+            st.write(f"- **{cn}** — {name} — LOA: {loa_display} — {len(s['rows'])} legs")
+
+        st.divider()
+        st.subheader("✏️ เพิ่ม Remark (ถ้ามี)")
+        st.caption("วางได้หลายบรรทัดพร้อมกัน บรรทัดละ 1 การ์ด รูปแบบ: เลขการ์ด เว้นวรรค ข้อความ "
+                   "— ระบบตัดบรรทัด ใส่สีแดงและฟอนต์ลายมือไทยให้เอง")
+        st.text_area(
+            "เลขการ์ด + ข้อความ Remark", key="remark_bulk_input", height=140,
+            placeholder="SGZ40/70 **แยกใบแจ้งหนี้เรือออก/ไม่มีเรือออก**\n"
+                        "SGZ41/70 แจ้งเรือออก: เปลี่ยนบริษัทหรือตัวแทนสายเรือ*แยกใบแจ้งหนี้เรือเข้า/ไม่มีเรือเข้า*",
+        )
+        st.button("➕ เพิ่ม Remark ทั้งหมดที่วาง", on_click=_add_remarks)
+
+        _msg = st.session_state.pop("remark_msg", None)
+        if _msg:
+            if _msg["added"]:
+                st.success("เพิ่มแล้ว: " + ", ".join(_msg["added"])
+                           + (f"  (แทนที่ของเดิม: {', '.join(_msg['replaced'])})" if _msg["replaced"] else ""))
+            for _n in _msg["notes"]:
+                st.warning(_n)
+
+        if st.session_state.remarks:
+            st.write("Remark ที่ตั้งไว้:")
+            for cn, lines in list(st.session_state.remarks.items()):
+                c1, c2 = st.columns([5, 1])
+                c1.markdown(f"**{cn}**")
+                c1.text(st.session_state.remark_texts.get(cn, " ".join(lines)))
+                if c2.button("ลบ", key=f"del_remark_{cn}"):
+                    del st.session_state.remarks[cn]
+                    st.session_state.remark_texts.pop(cn, None)
+                    st.rerun()
+
+        st.divider()
+        can_build = complete or st.checkbox(
+            "ยืนยันสร้าง PDF ทั้งที่ข้อมูลยังไม่ครบ (การ์ดที่ขาดข้อมูลจะถูกข้ามหรือเว้นว่างบางส่วน)"
+        )
+
+        if not complete:
+            st.warning("ข้อมูลยังไม่ครบตามเงื่อนไข — ตามปกติจะรอให้ครบก่อนค่อยสร้างไฟล์")
+
+        if st.button("🛠️ สร้างไฟล์ PDF รวม", type="primary", disabled=not can_build):
+            out_path = os.path.join(workdir, "output.pdf")
+            nc.build_pdf(
+                card_dir, report,
+                loa_overrides=st.session_state.loa_overrides,
+                remarks=st.session_state.remarks,
+                data_fixes=st.session_state.data_fixes,
+                row_count_overrides=st.session_state.row_overrides,
+                output_path=out_path,
+            )
+            with open(out_path, "rb") as f:
+                st.download_button(
+                    "⬇️ ดาวน์โหลดไฟล์ PDF รวม",
+                    f.read(),
+                    file_name=nc.thai_card_filename(st.session_state.get("upload_dt")),
+                    mime="application/pdf",
+                )
+            st.success("สร้างไฟล์เสร็จแล้ว!")
