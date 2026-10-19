@@ -898,8 +898,8 @@ async function buildPdfBlob(rows,title,sub,onPage){
 function monthTotals(f,t){
   const T={i:0,o:0,s:0,cap:0,inv:0},inR=x=>x&&x.iso.slice(0,7)>=f&&x.iso.slice(0,7)<=t,add=(x,k)=>{if(inR(x))T[k]++};
   for(const c of allCalls){
-    add(wParse(c.eta,c.date),invIn(c)?"inv":c.pilotIn==="-CAP-"?"cap":"i");
-    add(wParse(c.atd,c.date),invOut(c)?"inv":c.pilotOut==="-CAP-"?"cap":"o");
+    add(wParse(c.eta||(c.pilotIn==="-CAP-"?c.capIn:""),c.date),invIn(c)?"inv":c.pilotIn==="-CAP-"?"cap":"i");
+    add(wParse(c.atd||(c.pilotOut==="-CAP-"?c.capOut:""),c.date),invOut(c)?"inv":c.pilotOut==="-CAP-"?"cap":"o");
     (c.shifts||[]).forEach(s=>add(wParse(s.order,c.date),s.pilot==="-CAP-"?"cap":"s"));
   }
   return `เข้า ${T.i} · ออก ${T.o} · ย้ายท่า ${T.s} · รวม ${T.i+T.o+T.s} เที่ยว`+(T.cap?` · -CAP- ${T.cap}`:"")+(T.inv?` · แยกใบแจ้งหนี้ ${T.inv}`:"");
@@ -939,7 +939,7 @@ function wordRows(from,to){
   const inP=t=>t&&t.iso>=from&&t.iso<=to,dIn=c=>c.date>=from&&c.date<=to;
   const out=[];
   for(const c of allCalls){
-    const eT=wParse(c.eta,c.date),aT=wParse(c.atd,c.date),sh=(c.shifts||[]).map(s=>wParse(s.order,c.date));
+    const eT=wParse(c.eta||(c.pilotIn==="-CAP-"?c.capIn:""),c.date),aT=wParse(c.atd||(c.pilotOut==="-CAP-"?c.capOut:""),c.date),sh=(c.shifts||[]).map(s=>wParse(s.order||(s.pilot==="-CAP-"?s.capTime:""),c.date));
     if(!(inP(eT)||inP(aT)||sh.some(inP)||dIn(c)))continue;
     const inLeg=inP(eT)||(!eT&&!aT&&!sh.some(Boolean)&&dIn(c))||(!eT&&dIn(c)&&invIn(c));
     let tin="-",tout="";
