@@ -59,6 +59,11 @@ def _month_title(ym):
     return rc.month_file_name(y, m)[:-5]
 
 
+@st.cache_data(show_spinner=False, max_entries=20)
+def _parse_daily(data):
+    return rc.parse_daily(data)
+
+
 def setup(store):
     """Connect to the sheet (from secrets or this browser) and load the report data -> ctx dict, or None."""
     cfg = _cfg(store)
@@ -89,7 +94,7 @@ def step1(ctx, files):
     parsed, seen = [], set()
     for name, data in files:
         try:
-            parsed.append(rc.parse_daily(data))
+            parsed.append(_parse_daily(data))
         except Exception as e:
             st.error(f"{name}: {e}")
     if not parsed:

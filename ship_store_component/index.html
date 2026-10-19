@@ -31,7 +31,7 @@
     const cfg = readJSON(CFG);
     if (!cfg || !cfg.url) return null;
     const sep = cfg.url.indexOf('?') >= 0 ? '&' : '?';
-    const r = await fetch(cfg.url + sep + 'action=load&since=0&key=' + encodeURIComponent(cfg.key || ''));
+    const r = await fetch(cfg.url + sep + 'action=load&since=0&cols=calcShips&key=' + encodeURIComponent(cfg.key || ''));
     const j = await r.json();
     if (!j.ok) return null;
     const ships = readLocal().ships;

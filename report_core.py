@@ -354,7 +354,7 @@ class SheetStore:
 
     def load(self):
         """-> (days {iso: doc}, signer {id, rank, name, png}, pngs {id: png})"""
-        docs = self._get(action="load", since=0)["docs"]
+        docs = self._get(action="load", since=0, cols=COL_DAYS + "," + COL_CFG)["docs"]   # old scripts ignore cols
         days, pngs, signer = {}, {}, None
         for d in docs:
             if d.get("deleted") or not d.get("doc"):

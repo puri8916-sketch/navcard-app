@@ -52,7 +52,8 @@ function summary_(col, d, del) {
 }
 
 /** GET ?action=ping&key=…            → {ok, counts}
- *  GET ?action=load&key=…&since=SEQ   → {ok, now, docs:[{col,id,updated,deleted,doc}]} (changes after SEQ) */
+ *  GET ?action=load&key=…&since=SEQ   → {ok, now, docs:[{col,id,updated,deleted,doc}]} (changes after SEQ)
+ *      &cols=a,b                       → only those collections (smaller/faster answer) */
 function doGet(e) {
   const p = (e && e.parameter) || {};
   if (!authed_(p.key)) return out_({ ok: false, error: 'bad_key' });
@@ -65,10 +66,12 @@ function doGet(e) {
   const since = Number(p.since || 0);
   let now = Number(PropertiesService.getScriptProperties().getProperty('SEQ') || 0);
   const docs = [];
+  const only = p.cols ? String(p.cols).split(',') : null;
   rows.forEach(function (r) {
     const seq = Number(r[2]);
     if (seq > now) now = seq;
     if (seq <= since) return;
+    if (only && only.indexOf(String(r[0])) < 0) return;
     const del = r[4] === true;
     docs.push({ col: String(r[0]), id: String(r[1]), updated: Number(r[3]), deleted: del, doc: del ? null : JSON.parse(r[5] || 'null') });
   });

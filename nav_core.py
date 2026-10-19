@@ -154,23 +154,39 @@ def card_sort_key(card_no):
     return (year, num)
 
 
+_TEXT_CACHE = {}
+
+
+def _page_text(path):
+    """First-page text of a card PDF, read once (card no, ship name and LOA all come from it)."""
+    try:
+        key = (path, os.path.getmtime(path), os.path.getsize(path))
+    except OSError:
+        key = (path, 0, 0)
+    t = _TEXT_CACHE.get(key)
+    if t is None:
+        with pdfplumber.open(path) as pdf:
+            t = pdf.pages[0].extract_text() or ""
+        if len(_TEXT_CACHE) > 500:
+            _TEXT_CACHE.clear()
+        _TEXT_CACHE[key] = t
+    return t
+
+
 def extract_card_no(path):
-    with pdfplumber.open(path) as pdf:
-        t = pdf.pages[0].extract_text()
+    t = _page_text(path)
     m = re.search(r'Card no\. (\S+)', t)
     return m.group(1) if m else None
 
 
 def extract_ship_name(path):
-    with pdfplumber.open(path) as pdf:
-        t = pdf.pages[0].extract_text()
+    t = _page_text(path)
     m = re.search(r'Ship name : (.*?) Flag', t)
     return m.group(1).strip() if m else None
 
 
 def extract_loa_meters(path):
-    with pdfplumber.open(path) as pdf:
-        t = pdf.pages[0].extract_text()
+    t = _page_text(path)
     m = re.search(r'LOA \(m/f\) :\s*([\d.]+)', t)
     return float(m.group(1)) if m else None
 
