@@ -113,9 +113,8 @@ def _sync_script():
             "<script>" + js + "</script>\n")
 
 
-_P_LOG, _P_MERGE = "📒 บันทึกเรือ", "⚓ รวมการ์ด"
-_P_REP = "📑 รายงานการปิดการ์ดนำร่อง"
-_PAGES = [_P_LOG, _P_REP, _P_MERGE]
+_P_LOG, _P_CLOSE = "📒 บันทึกเรือ", "📑 ปิดการ์ดประจำวัน"
+_PAGES = [_P_LOG, _P_CLOSE]
 if st.session_state.get("page_choice") not in _PAGES:
     st.session_state["page_choice"] = _PAGES[0]
 
@@ -187,11 +186,6 @@ if _page == _P_LOG:
 _ship_store = components.declare_component(
     "ship_store", path=os.path.join(_HERE, "ship_store_component"))
 
-if _page == _P_REP:
-    import report_page
-    report_page.render(_ship_store)
-    st.stop()
-
 def _calc_component(height):
     """The ×3.2808 calculator (same synced ship lengths), shown beside the card merger."""
     with open(os.path.join(_HERE, "calc_3_2808.html"), encoding="utf-8") as _f:
@@ -214,7 +208,8 @@ with _side:
     _calc_component(560)
 
 with _main:
-    st.title("⚓ Navigation Card Merger")
+    import report_page
+    st.title("📑 ปิดการ์ดประจำวัน")
 
     _store = _ship_store(key="ship_store", default=None)
     # ship lengths come from the calculator store only (ships.csv defaults now live in the sheet of the original port)
@@ -223,8 +218,9 @@ with _main:
         if isinstance(_d, dict) and _d.get("hidden"):
             _ship_memory.pop(_nm, None)
 
-    st.caption("อัปโหลดไฟล์ zip (NavigationCard PDFs + ReportCardIsClosedDaily.xlsx + CSV ตัวเลข) "
-               "ระบบจะตรวจสอบความครบถ้วนและรวมเป็น PDF เดียว")
+    st.caption("โยนไฟล์ zip ชุดการ์ด (NavigationCard PDFs + ReportCardIsClosedDaily.xlsx + CSV ตัวเลข) ทีเดียว "
+               "— หลายวันใส่หลาย zip พร้อมกันได้ — แล้วทำทีละขั้น: 1) รายงานการปิดการ์ด 2) รวมการ์ดเป็น PDF เดียว "
+               "(ใส่แค่ ReportCardIsClosedDaily.xlsx ก็ได้ถ้าจะทำเฉพาะขั้นที่ 1)")
 
     def _add_remarks():
         """Button callback: parse the pasted '<card no> <message>' lines."""
@@ -253,7 +249,58 @@ with _main:
     card_dir = os.path.join(workdir, "card_zip")
     extracted_dir = os.path.join(workdir, "extracted")
 
-    uploaded = st.file_uploader("ไฟล์ zip ของชุดการ์ด", type="zip")
+    uploads = st.file_uploader("ไฟล์ zip ของชุดการ์ด หรือ ReportCardIsClosedDaily.xlsx", type=["zip", "xlsx"],
+                               accept_multiple_files=True, key=f"up_{st.session_state.get('up_n', 0)}")
+    # unpack once per new set of files: PDFs -> card_dir, xlsx/csv -> extracted_dir (zip by zip, so names can repeat)
+    _sig = tuple((u.name, u.size) for u in uploads)
+    if _sig != st.session_state.get("up_sig"):
+        st.session_state.up_sig = _sig
+        st.session_state.report = None
+        shutil.rmtree(card_dir, ignore_errors=True)
+        shutil.rmtree(extracted_dir, ignore_errors=True)
+        os.makedirs(card_dir, exist_ok=True)
+        os.makedirs(extracted_dir, exist_ok=True)
+        for _i, _u in enumerate(uploads):
+            _sub = os.path.join(extracted_dir, f"{_i:02d}")
+            os.makedirs(_sub, exist_ok=True)
+            if _u.name.lower().endswith(".xlsx"):
+                with open(os.path.join(_sub, _u.name), "wb") as _f:
+                    _f.write(_u.getvalue())
+                continue
+            try:
+                with zipfile.ZipFile(_u) as z:
+                    z.extractall(_sub)
+            except zipfile.BadZipFile:
+                st.error(f"{_u.name}: ไม่ใช่ไฟล์ zip")
+                continue
+            for _root, _dirs, _files in os.walk(_sub):
+                for fn in _files:
+                    if fn.lower().endswith(".pdf"):
+                        shutil.move(os.path.join(_root, fn), os.path.join(card_dir, f"{_i:02d}_{fn}"))
+    _xlsx = sorted(glob.glob(os.path.join(extracted_dir, "**", "*.xlsx"), recursive=True))
+    _xlsx = [p for p in _xlsx if not os.path.basename(p).startswith("~$")]
+    _csvs = sorted(glob.glob(os.path.join(extracted_dir, "**", "*.csv"), recursive=True))
+    _has_cards = os.path.isdir(card_dir) and any(f.lower().endswith(".pdf") for f in os.listdir(card_dir))
+
+    # ---------------------------------------------------------------- step 1: closing report (monthly workbook)
+    st.subheader("ขั้นที่ 1 · รายงานการปิดการ์ดนำร่อง")
+    _ctx = report_page.setup(_store)
+    if not uploads:
+        st.caption("วางไฟล์ด้านบนเพื่อเริ่ม")
+    elif not _xlsx:
+        st.error("ไม่พบ ReportCardIsClosedDaily.xlsx ในไฟล์ที่วาง")
+    elif _ctx:
+        _files = []
+        for _p in _xlsx:
+            with open(_p, "rb") as _f:
+                _files.append((os.path.basename(_p), _f.read()))
+        report_page.step1(_ctx, _files)
+
+    # ---------------------------------------------------------------- step 2: merge the navigation cards
+    st.divider()
+    st.subheader("ขั้นที่ 2 · รวมการ์ดนำร่อง (PDF)")
+    if uploads and not _has_cards:
+        st.caption("ไม่มีไฟล์การ์ด (PDF) ในที่วาง — ข้ามขั้นนี้ หรือวาง zip ชุดการ์ด")
 
     if _store is None:
         st.caption("⏳ กำลังอ่านความยาวเรือจากเครื่องคิดเลข...")
@@ -265,7 +312,7 @@ with _main:
 
     col_a, col_b, col_c = st.columns([1, 1, 1])
     with col_a:
-        analyze_clicked = st.button("📋 ตรวจสอบความครบถ้วน", type="primary", disabled=uploaded is None)
+        analyze_clicked = st.button("📋 ตรวจสอบความครบถ้วน", type="primary", disabled=not (_has_cards and _xlsx))
     with col_b:
         recheck_clicked = st.button("🔁 ตรวจสอบอีกครั้ง (ไฟล์เดิม)", disabled=st.session_state.report is None,
                                     help="ใช้หลังเพิ่มความยาวเรือในเครื่องคิดเลข ไม่ต้องอัปโหลด zip ซ้ำ")
@@ -278,43 +325,22 @@ with _main:
             del st.session_state[k]
         st.rerun()
 
-    if analyze_clicked and uploaded is not None:
-        shutil.rmtree(card_dir, ignore_errors=True)
-        shutil.rmtree(extracted_dir, ignore_errors=True)
-        os.makedirs(card_dir, exist_ok=True)
-        os.makedirs(extracted_dir, exist_ok=True)
-
-        with zipfile.ZipFile(uploaded) as z:
-            z.extractall(extracted_dir)
-
-        for fn in os.listdir(extracted_dir):
-            if fn.lower().endswith(".pdf"):
-                shutil.move(os.path.join(extracted_dir, fn), os.path.join(card_dir, fn))
-
-        xlsx_candidates = glob.glob(os.path.join(extracted_dir, "*.xlsx"))
-        csv_paths = glob.glob(os.path.join(extracted_dir, "*.csv"))
-
-        if not xlsx_candidates:
-            st.error("ไม่พบไฟล์ .xlsx ใน zip นี้ — ต้องมี ReportCardIsClosedDaily.xlsx")
-        else:
-            xlsx_path = xlsx_candidates[0]
-            report = nc.analyze_batch(card_dir, xlsx_path, csv_paths, ship_memory=_ship_memory)
-            st.session_state.report = report
-            st.session_state.upload_dt = nc.thai_now()
-            st.session_state.remarks = {}
-            st.session_state.remark_texts = {}
-            st.session_state.loa_overrides = {}
-            st.session_state.data_fixes = {}
-            st.session_state.row_overrides = {}
+    if analyze_clicked and _has_cards and _xlsx:
+        report = nc.analyze_batch(card_dir, _xlsx, _csvs, ship_memory=_ship_memory)
+        st.session_state.report = report
+        st.session_state.upload_dt = nc.thai_now()
+        st.session_state.remarks = {}
+        st.session_state.remark_texts = {}
+        st.session_state.loa_overrides = {}
+        st.session_state.data_fixes = {}
+        st.session_state.row_overrides = {}
 
     if recheck_clicked and st.session_state.report is not None:
-        _x = glob.glob(os.path.join(extracted_dir, "*.xlsx"))
-        _c = glob.glob(os.path.join(extracted_dir, "*.csv"))
-        if _x and os.path.isdir(card_dir):
-            st.session_state.report = nc.analyze_batch(card_dir, _x[0], _c, ship_memory=_ship_memory)
+        if _xlsx and _has_cards:
+            st.session_state.report = nc.analyze_batch(card_dir, _xlsx, _csvs, ship_memory=_ship_memory)
             st.success("ตรวจสอบใหม่แล้ว (ใช้ความยาวเรือล่าสุดจากเครื่องคิดเลข)")
         else:
-            st.error("ไม่พบไฟล์เดิมบนเซิร์ฟเวอร์แล้ว — กรุณาอัปโหลด zip ใหม่")
+            st.error("ไม่พบไฟล์เดิมบนเซิร์ฟเวอร์แล้ว — กรุณาวาง zip ใหม่")
 
     report = st.session_state.report
 
@@ -448,3 +474,9 @@ with _main:
                     mime="application/pdf",
                 )
             st.success("สร้างไฟล์เสร็จแล้ว!")
+
+    # ---------------------------------------------------------------- monthly workbook + signer (less often)
+    st.divider()
+    if _ctx:
+        st.subheader("📁 ไฟล์รายงานการปิดการ์ดประจำเดือน")
+        report_page.month_and_settings(_ctx)

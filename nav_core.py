@@ -177,7 +177,16 @@ def extract_loa_meters(path):
 
 def parse_ships(xlsx_path):
     """Parse the ReportCardIsClosedDaily.xlsx into a list of
-    {'card_no':, 'rows': [{'item','day','month','time','draft','berth','pilot'}]}."""
+    {'card_no':, 'rows': [{'item','day','month','time','draft','berth','pilot'}]}.
+    A list of paths (several days' exports) is read one after another; a card found twice is kept once."""
+    if isinstance(xlsx_path, (list, tuple)):
+        out, seen = [], set()
+        for p in xlsx_path:
+            for s in parse_ships(p):
+                if s['card_no'] not in seen:
+                    seen.add(s['card_no'])
+                    out.append(s)
+        return out
     wb = openpyxl.load_workbook(xlsx_path, data_only=True)
     ws = wb.active
     rows = list(ws.iter_rows(min_row=1, max_row=ws.max_row, values_only=True))
