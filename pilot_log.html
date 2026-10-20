@@ -278,6 +278,7 @@ table.reg{border-collapse:collapse;width:100%;min-width:520px}
 .log thead tr:not(.grp) th:nth-child(n+12):nth-child(-n+15){background:var(--out-h);color:var(--out-ink)}
 .log tbody tr:not(.dgroup) td:nth-child(n+4):nth-child(-n+8){background-image:linear-gradient(var(--in-b),var(--in-b))}
 .log tbody tr:not(.dgroup) td:nth-child(n+12):nth-child(-n+15){background-image:linear-gradient(var(--out-b),var(--out-b))}
+.stbtn{cursor:pointer;border:1px solid transparent;font:inherit;font-size:12px;line-height:1.4}.stbtn.off{background:transparent;border:1px dashed var(--line);color:var(--muted)}.stbtn.off:hover{border-color:var(--ok-ink,#16612a);color:var(--ok-ink,#16612a)}.stbtn.ok:hover{filter:brightness(.95)}
 </style>
 </head>
 <body>
@@ -749,7 +750,13 @@ function closeCell(c,rows,idx){
       onblur:()=>{inp.placeholder="";if(inp.dataset.done){delete inp.dataset.done;return}saveCloseNo(c,inp.value)}});
     wrap.append(inp);
   }else if(c.closeNo)wrap.append(el("span",{class:"val"},hl(c.closeNo)));
-  if(c.status)wrap.append(statusChip(c.status));
+  if(canWrite&&db&&!markMode){
+    // click to toggle ปิดการเงิน right in the table
+    const on=c.status==="ปิดการเงิน";
+    wrap.append(el("button",{type:"button",class:"chip sm stbtn"+(on?" ok":" off"),title:on?"ปิดการเงินแล้ว · คลิกเพื่อยกเลิก":"คลิกเพื่อปิดการเงิน","aria-pressed":String(on),
+      onclick:async e=>{e.stopPropagation();e.currentTarget.disabled=true;const {id,...rest}=c;
+        try{await db.collection("calls").doc(id).set({...rest,status:on?"":"ปิดการเงิน",updated:Date.now()})}catch(err){toast("บันทึกไม่สำเร็จ ("+(err.code||"error")+")")}}},on?"✓ ปิด":"ปิด"));
+  }else if(c.status)wrap.append(statusChip(c.status));
   return wrap.childNodes.length?wrap:"";
 }
 $("cf").addEventListener("input",()=>{closeF=$("cf").value.trim();if(closeF&&scope!=="all"){scope="all";setSeg("scopeSeg","all")}renderLog()});
