@@ -1260,6 +1260,8 @@ function checkShip(){const v=vByName.get(norm($("fShip").value));$("newShipHint"
 $("fShip").addEventListener("input",()=>{
   const v=vByName.get(norm($("fShip").value));
   if(v){$("fLoa").value=v.loa||"";const o=$("fAgent").value;$("fAgent").value=v.agent||"";if(!$("fAgentOut").value.trim()||$("fAgentOut").value.trim()===o.trim())$("fAgentOut").value=v.agent||""}
+  {const n=norm($("fShip").value),last=n&&allCalls.filter(c=>c!==editing&&c.id!==editing?.id&&norm(c.vessel)===n&&c.from).sort((x,y)=>(y.date||"").localeCompare(x.date||"")||(y.t||0)-(x.t||0))[0];
+   if(last&&!$("fFrom").value.trim()){$("fFrom").value=last.from;if(!$("fLbp").value.trim())$("fLbp").value=last.from}}
   checkShip();
 });
 $("addShipFromForm").onclick=async()=>{
