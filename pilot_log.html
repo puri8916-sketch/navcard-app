@@ -54,6 +54,11 @@ nav.tabs button[aria-selected="true"]{background:var(--accent);color:var(--accen
 .ibtn:hover{background:var(--hover)}
 input[type=date]{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:3px 6px;height:30px}
 .btn{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:6px 12px;cursor:pointer;white-space:nowrap}
+.btn.grpA{background:var(--gA-bg);border-color:var(--gA-bd);color:var(--gA-ink)}.btn.grpA:hover{filter:brightness(.96)}
+.btn.grpB{background:var(--gB-bg);border-color:var(--gB-bd);color:var(--gB-ink)}.btn.grpB:hover{filter:brightness(.96)}
+:root{--gA-bg:#e8f0fd;--gA-bd:#9db8ea;--gA-ink:#1c3fa6;--gB-bg:#e9f6ec;--gB-bd:#92c9a0;--gB-ink:#16612a}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--gA-bg:#1c2a45;--gA-bd:#3c5a94;--gA-ink:#b9cdf5;--gB-bg:#17321f;--gB-bd:#3b7a4c;--gB-ink:#a9e0b8}}
+:root[data-theme="dark"]{--gA-bg:#1c2a45;--gA-bd:#3c5a94;--gA-ink:#b9cdf5;--gB-bg:#17321f;--gB-bd:#3b7a4c;--gB-ink:#a9e0b8}
 .btn:hover{background:var(--hover)}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:500}
 .btn.primary:hover{filter:brightness(1.08)}
@@ -287,10 +292,10 @@ table.reg{border-collapse:collapse;width:100%;min-width:520px}
           <span class="hint">คลิกช่องในตารางเพื่อมาร์ก · คลิกซ้ำเพื่อลบ</span>
         </span>
       </div>
-      <button class="btn" id="wordBtn" type="button" hidden title="ไฟล์ Word รายการเรือ เข้า-ออก (SAMARN)">รายงานSMS</button>
-      <button class="btn" id="pdfBtn" type="button" hidden>สมุดประจำเดือน</button>
-      <button class="btn" id="bigBtn" type="button" hidden title="Excel: จำนวนเรือแยกตามขนาดชั้นใบอนุญาตผู้นำร่อง ประจำเดือน">สรุปเรือนำร่อง</button>
-      <button class="btn" id="statBtn" type="button" hidden title="จำนวนเรือเข้า-ออก-เลื่อน-ค้างท่า พร้อมเน็ต (N.R.T.) / กร๊อส (G.R.T.) จากการ์ด">รายงานสถิติเรือ</button>
+      <button class="btn grpA" id="wordBtn" type="button" hidden title="ไฟล์ Word รายการเรือ เข้า-ออก (SAMARN)">รายงานSMS</button>
+      <button class="btn grpA" id="pdfBtn" type="button" hidden>สมุดประจำเดือน</button>
+      <button class="btn grpB" id="bigBtn" type="button" hidden title="Excel: จำนวนเรือแยกตามขนาดชั้นใบอนุญาตผู้นำร่อง ประจำเดือน">สรุปเรือนำร่อง</button>
+      <button class="btn grpB" id="statBtn" type="button" hidden title="จำนวนเรือเข้า-ออก-เลื่อน-ค้างท่า พร้อมเน็ต (N.R.T.) / กร๊อส (G.R.T.) จากการ์ด">รายงานสถิติเรือ</button>
       <button class="btn primary" id="addBtn">+ เพิ่มเรือ</button>
     </div>
     <div class="pdfbar" id="bigBar" hidden>
