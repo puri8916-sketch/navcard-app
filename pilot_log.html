@@ -1010,7 +1010,8 @@ function wordRows(from,to){
     else if(invOut(c)&&dIn(c))tout=W_CHANGE;
     const agent=(inLeg&&!invIn(c))?(c.agent||c.agentOut||""):(c.agentOut||c.agent||"");
     const firstIn=[eT,aT,...sh].filter(inP).map(t=>t.key).sort()[0]||c.date;
-    const shAll=(c.shifts||[]).map((s,i)=>({i,t:inP(sh[i])?(s.pilot==="-CAP-"?"-CAP-":sh[i].txt):"-",from:s.fromBerth||"",to:s.berth||""}));
+    // only shifts inside the report period (earlier ones were already sent in an earlier report)
+    const shAll=(c.shifts||[]).map((s,i)=>({i,t:inP(sh[i])?(s.pilot==="-CAP-"?"-CAP-":sh[i].txt):"-",from:s.fromBerth||"",to:s.berth||""})).filter(x=>x.t!=="-");
     // legs of this call that belong in this report (used to remember what was sent)
     const legs={in:tin!=="-",out:!!tout&&tout!=="-",sh:shAll.filter(x=>x.t!=="-").map(x=>x.i)};
     const key=inLeg&&eT?"1"+eT.key:"0"+firstIn+String(c.t||0).padStart(14,"0");
