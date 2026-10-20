@@ -305,6 +305,7 @@ table.reg{border-collapse:collapse;width:100%;min-width:520px}
       <b>รายงานสถิติเรือ</b>
       <label for="statMonth">เดือน <input type="month" id="statMonth"></label>
       <button class="btn" id="statCopy" type="button">คัดลอกตัวเลข</button>
+      <button class="btn" id="tonImpBtn" type="button" title="ไฟล์ .json หรือ .csv (ชื่อเรือ, G.R.T., N.R.T.)">นำเข้า G.R.T./N.R.T.</button><input type="file" id="tonImpFile" accept=".json,.csv,text/csv,application/json" hidden>
       <button class="linkbtn" id="statClose" type="button">ปิด</button>
       <span class="hint" id="statMsg" role="status"></span>
       <div id="statOut" style="flex-basis:100%"></div>
@@ -1226,6 +1227,19 @@ function statInfo(){const ym=$("statMonth").value;if(!ym){$("statOut").innerHTML
 $("statBtn").onclick=()=>{const b=$("statBar");b.hidden=!b.hidden;if(!b.hidden){if(!$("statMonth").value){const [y,m]=curDate.slice(0,7).split("-").map(Number),p=m===1?[y-1,12]:[y,m-1];$("statMonth").value=p[0]+"-"+String(p[1]).padStart(2,"0")}$("statMsg").textContent="";statInfo()}};
 $("statClose").onclick=()=>{$("statBar").hidden=true};
 $("statMonth").addEventListener("input",statInfo);
+// import G.R.T./N.R.T.: {"app":"tonnage-import","ships":[{name,grt,nrt,imo}]} | bare array | CSV (name,grt,nrt[,imo])
+$("tonImpBtn").onclick=()=>$("tonImpFile").click();
+$("tonImpFile").onchange=async e=>{const f=e.target.files[0];e.target.value="";if(!f)return;
+  const nb=v=>{const n=parseFloat(String(v??"").replace(/,/g,""));return n>0?n:null};
+  try{const txt=(await f.text()).replace(/^﻿/,"");let rows=[];
+    if(/^\s*[\[{]/.test(txt)){const j=JSON.parse(txt);rows=Array.isArray(j)?j:(j.ships||j.tonnage||[])}
+    else rows=txt.split(/\r?\n/).map(l=>l.split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/).map(x=>x.replace(/^"|"$/g,"").trim())).filter(r=>r[0]&&(nb(r[1])!=null||nb(r[2])!=null)).map(r=>({name:r[0],grt:r[1],nrt:r[2],imo:r[3]||""}));
+    let n=0,same=0;
+    for(const r of rows){const name=String(r.name||r.vessel||"").trim().toUpperCase(),grt=nb(r.grt),nrt=nb(r.nrt);if(!name||(grt==null&&nrt==null))continue;
+      const k=tKey(name),o=tonMap.get(k);if(o&&+o.grt===grt&&+o.nrt===nrt){same++;continue}
+      await db.collection("tonnage").doc(k).set({name,grt,nrt,imo:r.imo||o?.imo||"",card:r.card||o?.card||"",src:"นำเข้า"});n++}
+    $("statMsg").textContent=`นำเข้า G.R.T./N.R.T. ${n} ลำ`+(same?` · มีค่าเดิมอยู่แล้ว ${same} ลำ`:"");statInfo()}
+  catch(err){$("statMsg").textContent="อ่านไฟล์ไม่ได้ ("+(err.message||err)+")"}};
 $("statCopy").onclick=async()=>{const t=[["","ลำ","เน็ต","กร๊อส"].join("\t"),...statRows.map(([l,x])=>[l,fN(x.n),fN(x.nrt),fN(x.grt)].join("\t"))].join("\n");
   try{await navigator.clipboard.writeText(t);$("statMsg").textContent="คัดลอกแล้ว (วางใน Excel/Word ได้)"}catch(e){$("statMsg").textContent="คัดลอกไม่ได้ในเบราว์เซอร์นี้"}};
 
