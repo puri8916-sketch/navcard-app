@@ -77,6 +77,13 @@ input[type=date]{border:1px solid var(--line);background:var(--surface);border-r
 .tablebox{overflow:auto;max-height:calc(100vh - 130px);min-height:260px;overscroll-behavior:contain}
 .log thead{position:sticky;top:0;z-index:3}
 .dglab{position:sticky;left:10px;display:inline-block}
+/* fit the full width: tighter cells, long text columns wrap */
+.log th,.log td{padding:5px 6px}
+.log td.mono{font-size:13.5px;letter-spacing:-.02em}
+.log td .chip.ok.sm{padding:1px 6px;font-size:12px}
+.log tbody td:nth-child(2),.log tbody td:nth-child(7),.log tbody td:nth-child(11),.log tbody td:nth-child(15),.log tbody td:nth-child(16){white-space:normal;overflow-wrap:break-word}
+.log tbody td:nth-child(2){min-width:150px;max-width:210px}.log tbody td:nth-child(7){max-width:118px}.log tbody td:nth-child(11),.log tbody td:nth-child(15){min-width:64px;max-width:100px}.log tbody td:nth-child(16){max-width:110px}
+.log tbody tr.dgroup td{white-space:nowrap;max-width:none}
 .log thead tr:not(.grp) th:nth-child(1),.log thead tr:not(.grp) th:nth-child(2){z-index:4}
 table.log{border-collapse:separate;border-spacing:0;width:100%;min-width:1240px;font-variant-numeric:tabular-nums;font-size:13px;
   --grid:color-mix(in srgb,var(--line) 70%,transparent);--zebra:color-mix(in srgb,var(--bg) 60%,var(--surface));--head:color-mix(in srgb,var(--accent-soft) 40%,var(--surface))}
@@ -565,7 +572,7 @@ function pilotChip(p){if(!p)return "";return p==="-CAP-"?el("span",{class:"chip 
 function capSplit(v){v=String(v||"").trim();const m=v.match(/^(?:-?CAP-?|000)(?=\s|$)\s*(.*)$/i);return m?{p:"-CAP-",t:m[1].trim()}:{p:v,t:""}}
 function capRaw(p,t){return p==="-CAP-"&&t?"-CAP- "+t:(p||"")}
 function capCell(p,t){return p==="-CAP-"&&t?el("span",{},el("span",{class:"captime"},t),el("span",{class:"chip cap"},"-CAP-")):pilotChip(p)}
-function statusChip(s){if(s!=="ปิดการเงิน")return "";return el("span",{class:"chip "+(s==="ปิดการเงิน"?"ok":"wait")},s)}
+function statusChip(s){if(s!=="ปิดการเงิน")return "";return el("span",{class:"chip ok sm",title:"ปิดการเงิน"},"✓ ปิด")}
 let toastT;function toast(msg){const t=$("toast");t.textContent=msg;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>t.hidden=true,2400)}
 function notice(msg){const n=$("notice");n.textContent=msg||"";n.hidden=!msg}
 
@@ -592,7 +599,11 @@ function hl(text){
   for(const t of terms){const i=up.indexOf(t);if(i>=0){const f=document.createDocumentFragment();f.append(text.slice(0,i),el("mark",{},text.slice(i,i+t.length)),text.slice(i+t.length));return f}}
   return text;
 }
-function renderLog(){
+// shrink the table a little (down to 80%) so every column fits the screen width; beyond that the box scrolls
+function fitTable(){const box=document.querySelector("#view-log .tablebox"),t=box&&box.querySelector("table.log");if(!t||box.offsetParent===null)return;
+  t.style.zoom="";const w=t.scrollWidth,cw=box.clientWidth;if(w>cw+2)t.style.zoom=String(Math.max(.8,Math.floor(cw/w*1000)/1000))}
+window.addEventListener("resize",()=>{clearTimeout(fitTable._t);fitTable._t=setTimeout(fitTable,80)});
+function renderLog(){requestAnimationFrame(fitTable);
   calls=allCalls.filter(c=>c.date===curDate);
   const body=$("logBody");body.replaceChildren();
   $("sCount").textContent=calls.length;
