@@ -290,6 +290,7 @@ table.reg{border-collapse:collapse;width:100%;min-width:520px}
       <button class="btn" id="wordBtn" type="button" hidden title="ไฟล์ Word รายการเรือ เข้า-ออก (SAMARN)">รายงานSMS</button>
       <button class="btn" id="pdfBtn" type="button" hidden>สมุดประจำเดือน</button>
       <button class="btn" id="bigBtn" type="button" hidden title="Excel: จำนวนเรือแยกตามขนาดชั้นใบอนุญาตผู้นำร่อง ประจำเดือน">สรุปเรือนำร่อง</button>
+      <button class="btn" id="statBtn" type="button" hidden title="จำนวนเรือเข้า-ออก-เลื่อน-ค้างท่า พร้อมเน็ต (N.R.T.) / กร๊อส (G.R.T.) จากการ์ด">รายงานสถิติเรือ</button>
       <button class="btn primary" id="addBtn">+ เพิ่มเรือ</button>
     </div>
     <div class="pdfbar" id="bigBar" hidden>
@@ -299,6 +300,16 @@ table.reg{border-collapse:collapse;width:100%;min-width:520px}
       <button class="linkbtn" id="bigClose" type="button">ปิด</button>
       <span class="hint" id="bigInfo"></span>
       <span class="hint" id="bigMsg" role="status"></span>
+    </div>
+    <div class="pdfbar" id="statBar" hidden>
+      <b>รายงานสถิติเรือ</b>
+      <label for="statMonth">เดือน <input type="month" id="statMonth"></label>
+      <button class="btn" id="statCopy" type="button">คัดลอกตัวเลข</button>
+      <button class="linkbtn" id="statClose" type="button">ปิด</button>
+      <span class="hint" id="statMsg" role="status"></span>
+      <div id="statOut" style="flex-basis:100%"></div>
+      <span class="hint" id="statMiss" style="flex-basis:100%"></span>
+      <span class="hint" id="statStay" style="flex-basis:100%"></span>
     </div>
     <div class="pdfbar" id="pdfBar" hidden>
       <b>ดาวน์โหลด PDF บันทึกประจำวัน</b>
@@ -1181,6 +1192,43 @@ $("bigGo").onclick=async()=>{const ym=$("bigMonth").value;if(!ym)return;
   catch(e){$("bigMsg").textContent=e?.code==="declined"?"ยกเลิกการดาวน์โหลด":"สร้างไฟล์ไม่สำเร็จ ("+(e?.code||e?.message||"error")+")"}
   finally{$("bigGo").disabled=false}};
 
+/* ---------- รายงานสถิติเรือ: counts + N.R.T. (เน็ต) / G.R.T. (กร๊อส) sums for the month ---------- */
+// legs counted like สรุปเรือนำร่อง (-CAP- / แยกใบแจ้งหนี้ not counted); tonnage = G.R.T./N.R.T. read from the cards (collection "tonnage")
+let tonMap=new Map();
+const tKey=s=>String(s||"").replace(/[^A-Za-z0-9 ]/g,"").replace(/\s+/g,"").toUpperCase();
+function statCalc(ym){
+  const [y,m]=ym.split("-").map(Number),end=ym+"-"+String(new Date(y,m,0).getDate()).padStart(2,"0");
+  const Z=()=>({n:0,nrt:0,grt:0}),R={i:Z(),o:Z(),s:Z(),stay:Z()},miss=new Map(),stayN=[];
+  const add=(k,c)=>{const t=tonMap.get(tKey(c.vessel));R[k].n++;if(t&&(t.grt||t.nrt)){R[k].nrt+=+t.nrt||0;R[k].grt+=+t.grt||0}else miss.set(norm(c.vessel),(miss.get(norm(c.vessel))||0)+1)};
+  const inM=t=>t&&t.iso.slice(0,7)===ym;
+  for(const c of allCalls){
+    const eT=wParse(c.eta||(c.pilotIn==="-CAP-"?c.capIn:""),c.date),aT=wParse(c.atd||(c.pilotOut==="-CAP-"?c.capOut:""),c.date);
+    if(!invIn(c)&&c.pilotIn!=="-CAP-"&&inM(eT))add("i",c);
+    if(!invOut(c)&&c.pilotOut!=="-CAP-"&&inM(aT))add("o",c);
+    (c.shifts||[]).forEach(s=>{if(s.pilot!=="-CAP-"&&inM(wParse(s.order,c.date)))add("s",c)});
+    // ค้างท่า: arrived by the end of the month, not departed by then
+    const arr=eT?eT.iso:c.date;
+    if(c.vessel&&arr&&arr<=end&&(!aT||aT.iso>end)){add("stay",c);stayN.push(c.vessel)}
+  }
+  return {...R,all:R.i.n+R.o.n+R.s.n,miss:[...miss.keys()].sort(),stayN};
+}
+const fN=n=>Math.round(n).toLocaleString("en-US");
+let statRows=[];
+function statInfo(){const ym=$("statMonth").value;if(!ym){$("statOut").innerHTML="";return}
+  const r=statCalc(ym);
+  statRows=[["1.1 เรือเข้า",r.i],["1.2 เรือออก",r.o],["1.3 เรือเลื่อน",r.s],["รวม (1)",{n:r.all,nrt:r.i.nrt+r.o.nrt+r.s.nrt,grt:r.i.grt+r.o.grt+r.s.grt}],["2.1 เรือค้างท่า",r.stay]];
+  const td=(v,o="")=>`<td style="padding:6px 14px;text-align:${o||"right"};font-size:17px;border-bottom:1px solid var(--line,#ddd)">${v}</td>`;
+  $("statOut").innerHTML=`<table style="border-collapse:collapse;margin:8px auto"><thead><tr>${["","ลำ","เน็ต","กร๊อส"].map(h=>`<th style="padding:6px 14px;font-size:16px">${h}</th>`).join("")}</tr></thead><tbody>`+
+    statRows.map(([l,x],i)=>`<tr${i===3?' style="font-weight:700"':""}>${td(l,"left")}${td(fN(x.n))}${td(fN(x.nrt))}${td(fN(x.grt))}</tr>`).join("")+`</tbody></table>`;
+  $("statMiss").textContent=r.miss.length?`⚠️ ยังไม่มี G.R.T./N.R.T. ${r.miss.length} ลำ (ไม่ถูกรวมในเน็ต/กร๊อส · อัปโหลดการ์ดของเรือเหล่านี้ใน 📑 ปิดการ์ดประจำวัน ระบบจะเก็บให้เอง): ${r.miss.join(", ")}`:"✓ มี G.R.T./N.R.T. ครบทุกลำ";
+  $("statStay").textContent=r.stayN.length?`ค้างท่า ณ สิ้นเดือน: ${r.stayN.join(", ")}`:"";
+}
+$("statBtn").onclick=()=>{const b=$("statBar");b.hidden=!b.hidden;if(!b.hidden){if(!$("statMonth").value){const [y,m]=curDate.slice(0,7).split("-").map(Number),p=m===1?[y-1,12]:[y,m-1];$("statMonth").value=p[0]+"-"+String(p[1]).padStart(2,"0")}$("statMsg").textContent="";statInfo()}};
+$("statClose").onclick=()=>{$("statBar").hidden=true};
+$("statMonth").addEventListener("input",statInfo);
+$("statCopy").onclick=async()=>{const t=[["","ลำ","เน็ต","กร๊อส"].join("\t"),...statRows.map(([l,x])=>[l,fN(x.n),fN(x.nrt),fN(x.grt)].join("\t"))].join("\n");
+  try{await navigator.clipboard.writeText(t);$("statMsg").textContent="คัดลอกแล้ว (วางใน Excel/Word ได้)"}catch(e){$("statMsg").textContent="คัดลอกไม่ได้ในเบราว์เซอร์นี้"}};
+
 /* ---------- highlighter: colour individual cells like a marker pen ---------- */
 const CELL_KEYS=["job","vessel","from","eta","order","pilotIn","berth","draughtIn","loa","lbp","agent","atd","pilotOut","draughtOut","agentOut","remark","status"];
 let markMode=false,markColor="y";
@@ -1644,8 +1692,9 @@ listeners.add(bkInfo);
   });
   db=localDb;subscribeCalls();
   db.collection("vessels").onSnapshot(s=>{vessels=s.docs.map(x=>({id:x.id,...x.data()}));rebuildVessels()});
+  db.collection("tonnage").onSnapshot(s=>{tonMap=new Map(s.docs.map(x=>{const d=x.data();return [tKey(d.name||x.id),d]}));if(!$("statBar").hidden)statInfo()});
   db.doc("config/lists").onSnapshot(s=>{const d=s.exists?s.data():{};cfg={ports:d.ports||DEF.ports,berths:d.berths||DEF.berths,pilots:d.pilots||DEF.pilots};renderCfg()});
-  $("csvCard").hidden=false;$("pdfBtn").hidden=false;$("bigBtn").hidden=false;$("wordBtn").hidden=false;
+  $("csvCard").hidden=false;$("pdfBtn").hidden=false;$("bigBtn").hidden=false;$("statBtn").hidden=false;$("wordBtn").hidden=false;
 })();
 </script>
 

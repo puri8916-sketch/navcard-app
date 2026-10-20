@@ -296,6 +296,25 @@ with _main:
                 _files.append((os.path.basename(_p), _f.read()))
         report_page.step1(_ctx, _files)
 
+    # G.R.T./N.R.T. of every uploaded card -> sheet collection "tonnage" (used by รายงานสถิติเรือ in บันทึกเรือ)
+    if _ctx and _has_cards:
+        _sig = tuple(sorted(os.listdir(card_dir)))
+        if st.session_state.get("ton_sig") != _sig:
+            try:
+                _ton = nc.card_tonnage(card_dir)
+                _old = _ctx["db"].load_col("tonnage") if _ton else {}
+                _new = {k: v for k, v in _ton.items()
+                        if any(str((_old.get(k) or {}).get(f)) != str(v[f]) for f in ("grt", "nrt", "name"))}
+                if _new:
+                    _ctx["db"].put_docs("tonnage", _new)
+                st.session_state.ton_sig = _sig
+                st.session_state.ton_msg = (f"⚓ G.R.T./N.R.T. จากการ์ด {len(_ton)} ลำ"
+                                            + (f" · บันทึกใหม่/อัปเดต {len(_new)} ลำ" if _new else " · มีครบแล้ว"))
+            except Exception as e:
+                st.session_state.ton_msg = f"⚠️ บันทึก G.R.T./N.R.T. ไม่สำเร็จ: {e}"
+        if st.session_state.get("ton_msg"):
+            st.caption(st.session_state.ton_msg)
+
     # ---------------------------------------------------------------- step 2: merge the navigation cards
     st.divider()
     st.subheader("ขั้นที่ 2 · รวมการ์ดนำร่อง (PDF)")

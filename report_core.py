@@ -373,6 +373,18 @@ class SheetStore:
         signer["png"] = pngs.get(signer.get("id"))
         return days, signer, pngs
 
+    def load_col(self, col):
+        """{id: doc} of one collection (deleted docs skipped)."""
+        docs = self._get(action="load", since=0, cols=col)["docs"]
+        return {d["id"]: d["doc"] for d in docs if d.get("col") == col and not d.get("deleted") and d.get("doc")}
+
+    def put_docs(self, col, docs):
+        """docs = {id: doc}"""
+        now = int(_time.time() * 1000)
+        ops = [{"op": "put", "col": col, "id": i, "doc": d, "updated": now} for i, d in docs.items()]
+        for i in range(0, len(ops), 20):
+            self._post(ops[i:i + 20])
+
     def put_days(self, days):
         now = int(_time.time() * 1000)
         ops = [{"op": "put", "col": COL_DAYS, "id": t["date"], "doc": t, "updated": now} for t in days]

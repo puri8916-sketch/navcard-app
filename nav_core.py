@@ -191,6 +191,52 @@ def extract_loa_meters(path):
     return float(m.group(1)) if m else None
 
 
+_NUM = r'([0-9][0-9,]*(?:\.[0-9]+)?)'
+
+
+def extract_tonnage(path):
+    """(grt, nrt, imo) from the card's For Agent box ("G.R.T. : 2,387", "N.R.T. : 716"); missing -> None."""
+    t = _page_text(path)
+
+    def num(label):
+        m = re.search(label + r'\s*:?\s*' + _NUM, t)
+        if not m:
+            return None
+        try:
+            v = float(m.group(1).replace(',', ''))
+        except ValueError:
+            return None
+        return int(v) if v == int(v) else v
+    imo = re.search(r'IMO\s*no\.?\s*:?\s*(\d{7})', t, re.I)
+    return (num(r'G\.\s*R\.\s*T\.?'), num(r'N\.\s*R\.\s*T\.?'), imo.group(1) if imo else None)
+
+
+def _ck(cn):
+    try:
+        return card_sort_key(cn)
+    except Exception:
+        return (0, 0)
+
+
+def card_tonnage(card_dir):
+    """{normalized ship name: {name, grt, nrt, imo, card}} for every card PDF in the folder (latest card number wins)."""
+    out = {}
+    pdfs = [os.path.join(card_dir, f) for f in os.listdir(card_dir) if f.lower().endswith('.pdf')] if os.path.isdir(card_dir) else []
+    for p in pdfs:
+        try:
+            name, cn = extract_ship_name(p), extract_card_no(p)
+            grt, nrt, imo = extract_tonnage(p)
+        except Exception:
+            continue
+        if not name or (grt is None and nrt is None):
+            continue
+        k = normalize_name(name)
+        if k in out and _ck(out[k]['card']) > _ck(cn):
+            continue
+        out[k] = {'name': name.strip(), 'grt': grt, 'nrt': nrt, 'imo': imo, 'card': cn}
+    return out
+
+
 def parse_ships(xlsx_path):
     """Parse the ReportCardIsClosedDaily.xlsx into a list of
     {'card_no':, 'rows': [{'item','day','month','time','draft','berth','pilot'}]}.
