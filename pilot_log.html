@@ -920,7 +920,7 @@ $("pdfGo").onclick=async()=>{
   const sh=rows.reduce((n,c)=>n+(c.shifts?.length||0),0),range=f===t?ymLabel(f):ymLabel(f)+" – "+ymLabel(t);
   $("pdfGo").disabled=true;$("pdfMsg").textContent="กำลังสร้าง PDF…";
   try{
-    const blob=await buildPdfBlob(rows,"บันทึกนำร่องสงขลา",`${range} · ${monthTotals(f,t)}`,(i,n)=>{$("pdfMsg").textContent=`กำลังสร้าง PDF… หน้า ${i}/${n}`});
+    const blob=await buildPdfBlob(rows,"บันทึกนำร่องสงขลา",range,(i,n)=>{$("pdfMsg").textContent=`กำลังสร้าง PDF… หน้า ${i}/${n}`});
     const name="บันทึกเรือประจำเดือน "+(f===t?ymLabel(f):ymLabel(f)+" - "+ymLabel(t))+".pdf";
     await downloads.save({filename:name,data:blob});
     $("pdfMsg").textContent=`ดาวน์โหลดแล้ว: ${name}`;
