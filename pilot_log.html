@@ -1710,6 +1710,28 @@ listeners.add(bkInfo);
   db.doc("config/lists").onSnapshot(s=>{const d=s.exists?s.data():{};cfg={ports:d.ports||DEF.ports,berths:d.berths||DEF.berths,pilots:d.pilots||DEF.pilots};renderCfg()});
   $("csvCard").hidden=false;$("pdfBtn").hidden=false;$("bigBtn").hidden=false;$("statBtn").hidden=false;$("wordBtn").hidden=false;
 })();
+
+/* ---------- Thai month pickers: every <input type="month"> becomes เดือน (ไทย) + ปี พ.ศ.; .value stays "YYYY-MM" ---------- */
+(function(){
+  const MON=["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน","กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
+  const desc=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value");
+  document.querySelectorAll('input[type="month"]').forEach(inp=>{
+    const wrap=document.createElement("span");wrap.className="thmonth";wrap.style.cssText="display:inline-flex;gap:4px;align-items:center";
+    const sm=document.createElement("select"),sy=document.createElement("select");
+    sm.setAttribute("aria-label","เดือน");sy.setAttribute("aria-label","ปี พ.ศ.");
+    sm.innerHTML='<option value="">เดือน</option>'+MON.map((m,i)=>`<option value="${String(i+1).padStart(2,"0")}">${m}</option>`).join("");
+    const y0=new Date().getFullYear();
+    const years=()=>{const cur=desc.get.call(inp).slice(0,4)|0,ys=new Set();for(let y=y0-6;y<=y0+1;y++)ys.add(y);if(cur)ys.add(cur);return [...ys].sort((a,b)=>b-a)};
+    const fillY=()=>{const v=sy.value;sy.innerHTML='<option value="">ปี</option>'+years().map(y=>`<option value="${y}">${y+543}</option>`).join("");sy.value=v};
+    const show=()=>{const v=desc.get.call(inp)||"";fillY();sy.value=v.slice(0,4);sm.value=v.slice(5,7)};
+    Object.defineProperty(inp,"value",{configurable:true,get(){return desc.get.call(inp)},set(v){desc.set.call(inp,v);show()}});
+    const pick=()=>{let y=sy.value,m=sm.value;if(m&&!y){y=String(y0);sy.value=y}if(y&&!m){m=String(new Date().getMonth()+1).padStart(2,"0");sm.value=m}
+      desc.set.call(inp,y&&m?y+"-"+m:"");inp.dispatchEvent(new Event("input",{bubbles:true}));inp.dispatchEvent(new Event("change",{bubbles:true}))};
+    sm.onchange=pick;sy.onchange=pick;
+    inp.hidden=true;inp.style.display="none";inp.after(wrap);wrap.append(sm,sy);show();
+    const lab=inp.id&&document.querySelector(`label[for="${inp.id}"]`);if(lab)lab.htmlFor="";
+  });
+})();
 </script>
 
 </body>
