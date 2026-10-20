@@ -289,7 +289,16 @@ table.reg{border-collapse:collapse;width:100%;min-width:520px}
       </div>
       <button class="btn" id="wordBtn" type="button" hidden title="ไฟล์ Word รายการเรือ เข้า-ออก (SAMARN)">รายงานSMS</button>
       <button class="btn" id="pdfBtn" type="button" hidden>รายงานประจำเดือน</button>
+      <button class="btn" id="bigBtn" type="button" hidden title="Excel: จำนวนเรือแยกตามขนาดชั้นใบอนุญาตผู้นำร่อง ประจำเดือน">สรุปเรือนำร่อง</button>
       <button class="btn primary" id="addBtn">+ เพิ่มเรือ</button>
+    </div>
+    <div class="pdfbar" id="bigBar" hidden>
+      <b>สรุปเรือนำร่อง (แยกตามขนาดชั้นใบอนุญาตผู้นำร่อง)</b>
+      <label for="bigMonth">เดือน <input type="month" id="bigMonth"></label>
+      <button class="btn primary" id="bigGo" type="button">ดาวน์โหลด Excel</button>
+      <button class="linkbtn" id="bigClose" type="button">ปิด</button>
+      <span class="hint" id="bigInfo"></span>
+      <span class="hint" id="bigMsg" role="status"></span>
     </div>
     <div class="pdfbar" id="pdfBar" hidden>
       <b>ดาวน์โหลด PDF บันทึกประจำวัน</b>
@@ -1054,6 +1063,9 @@ async function buildDocx(docXml){
   for(const [name,crc,size,b64] of WORD_TPL.parts)files.push({name,crc,size,data:b64u(b64),method:8});
   const du=enc.encode(docXml),dz=await deflateRaw(du);
   files.splice(2,0,{name:"word/document.xml",crc:crc32(du),size:du.length,data:dz||du,method:dz?8:0});
+  return zipFiles(files,"application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+}
+function zipFiles(files,mime){const enc=new TextEncoder();
   const chunks=[],cd=[];let off=0;
   const u16=(a,v)=>a.push(v&255,(v>>>8)&255),u32=(a,v)=>a.push(v&255,(v>>>8)&255,(v>>>16)&255,(v>>>24)&255);
   const d=new Date(),dt=((d.getHours()<<11)|(d.getMinutes()<<5)|(d.getSeconds()>>1)),dd=(((d.getFullYear()-1980)<<9)|((d.getMonth()+1)<<5)|d.getDate());
@@ -1063,7 +1075,7 @@ async function buildDocx(docXml){
     const c=[];u32(c,0x02014b50);u16(c,20);u16(c,20);u16(c,0x0800);u16(c,f.method);u16(c,dt);u16(c,dd);u32(c,f.crc);u32(c,f.data.length);u32(c,f.size);u16(c,nm.length);u16(c,0);u16(c,0);u16(c,0);u16(c,0);u32(c,0);u32(c,off);
     cd.push(new Uint8Array(c),nm);off+=hb.length+nm.length+f.data.length;}
   const cdSize=cd.reduce((n,x)=>n+x.length,0),e=[];u32(e,0x06054b50);u16(e,0);u16(e,0);u16(e,files.length);u16(e,files.length);u32(e,cdSize);u32(e,off);u16(e,0);
-  return new Blob([...chunks,...cd,new Uint8Array(e)],{type:"application/vnd.openxmlformats-officedocument.wordprocessingml.document"});
+  return new Blob([...chunks,...cd,new Uint8Array(e)],{type:mime});
 }
 $("wSent").onclick=async()=>{
   let f=$("wFrom").value,t=$("wTo").value;if(!f||!t||!db)return;if(f>t)[f,t]=[t,f];
@@ -1090,6 +1102,84 @@ $("wGo").onclick=async()=>{
   }catch(e){$("wMsg").textContent=e?.code==="declined"?"ยกเลิกการดาวน์โหลด":"สร้างไฟล์ไม่สำเร็จ ("+(e?.code||e?.message||"error")+")"}
   finally{$("wGo").disabled=false}
 };
+
+/* ---------- สรุปเรือนำร่อง: daily counts by LOA class (pilot licence size), .xlsx ---------- */
+// same leg rules as the monthly totals: เข้า = ETA date, ออก = ATD date, เลื่อน = ย้ายท่า order date; -CAP- and แยกใบแจ้งหนี้ legs are not counted
+const BIG_CLS=[["400 ฟุต","ต่ำกว่า 400 ฟุต"],["450 ฟุต","ตั้งแต่ 400-450 ฟุต"],["500 ฟุต","ตั้งแต่ 451-500 ฟุต"],["565 ฟุต","ตั้งแต่ 501-565 ฟุต"],["565 ฟุต","ตั้งแต่ 566 ขึ้นไป"]];
+function loaFt(c){const f=parseFloat(String(c.loa||"").replace(/[^\d.]/g,""));if(f>0)return f;const m=parseFloat(String(c.loaM||"").replace(/[^\d.]/g,""));return m>0?m*3.2808:0}
+function bigCls(ft){return ft<400?0:ft<=450?1:ft<=500?2:ft<=565?3:4}
+function bigCounts(ym){
+  const [y,m]=ym.split("-").map(Number),nd=new Date(y,m,0).getDate(),D=Array.from({length:nd},()=>Array.from({length:5},()=>[0,0,0]));
+  const add=(t,k,cls)=>{if(t&&t.iso.slice(0,7)===ym)D[t.day-1][cls][k]++};
+  for(const c of allCalls){const cls=bigCls(loaFt(c));
+    if(!invIn(c)&&c.pilotIn!=="-CAP-")add(wParse(c.eta,c.date),0,cls);
+    if(!invOut(c)&&c.pilotOut!=="-CAP-")add(wParse(c.atd,c.date),1,cls);
+    (c.shifts||[]).forEach(s=>{if(s.pilot!=="-CAP-")add(wParse(s.order,c.date),2,cls)})}
+  return D;
+}
+const xEsc=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+function bigXlsx(ym){
+  const D=bigCounts(ym),[y,m]=ym.split("-").map(Number),nd=D.length,yy=String(y+543).slice(-2);
+  const col=n=>{let s="";n++;while(n){const r=(n-1)%26;s=String.fromCharCode(65+r)+s;n=(n-1-r)/26|0}return s};
+  const ss=[],si=new Map(),S=v=>{if(!si.has(v)){si.set(v,ss.length);ss.push(v)}return si.get(v)};
+  const rows=[],c=(r,ci,v,st,f)=>{const ref=col(ci)+r;if(f!=null)return `<c r="${ref}" s="${st}"><f>${f}</f><v>${v}</v></c>`;if(v===""||v==null)return `<c r="${ref}" s="${st}"/>`;return typeof v==="number"?`<c r="${ref}" s="${st}"><v>${v}</v></c>`:`<c r="${ref}" s="${st}" t="s"><v>${S(v)}</v></c>`};
+  const row=(r,cells,ht)=>rows.push(`<row r="${r}"${ht?` ht="${ht}" customHeight="1"`:""}>${cells.join("")}</row>`);
+  // styles: 1 title, 2 header bold border, 3 header small border, 4 number border, 5 date border, 6 total bold border
+  row(1,[c(1,0,"รายละเอียดจำนวนเรือที่ขอใช้บริการนำร่องเขตท่าเรือจังหวัดสงขลา",1)],30);
+  row(2,[c(2,0,"แยกตามขนาดชั้นใบอนุญาตผู้นำร่อง",1)],30);
+  row(3,[c(3,0,`ประจำเดือน${TH_MON[m-1]} ${y+543}`,1)],30);
+  const H=4,all=n=>Array.from({length:19},(_,i)=>i);
+  row(H,all().map(i=>c(H,i,i===0?"วัน เดือน ปี":i===1?"ความยาวเรือไม่เกิน":i===13?"มากกว่า":i===16?"รวม":"",2)),24);
+  row(H+1,all().map(i=>c(H+1,i,i>0&&i<16&&(i-1)%3===0?BIG_CLS[(i-1)/3][0]:"",2)),22);
+  row(H+2,all().map(i=>c(H+2,i,i>0&&i<16&&(i-1)%3===0?BIG_CLS[(i-1)/3][1]:"",3)),20);
+  row(H+3,all().map(i=>c(H+3,i,i===0?"":["เข้า","ออก","เลื่อน"][(i-1)%3],2)),22);
+  const R0=H+4;
+  for(let d=0;d<nd;d++){const r=R0+d,cells=[c(r,0,`${d+1}-${TH_MS[m-1]}-${yy}`,5)];
+    for(let k=0;k<5;k++)for(let j=0;j<3;j++){const v=D[d][k][j];cells.push(c(r,1+k*3+j,v||"",4))}
+    for(let j=0;j<3;j++){const v=D[d].reduce((n,x)=>n+x[j],0),refs=[0,1,2,3,4].map(k=>col(1+k*3+j)+r).join(",");cells.push(c(r,16+j,v,4,`SUM(${refs})`))}
+    row(r,cells,21)}
+  const RB=R0+nd,RT=RB+1;row(RB,all().map(i=>c(RB,i,"",4)),21);
+  row(RT,all().map(i=>{if(i===0)return c(RT,0,"รวม",6);const v=i<16?D.reduce((n,x)=>n+x[(i-1)/3|0][(i-1)%3],0):D.reduce((n,x)=>n+x.reduce((a,b)=>a+b[i-16],0),0);return c(RT,i,v,6,`SUM(${col(i)}${R0}:${col(i)}${RB})`)}),24);
+  const merges=["A1:S1","A2:S2","A3:S3",`A${H}:A${H+3}`,`B${H}:M${H}`,`N${H}:P${H}`,`Q${H}:S${H+2}`];
+  for(let k=0;k<5;k++){const a=col(1+k*3),b=col(3+k*3);merges.push(`${a}${H+1}:${b}${H+1}`,`${a}${H+2}:${b}${H+2}`)}
+  const cols=`<cols><col min="1" max="1" width="13" customWidth="1"/><col min="2" max="16" width="5.2" customWidth="1"/><col min="17" max="19" width="6" customWidth="1"/></cols>`;
+  const sheet=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheetPr><pageSetUpPr fitToPage="1"/></sheetPr><sheetViews><sheetView workbookViewId="0" showGridLines="0"/></sheetViews><sheetFormatPr defaultRowHeight="21"/>${cols}<sheetData>${rows.join("")}</sheetData><mergeCells count="${merges.length}">${merges.map(x=>`<mergeCell ref="${x}"/>`).join("")}</mergeCells><printOptions horizontalCentered="1"/><pageMargins left="0.4" right="0.4" top="0.6" bottom="0.5" header="0.3" footer="0.3"/><pageSetup paperSize="9" orientation="portrait" fitToWidth="1" fitToHeight="1"/></worksheet>`;
+  const F='<name val="TH SarabunPSK"/><family val="2"/>';
+  const styles=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="4"><font><sz val="16"/>${F}</font><font><b/><sz val="18"/>${F}</font><font><b/><sz val="16"/>${F}</font><font><b/><sz val="13"/>${F}</font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border><border><left style="thin"/><right style="thin"/><top style="thin"/><bottom style="thin"/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="7"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>`+
+    `<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>`+
+    `<xf numFmtId="0" fontId="2" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>`+
+    `<xf numFmtId="0" fontId="3" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" shrinkToFit="1"/></xf>`+
+    `<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>`+
+    `<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>`+
+    `<xf numFmtId="0" fontId="2" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
+  const sst=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="${ss.length}" uniqueCount="${ss.length}">${ss.map(v=>`<si><t xml:space="preserve">${xEsc(v)}</t></si>`).join("")}</sst>`;
+  const tab=`${TH_MS[m-1]}${yy}`;
+  const files=[
+    ["[Content_Types].xml",`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/><Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/></Types>`],
+    ["_rels/.rels",`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`],
+    ["xl/workbook.xml",`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><calcPr fullCalcOnLoad="1"/><sheets><sheet name="${xEsc(tab)}" sheetId="1" r:id="rId1"/></sheets></workbook>`.replace('<calcPr fullCalcOnLoad="1"/><sheets>','<sheets>').replace('</sheets></workbook>','</sheets><calcPr fullCalcOnLoad="1"/></workbook>')],
+    ["xl/_rels/workbook.xml.rels",`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings" Target="sharedStrings.xml"/></Relationships>`],
+    ["xl/worksheets/sheet1.xml",sheet],["xl/styles.xml",styles],["xl/sharedStrings.xml",sst]];
+  return {files,total:D.reduce((n,x)=>n+x.reduce((a,b)=>a+b[0]+b[1]+b[2],0),0)};
+}
+async function buildZip(list,mime){
+  const enc=new TextEncoder(),files=[];
+  for(const [name,txt] of list){const u=enc.encode(txt),z=await deflateRaw(u);files.push({name,crc:crc32(u),size:u.length,data:z||u,method:z?8:0})}
+  return zipFiles(files,mime);
+}
+function bigInfo(){const ym=$("bigMonth").value;if(!ym){$("bigInfo").textContent="";return}
+  const D=bigCounts(ym),t=[0,1,2].map(j=>D.reduce((n,x)=>n+x.reduce((a,b)=>a+b[j],0),0)),big=D.reduce((n,x)=>n+x.slice(1).reduce((a,b)=>a+b[0]+b[1]+b[2],0),0);
+  $("bigInfo").textContent=`เข้า ${t[0]} · ออก ${t[1]} · เลื่อน ${t[2]} · ในนี้เรือ ≥400 ฟุต ${big} เที่ยว`}
+$("bigBtn").onclick=()=>{const b=$("bigBar");b.hidden=!b.hidden;if(!b.hidden){if(!$("bigMonth").value)$("bigMonth").value=curDate.slice(0,7);$("bigMsg").textContent="";bigInfo()}};
+$("bigClose").onclick=()=>{$("bigBar").hidden=true};
+$("bigMonth").addEventListener("input",bigInfo);
+$("bigGo").onclick=async()=>{const ym=$("bigMonth").value;if(!ym)return;
+  $("bigGo").disabled=true;$("bigMsg").textContent="กำลังสร้างไฟล์…";
+  try{const x=bigXlsx(ym),[y,m]=ym.split("-").map(Number),name=`สรุปเรือนำร่อง ${TH_MON[m-1]} ${y+543}.xlsx`;
+    const blob=await buildZip(x.files,"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    await downloads.save({filename:name,data:blob});$("bigMsg").textContent="ดาวน์โหลดแล้ว: "+name}
+  catch(e){$("bigMsg").textContent=e?.code==="declined"?"ยกเลิกการดาวน์โหลด":"สร้างไฟล์ไม่สำเร็จ ("+(e?.code||e?.message||"error")+")"}
+  finally{$("bigGo").disabled=false}};
 
 /* ---------- highlighter: colour individual cells like a marker pen ---------- */
 const CELL_KEYS=["job","vessel","from","eta","order","pilotIn","berth","draughtIn","loa","lbp","agent","atd","pilotOut","draughtOut","agentOut","remark","status"];
@@ -1555,7 +1645,7 @@ listeners.add(bkInfo);
   db=localDb;subscribeCalls();
   db.collection("vessels").onSnapshot(s=>{vessels=s.docs.map(x=>({id:x.id,...x.data()}));rebuildVessels()});
   db.doc("config/lists").onSnapshot(s=>{const d=s.exists?s.data():{};cfg={ports:d.ports||DEF.ports,berths:d.berths||DEF.berths,pilots:d.pilots||DEF.pilots};renderCfg()});
-  $("csvCard").hidden=false;$("pdfBtn").hidden=false;$("wordBtn").hidden=false;
+  $("csvCard").hidden=false;$("pdfBtn").hidden=false;$("bigBtn").hidden=false;$("wordBtn").hidden=false;
 })();
 </script>
 
