@@ -964,13 +964,19 @@ async function buildPdfBlob(rows,title,sub,onPage){
   return new Blob(chunks,{type:"application/pdf"});
 }
 // totals for the month range, by each leg's own date (เข้า = ETA, ออก = ATD, ย้ายท่า = Order); -CAP- / แยกใบแจ้งหนี้ not in รวม
+/* ONE counting rule for สมุดประจำเดือน · สรุปเรือนำร่อง · รายงานสถิติเรือ:
+   each leg on its own date (เข้า = ETA, ออก = ATD, ย้ายท่า = Order; -CAP- legs use the CAP time); kind: 0 เข้า, 1 ออก, 2 ย้ายท่า;
+   x = "cap" (-CAP-) / "inv" (แยกใบแจ้งหนี้) / "" (real pilot job, the only ones counted in รวม) */
+function callLegs(c){
+  const L=[],eT=wParse(c.eta||(c.pilotIn==="-CAP-"?c.capIn:""),c.date),aT=wParse(c.atd||(c.pilotOut==="-CAP-"?c.capOut:""),c.date);
+  if(eT)L.push({k:0,t:eT,x:invIn(c)?"inv":c.pilotIn==="-CAP-"?"cap":""});
+  if(aT)L.push({k:1,t:aT,x:invOut(c)?"inv":c.pilotOut==="-CAP-"?"cap":""});
+  (c.shifts||[]).forEach(s=>{const t=wParse(s.order||(s.pilot==="-CAP-"?s.capTime:""),c.date);if(t)L.push({k:2,t,x:s.pilot==="-CAP-"?"cap":""})});
+  return {L,eT,aT};
+}
 function monthTotals(f,t){
-  const T={i:0,o:0,s:0,cap:0,inv:0},inR=x=>x&&x.iso.slice(0,7)>=f&&x.iso.slice(0,7)<=t,add=(x,k)=>{if(inR(x))T[k]++};
-  for(const c of allCalls){
-    add(wParse(c.eta||(c.pilotIn==="-CAP-"?c.capIn:""),c.date),invIn(c)?"inv":c.pilotIn==="-CAP-"?"cap":"i");
-    add(wParse(c.atd||(c.pilotOut==="-CAP-"?c.capOut:""),c.date),invOut(c)?"inv":c.pilotOut==="-CAP-"?"cap":"o");
-    (c.shifts||[]).forEach(s=>add(wParse(s.order,c.date),s.pilot==="-CAP-"?"cap":"s"));
-  }
+  const T={i:0,o:0,s:0,cap:0,inv:0};
+  for(const c of allCalls)for(const g of callLegs(c).L){const ym=g.t.iso.slice(0,7);if(ym<f||ym>t)continue;if(g.x)T[g.x]++;else T["ios"[g.k]]++}
   return `เข้า ${T.i} · ออก ${T.o} · ย้ายท่า ${T.s} · รวม ${T.i+T.o+T.s} เที่ยว`+(T.cap?` · -CAP- ${T.cap}`:"")+(T.inv?` · แยกใบแจ้งหนี้ ${T.inv}`:"");
 }
 $("pdfGo").onclick=async()=>{
@@ -1170,11 +1176,7 @@ function loaFt(c){const f=parseFloat(String(c.loa||"").replace(/[^\d.]/g,""));if
 function bigCls(ft){return ft<400?0:ft<=450?1:ft<=500?2:ft<=565?3:4}
 function bigCounts(ym){
   const [y,m]=ym.split("-").map(Number),nd=new Date(y,m,0).getDate(),D=Array.from({length:nd},()=>Array.from({length:5},()=>[0,0,0]));
-  const add=(t,k,cls)=>{if(t&&t.iso.slice(0,7)===ym)D[t.day-1][cls][k]++};
-  for(const c of allCalls){const cls=bigCls(loaFt(c));
-    if(!invIn(c)&&c.pilotIn!=="-CAP-")add(wParse(c.eta,c.date),0,cls);
-    if(!invOut(c)&&c.pilotOut!=="-CAP-")add(wParse(c.atd,c.date),1,cls);
-    (c.shifts||[]).forEach(s=>{if(s.pilot!=="-CAP-")add(wParse(s.order,c.date),2,cls)})}
+  for(const c of allCalls){const cls=bigCls(loaFt(c));for(const g of callLegs(c).L)if(!g.x&&g.t.iso.slice(0,7)===ym)D[g.t.day-1][cls][g.k]++}
   return D;
 }
 const xEsc=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
@@ -1251,10 +1253,8 @@ function statCalc(ym){
   const add=(k,c)=>{const t=tonMap.get(tKey(c.vessel));R[k].n++;if(t&&(t.grt||t.nrt)){R[k].nrt+=+t.nrt||0;R[k].grt+=+t.grt||0}else miss.set(norm(c.vessel),(miss.get(norm(c.vessel))||0)+1)};
   const inM=t=>t&&t.iso.slice(0,7)===ym;
   for(const c of allCalls){
-    const eT=wParse(c.eta||(c.pilotIn==="-CAP-"?c.capIn:""),c.date),aT=wParse(c.atd||(c.pilotOut==="-CAP-"?c.capOut:""),c.date);
-    if(!invIn(c)&&c.pilotIn!=="-CAP-"&&inM(eT))add("i",c);
-    if(!invOut(c)&&c.pilotOut!=="-CAP-"&&inM(aT))add("o",c);
-    (c.shifts||[]).forEach(s=>{if(s.pilot!=="-CAP-"&&inM(wParse(s.order,c.date)))add("s",c)});
+    const {L,eT,aT}=callLegs(c);
+    for(const g of L)if(!g.x&&inM(g.t))add("ios"[g.k],c);
     // ค้างท่า: arrived by the end of the month, not departed by then
     const arr=eT?eT.iso:c.date;
     if(c.vessel&&arr&&arr<=end&&(!aT||aT.iso>end)){add("stay",c);stayN.push(c.vessel)}
