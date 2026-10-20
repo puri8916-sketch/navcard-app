@@ -601,6 +601,7 @@ function hl(text){
 }
 // shrink the table a little (down to 80%) so every column fits the screen width; beyond that the box scrolls
 function fitTable(){const box=document.querySelector("#view-log .tablebox"),t=box&&box.querySelector("table.log");if(!t||box.offsetParent===null)return;
+  box.style.maxHeight=Math.max(260,Math.floor(window.innerHeight-box.getBoundingClientRect().top-10))+"px";
   t.style.zoom="";const w=t.scrollWidth,cw=box.clientWidth;if(w>cw+2)t.style.zoom=String(Math.max(.8,Math.floor(cw/w*1000)/1000))}
 window.addEventListener("resize",()=>{clearTimeout(fitTable._t);fitTable._t=setTimeout(fitTable,80)});
 function renderLog(){requestAnimationFrame(fitTable);

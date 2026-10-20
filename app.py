@@ -177,7 +177,7 @@ if _page == _P_LOG:
     if _log_theme:
         _inject += "window.__THEME__='" + _log_theme + "';"
     _log_html = _log_html.replace("<script>", "<script>" + _inject + "</script>\n" + _sync_script() + "<script>", 1)
-    st.markdown("""<style>[data-testid="stMainBlockContainer"],[data-testid="block-container"],.block-container,section.main>div{padding-top:2.5rem;padding-left:.75rem !important;padding-right:.75rem !important;max-width:100% !important}</style>""",
+    st.markdown("""<style>[data-testid="stMainBlockContainer"],[data-testid="block-container"],.block-container,section.main>div{padding-top:.5rem !important;padding-bottom:0 !important;padding-left:.75rem !important;padding-right:.75rem !important;max-width:100% !important}iframe[data-testid="stIFrame"][scrolling="auto"]{height:calc(100vh - 68px) !important;display:block}[data-testid="stAppViewContainer"] [data-testid="stMain"],section.main{overflow:hidden}</style>""",
                 unsafe_allow_html=True)
     components.html(_log_html, height=1100, scrolling=True)
     st.stop()
