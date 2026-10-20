@@ -762,6 +762,7 @@ async function commitCell(c,si,f,v){
     if(f==="pilotIn"||f==="pilotOut"){const p=capSplit(v);doc[f==="pilotIn"?"capIn":"capOut"]=p.t;v=p.p}
     if(f==="vessel"){const r=vByName.get(norm(v));if(r){if(r.loa)doc.loa=r.loa;if(r.agent){if(!c.agentOut||c.agentOut===c.agent)doc.agentOut=r.agent;doc.agent=r.agent}}}
     if(f==="agent"&&(!c.agentOut||c.agentOut===c.agent))doc.agentOut=v;
+    if(f==="from"&&(!c.lbp||c.lbp===c.from))doc.lbp=v;
     if(f==="agentOut"&&!v)v=doc.agent||"";
     doc[f]=v;
   }
@@ -1248,7 +1249,7 @@ linkEtaOrder();
 
 combo($("fShip"),shipOpts);combo($("fAgent"),agentOpts);
 {let prevAgent="";$("fAgent").addEventListener("focus",()=>prevAgent=$("fAgent").value);
- $("fAgent").addEventListener("input",()=>{const o=$("fAgentOut");if(!o.value.trim()||o.value.trim()===prevAgent.trim())o.value=$("fAgent").value;prevAgent=$("fAgent").value})}combo($("fFrom"),portOpts,{upper:true});combo($("fLbp"),portOpts,{upper:true});combo($("fBerth"),berthOpts,{upper:true});
+ $("fAgent").addEventListener("input",()=>{const o=$("fAgentOut");if(!o.value.trim()||o.value.trim()===prevAgent.trim())o.value=$("fAgent").value;prevAgent=$("fAgent").value})}{let prevFrom="";const fr=$("fFrom"),lb=$("fLbp"),sync=()=>{const n=fr.value.trim().toUpperCase();if(!lb.value.trim()||lb.value.trim().toUpperCase()===prevFrom)lb.value=n;prevFrom=n};fr.addEventListener("focus",()=>prevFrom=fr.value.trim().toUpperCase());fr.addEventListener("input",sync);fr.addEventListener("change",sync)}combo($("fFrom"),portOpts,{upper:true});combo($("fLbp"),portOpts,{upper:true});combo($("fBerth"),berthOpts,{upper:true});
 combo($("fPilotIn"),pilotOpts);combo($("fPilotOut"),pilotOpts);
 function capToggle(e){[["fPilotIn","capInF","fCapIn"],["fPilotOut","capOutF","fCapOut"]].forEach(([a,b,t])=>{const p=capSplit($(a).value);if(e?.type!=="input"&&p.p==="-CAP-"&&p.t&&$(a).value.trim()!=="-CAP-"){$(t).value=p.t;$(a).value="-CAP-"}$(b).hidden=p.p!=="-CAP-"})}
 ["fPilotIn","fPilotOut"].forEach(id=>{$(id).addEventListener("input",capToggle);$(id).addEventListener("change",capToggle)});
