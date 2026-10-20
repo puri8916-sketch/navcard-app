@@ -1663,18 +1663,32 @@ $("impFile").onchange=async e=>{
   const f=e.target.files[0];e.target.value="";if(!f)return;
   let list;try{const j=JSON.parse(await f.text());list=Array.isArray(j)?j:j.calls;if(!Array.isArray(list))throw 0}catch(_){toast("อ่านไฟล์นำเข้าไม่ได้");return}
   const key=c=>c.date+"|"+norm(c.vessel||"");
-  const have=new Set(allCalls.map(key)),add=[],skip=[];
+  const have=new Set(allCalls.map(key)),byKey=new Map(allCalls.map(c=>[key(c),c])),add=[],skip=[],fill=[];
+  const up=(k,v)=>["from","lbp","berth"].includes(k)?v.toUpperCase():v;
   for(const r of list){
     if(!r||!/^\d{4}-\d{2}-\d{2}$/.test(r.date||"")||!(r.vessel||"").trim()){skip.push((r&&r.vessel)||"?");continue}
-    if(have.has(key(r))){skip.push(beTab(r.date)+" "+r.vessel);continue}
+    if(have.has(key(r))){
+      // already in the log: only fill what is still blank there (never overwrite), add shifts it doesn't have yet
+      const c=byKey.get(key(r));if(!c){skip.push(beTab(r.date)+" "+r.vessel);continue}
+      const p={};for(const k of IMP_F){const v=String(r[k]??"").trim();if(v&&!String(c[k]??"").trim())p[k]=up(k,v)}
+      if(p.agentOut===undefined&&!c.agentOut&&(p.agent||c.agent))p.agentOut=p.agent||c.agent;
+      if(r.status==="ปิดการเงิน"&&c.status!=="ปิดการเงิน")p.status="ปิดการเงิน";
+      if(r.invIn&&!c.invIn)p.invIn=true;if(r.invOut&&!c.invOut)p.invOut=true;
+      const hs=new Set((c.shifts||[]).map(s=>(s.order||"")+"|"+(s.berth||"").toUpperCase()));
+      const ns=(r.shifts||[]).filter(s=>!hs.has((s.order||"")+"|"+(s.berth||"").toUpperCase()));
+      if(ns.length)p.shifts=[...(c.shifts||[]),...ns.map(s=>({order:s.order||"",pilot:s.pilot||"",capTime:s.capTime||"",fromBerth:(s.fromBerth||"").toUpperCase(),berth:(s.berth||"").toUpperCase(),draught:s.draught||"",agent:s.agent||""}))];
+      if(Object.keys(p).length)fill.push({c,p,r});else skip.push(beTab(r.date)+" "+r.vessel);
+      continue}
     have.add(key(r));add.push(r);
   }
   const box=$("impBox");box.replaceChildren();box.hidden=false;
   const byDay={};add.forEach(r=>(byDay[r.date]=byDay[r.date]||[]).push(r.vessel));
-  box.append(el("div",{},`จะเพิ่ม ${add.length} รายการ`+(skip.length?` · ข้าม ${skip.length} (มีอยู่แล้ว/ข้อมูลไม่ครบ)`:"")),
+  const FL={job:"No.",atd:"ATD",pilotOut:"Pilot ออก",draughtOut:"Draught ออก",closeNo:"ลำดับการปิด",status:"ปิดการเงิน",shifts:"ย้ายท่า",from:"เขตท่า",lbp:"เขตท่า ออก",remark:"Remark"};
+  box.append(el("div",{},`จะเพิ่ม ${add.length} รายการ`+(fill.length?` · เติมช่องว่างในรายการเดิม ${fill.length} ลำ`:"")+(skip.length?` · ข้าม ${skip.length} (มีครบแล้ว/ข้อมูลไม่ครบ)`:"")),
     ...Object.keys(byDay).sort().map(d=>el("div",{},`${beTab(d)}: ${byDay[d].join(", ")}`)),
+    ...fill.map(x=>el("div",{},`เติม ${beTab(x.c.date)} ${x.c.vessel}: `+Object.keys(x.p).filter(k=>k!=="agentOut"&&k!=="invIn"&&k!=="invOut").map(k=>FL[k]||k).filter((v,i,a)=>a.indexOf(v)===i).join(", "))),
     skip.length?el("div",{},"ข้าม: "+skip.join(", ")):"");
-  if(!add.length)return;
+  if(!add.length&&!fill.length)return;
   box.append(el("div",{class:"toolbar"},el("button",{class:"btn primary",onclick:async ev=>{
     ev.target.disabled=true;let i=0;
     for(const r of add){
@@ -1685,8 +1699,9 @@ $("impFile").onchange=async e=>{
       if(!d.agentOut)d.agentOut=d.agent;
       await db.collection("calls").add(d);
     }
-    box.replaceChildren(`นำเข้าแล้ว ${add.length} รายการ`);toast(`นำเข้าแล้ว ${add.length} รายการ`);
-  }},"นำเข้า "+add.length+" รายการ"),el("button",{class:"btn",onclick:()=>box.hidden=true},"ยกเลิก")));
+    for(const x of fill){const {id,...rest}=x.c;await db.collection("calls").doc(id).set({...JSON.parse(JSON.stringify(rest)),...x.p,updated:Date.now()})}
+    const msg=`นำเข้าแล้ว ${add.length} รายการ`+(fill.length?` · เติมข้อมูล ${fill.length} ลำ`:"");box.replaceChildren(msg);toast(msg);
+  }},"นำเข้า "+(add.length+fill.length)+" รายการ"),el("button",{class:"btn",onclick:()=>box.hidden=true},"ยกเลิก")));
 };
 /* ---------- calculator ship lengths (collection calcShips, shared with the ×3.2808 calculator) ---------- */
 const CALC_F=3.2808;
