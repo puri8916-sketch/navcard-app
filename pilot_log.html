@@ -54,6 +54,8 @@ nav.tabs button[aria-selected="true"]{background:var(--accent);color:var(--accen
 .ibtn:hover{background:var(--hover)}
 input[type=date]{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:3px 6px;height:30px}
 .btn{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:6px 12px;cursor:pointer;white-space:nowrap}
+#addShift.shiftbtn{background:var(--pen-red);border-color:var(--pen-red);color:#fff;font-weight:700;font-size:16px;padding:8px 18px;border-radius:8px;box-shadow:0 2px 6px rgba(194,38,30,.35)}#addShift.shiftbtn:hover{filter:brightness(1.08)}
+:root[data-theme="dark"] #addShift.shiftbtn{color:#1a0d0c}@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) #addShift.shiftbtn{color:#1a0d0c}}
 .btn.grpA{background:var(--gA-bg);border-color:var(--gA-bd);color:var(--gA-ink)}.btn.grpA:hover{filter:brightness(.96)}
 .btn.grpB{background:var(--gB-bg);border-color:var(--gB-bd);color:var(--gB-ink)}.btn.grpB:hover{filter:brightness(.96)}
 :root{--gA-bg:#e8f0fd;--gA-bd:#9db8ea;--gA-ink:#1c3fa6;--gB-bg:#e9f6ec;--gB-bd:#92c9a0;--gB-ink:#16612a}
@@ -505,7 +507,7 @@ table.reg{border-collapse:collapse;width:100%;min-width:520px}
       </section>
     </div>
     <section class="blk">
-      <h3 class="lg">ย้ายท่า<span class="spacer"></span><button class="btn sm" id="addShift" type="button">+ ย้ายท่า</button></h3>
+      <h3 class="lg">ย้ายท่า<span class="spacer"></span><button class="btn shiftbtn" id="addShift" type="button">＋ ย้ายท่า</button></h3>
       <div id="shiftList" class="srows"></div>
     </section>
     <section class="blk">
