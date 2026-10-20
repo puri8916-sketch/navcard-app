@@ -74,6 +74,10 @@ input[type=date]{border:1px solid var(--line);background:var(--surface);border-r
 .stat{display:flex;align-items:baseline;gap:6px;padding:4px 10px;border-radius:999px;background:var(--surface);border:1px solid var(--line);font-size:13px;color:var(--muted)}
 .stat b{font-family:var(--f-mono);font-size:15px;color:var(--ink);font-variant-numeric:tabular-nums}
 .tablebox{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+.tablebox{overflow:auto;max-height:calc(100vh - 130px);min-height:260px;overscroll-behavior:contain}
+.log thead{position:sticky;top:0;z-index:3}
+.dglab{position:sticky;left:10px;display:inline-block}
+.log thead tr:not(.grp) th:nth-child(1),.log thead tr:not(.grp) th:nth-child(2){z-index:4}
 table.log{border-collapse:separate;border-spacing:0;width:100%;min-width:1240px;font-variant-numeric:tabular-nums;font-size:13px;
   --grid:color-mix(in srgb,var(--line) 70%,transparent);--zebra:color-mix(in srgb,var(--bg) 60%,var(--surface));--head:color-mix(in srgb,var(--accent-soft) 40%,var(--surface))}
 .log th,.log td{padding:6px 9px;border-bottom:1px solid var(--grid);border-right:1px solid var(--grid);text-align:left;vertical-align:middle;white-space:nowrap;background:var(--rb,var(--surface))}
@@ -613,9 +617,9 @@ function renderLog(){
   for(const [ri,c] of rows.entries()){
     if(scope==="all"&&!closeF&&c.date!==lastDate){
       lastDate=c.date;gi=0;const n=rows.filter(r=>r.date===c.date).length;
-      body.append(el("tr",{class:"dgroup"},el("td",{colspan:17},
+      body.append(el("tr",{class:"dgroup"},el("td",{colspan:17},el("span",{class:"dglab"},
         el("button",{class:"linkbtn",type:"button",title:"เปิดวันนี้",onclick:()=>{scope="day";setSeg("scopeSeg","day");setDate(c.date)}},beTab(c.date||"")),
-        " · "+n+" ลำ")));
+        " · "+n+" ลำ"))));
     }
     const n=c.shifts?.length||0;
     const ship=el("td",{class:"ship"},hl(c.vessel||"—"));
