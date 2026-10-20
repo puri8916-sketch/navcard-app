@@ -267,6 +267,17 @@ table.reg{border-collapse:collapse;width:100%;min-width:520px}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:8px;z-index:60;font-size:13px}
 @media (prefers-reduced-motion:no-preference){.sheet{animation:pop .16s ease-out}@keyframes pop{from{transform:translateY(8px) scale(.99);opacity:.5}}}
 @media (max-width:640px){.brand span{display:none}.datebox .tab{min-width:72px}}
+
+/* ขาเข้า (cols 4-8) blue, ขาออก (cols 12-15) amber */
+:root{--in-h:#d6e6fb;--in-b:rgba(56,120,220,.07);--in-ink:#1c4fa6;--out-h:#fbe3c8;--out-b:rgba(230,140,40,.09);--out-ink:#9a4d00}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--in-h:#1d3355;--in-b:rgba(90,150,255,.10);--in-ink:#a9c6f5;--out-h:#4a3017;--out-b:rgba(255,160,60,.10);--out-ink:#f3c48f}}
+:root[data-theme="dark"]{--in-h:#1d3355;--in-b:rgba(90,150,255,.10);--in-ink:#a9c6f5;--out-h:#4a3017;--out-b:rgba(255,160,60,.10);--out-ink:#f3c48f}
+.log thead tr.grp th.gin{background:var(--in-h);color:var(--in-ink);border-bottom-color:var(--in-ink)}
+.log thead tr.grp th.gout{background:var(--out-h);color:var(--out-ink);border-bottom-color:var(--out-ink)}
+.log thead tr:not(.grp) th:nth-child(n+4):nth-child(-n+8){background:var(--in-h);color:var(--in-ink)}
+.log thead tr:not(.grp) th:nth-child(n+12):nth-child(-n+15){background:var(--out-h);color:var(--out-ink)}
+.log tbody tr:not(.dgroup) td:nth-child(n+4):nth-child(-n+8){background-image:linear-gradient(var(--in-b),var(--in-b))}
+.log tbody tr:not(.dgroup) td:nth-child(n+12):nth-child(-n+15){background-image:linear-gradient(var(--out-b),var(--out-b))}
 </style>
 </head>
 <body>
@@ -375,7 +386,7 @@ table.reg{border-collapse:collapse;width:100%;min-width:520px}
     <div class="tablebox">
       <table class="log">
         <thead>
-          <tr class="grp"><th class="blank" colspan="3"></th><th colspan="5">ขาเข้า</th><th class="blank" colspan="3"></th><th colspan="4">ขาออก</th><th class="blank" colspan="2"></th></tr>
+          <tr class="grp"><th class="blank" colspan="3"></th><th class="gin" colspan="5">ขาเข้า</th><th class="blank" colspan="3"></th><th class="gout" colspan="4">ขาออก</th><th class="blank" colspan="2"></th></tr>
           <tr>
             <th>No.</th><th>Ship's Name</th><th class="nw">เขตท่า</th>
             <th class="div">ETA Bar</th><th>Order for Entering</th><th>Pilot No.</th><th>Berth</th><th>Draught</th>
