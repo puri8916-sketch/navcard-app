@@ -516,10 +516,10 @@ table.reg{border-collapse:collapse;width:100%;min-width:520px}
       <section class="blk">
         <h3 class="lg">ขาเข้า<span class="spacer"></span><label class="sync"><input type="checkbox" id="etaSync" checked> ETA Bar = Order</label><label class="sync"><input type="checkbox" id="invIn"> <span class="invlbl">แยกใบแจ้งหนี้</span></label></h3>
         <div class="g g3">
-          <label class="f">ETA Bar<input id="fEta" class="mono" inputmode="numeric" placeholder="hhmm" autocomplete="off"></label>
-          <label class="f">Order for Entering<input id="fOrder" class="mono" inputmode="numeric" placeholder="hhmm" autocomplete="off"></label>
+          <label class="f">ETA Bar<input id="fEta" class="mono" inputmode="numeric" placeholder="วว-ดด-hhmm" data-tmask="1" autocomplete="off"></label>
+          <label class="f">Order for Entering<input id="fOrder" class="mono" inputmode="numeric" placeholder="วว-ดด-hhmm" data-tmask="1" autocomplete="off"></label>
           <label class="f">Pilot No.<input id="fPilotIn" class="mono" placeholder="เลข"></label>
-          <label class="f" id="capInF" hidden>เวลา -CAP-<input id="fCapIn" class="mono capt" placeholder="วัน-เดือน-เวลา" autocomplete="off"></label>
+          <label class="f" id="capInF" hidden>เวลา -CAP-<input id="fCapIn" class="mono capt" inputmode="numeric" placeholder="วว-ดด-hhmm" data-tmask="1" autocomplete="off"></label>
           <label class="f">Berth<input id="fBerth" class="mono" placeholder="ชื่อท่า"></label>
           <label class="f">Draught<input id="fDraughtIn" class="mono" autocomplete="off"></label>
         </div>
@@ -527,9 +527,9 @@ table.reg{border-collapse:collapse;width:100%;min-width:520px}
       <section class="blk">
         <h3 class="lg">ขาออก<span class="spacer"></span><label class="sync"><input type="checkbox" id="invOut"> <span class="invlbl">แยกใบแจ้งหนี้</span></label></h3>
         <div class="g g3">
-          <label class="f">ATD Bar<input id="fAtd" class="mono" inputmode="numeric" placeholder="hhmm" autocomplete="off"></label>
+          <label class="f">ATD Bar<input id="fAtd" class="mono" inputmode="numeric" placeholder="วว-ดด-hhmm" data-tmask="1" autocomplete="off"></label>
           <label class="f">Pilot No.<input id="fPilotOut" class="mono" placeholder="เลข"></label>
-          <label class="f" id="capOutF" hidden>เวลา -CAP-<input id="fCapOut" class="mono capt" placeholder="วัน-เดือน-เวลา" autocomplete="off"></label>
+          <label class="f" id="capOutF" hidden>เวลา -CAP-<input id="fCapOut" class="mono capt" inputmode="numeric" placeholder="วว-ดด-hhmm" data-tmask="1" autocomplete="off"></label>
           <label class="f">Draught<input id="fDraughtOut" class="mono" autocomplete="off"></label>
           <label class="f s2">Agent<input id="fAgentOut"></label>
         </div>
@@ -811,7 +811,8 @@ function startEdit(td){
     if(e.key==="Enter"){e.preventDefault();finish(true,"down")}
     else if(e.key==="Escape"){e.preventDefault();finish(false)}
   });
-  const o=F_OPTS()[f];if(o&&!(f==="agent"&&si!=null))combo(inp,o[0],o[1]?{upper:true}:{});
+  const o=F_OPTS()[f];if(o)combo(inp,o[0],o[1]?{upper:true}:{});
+  if(["eta","order","atd"].includes(f))inp.dataset.tmask="1";
   inp.addEventListener("blur",()=>setTimeout(()=>finish(true),130));
   inp.addEventListener("click",e=>e.stopPropagation());
   editingCell={td,inp};td.classList.add("editing");td.replaceChildren(inp);inp.focus();inp.select();
@@ -1483,12 +1484,12 @@ function renderShifts(){
   if(!shifts.length){box.append(el("p",{class:"hint",style:"margin:0"},"ไม่มีการย้ายท่า (ถ้ามี กด “+ ย้ายท่า”)"));return}
   box.append(el("div",{class:"srow head","aria-hidden":"true"},el("span"),el("span",{},"Order"),el("span",{},"Pilot No."),el("span",{},"จากท่า"),el("span"),el("span",{},"ไปท่า"),el("span",{},"Draught"),el("span",{},"Agent"),el("span")));
   shifts.forEach((s,i)=>{
-    const or=el("input",{id:"so"+i,class:"mono","aria-label":"Order ครั้งที่ "+(i+1),placeholder:"Order",autocomplete:"off",value:s.order||""});or.oninput=()=>s.order=or.value.trim();
+    const or=el("input",{id:"so"+i,class:"mono","aria-label":"Order ครั้งที่ "+(i+1),placeholder:"วว-ดด-hhmm","data-tmask":"1",autocomplete:"off",value:s.order||""});or.oninput=()=>s.order=or.value.trim();
     const pi=el("input",{id:"sp"+i,class:"mono","aria-label":"Pilot No.",placeholder:"Pilot",title:"-CAP- ใส่เวลาต่อท้ายได้ เช่น -CAP- 14-10-0700",value:capRaw(s.pilot,s.capTime)});combo(pi,pilotOpts);pi.oninput=()=>{const p=capSplit(pi.value);s.pilot=p.p;s.capTime=p.t};
     const fb=el("input",{id:"sf"+i,class:"mono","aria-label":"จากท่า",placeholder:"จากท่า",value:s.fromBerth||""});combo(fb,berthOpts,{upper:true});fb.oninput=()=>s.fromBerth=fb.value.trim();
     const be=el("input",{id:"sb"+i,class:"mono","aria-label":"ไปท่า",placeholder:"ไปท่า",value:s.berth||""});combo(be,berthOpts,{upper:true});be.oninput=()=>s.berth=be.value.trim();
     const dr=el("input",{id:"sd"+i,class:"mono","aria-label":"Draught",placeholder:"Draught",autocomplete:"off",value:s.draught||""});dr.oninput=()=>s.draught=dr.value.trim();
-    const ag=el("input",{id:"sa"+i,class:"ag","aria-label":"Agent",placeholder:"Agent",autocomplete:"off",value:s.agent||""});ag.oninput=()=>s.agent=ag.value.trim();
+    const ag=el("input",{id:"sa"+i,class:"ag","aria-label":"Agent",placeholder:"Agent",autocomplete:"off",value:s.agent||""});ag.oninput=()=>s.agent=ag.value.trim();combo(ag,agentOpts);
     box.append(el("div",{class:"srow"},el("span",{class:"num"},i+1),or,pi,fb,el("span",{class:"arw","aria-hidden":"true"},"→"),be,dr,ag,
       el("button",{type:"button",class:"x","aria-label":"ลบการย้ายท่าครั้งที่ "+(i+1),title:"ลบ",onclick:()=>{shifts.splice(i,1);renderShifts()}},"✕")));
   });
@@ -1795,6 +1796,12 @@ listeners.add(bkInfo);
     const lab=inp.id&&document.querySelector(`label[for="${inp.id}"]`);if(lab)lab.htmlFor="";
   });
 })();
+
+/* date-time fields always "วว-ดด-hhmm": typing digits only puts the dashes in by itself (text such as "แยกใบแจ้งหนี้" is left alone) */
+function tMask(v){const d=v.replace(/-/g,"");if(!/^\d{1,8}$/.test(d))return null;return d.length<=2?d:d.length<=4?d.slice(0,2)+"-"+d.slice(2):d.slice(0,2)+"-"+d.slice(2,4)+"-"+d.slice(4)}
+document.addEventListener("input",e=>{const t=e.target;if(!t||!t.dataset||!t.dataset.tmask)return;
+  if(e.inputType&&!e.inputType.startsWith("insert"))return; // deleting: leave as typed
+  const v=t.value,m=tMask(v);if(m==null||m===v)return;const atEnd=t.selectionStart===v.length;t.value=m;if(atEnd)t.setSelectionRange(m.length,m.length)},true);
 </script>
 
 </body>
