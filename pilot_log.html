@@ -516,10 +516,10 @@ table.reg{border-collapse:collapse;width:100%;min-width:520px}
       <section class="blk">
         <h3 class="lg">ขาเข้า<span class="spacer"></span><label class="sync"><input type="checkbox" id="etaSync" checked> ETA Bar = Order</label><label class="sync"><input type="checkbox" id="invIn"> <span class="invlbl">แยกใบแจ้งหนี้</span></label></h3>
         <div class="g g3">
-          <label class="f">ETA Bar<input id="fEta" class="mono" inputmode="numeric" placeholder="วว-ดด-hhmm" data-tmask="1" autocomplete="off"></label>
-          <label class="f">Order for Entering<input id="fOrder" class="mono" inputmode="numeric" placeholder="วว-ดด-hhmm" data-tmask="1" autocomplete="off"></label>
+          <label class="f">ETA Bar<input id="fEta" class="mono" inputmode="numeric" data-tmask="1" autocomplete="off"></label>
+          <label class="f">Order for Entering<input id="fOrder" class="mono" inputmode="numeric" data-tmask="1" autocomplete="off"></label>
           <label class="f">Pilot No.<input id="fPilotIn" class="mono" placeholder="เลข"></label>
-          <label class="f" id="capInF" hidden>เวลา -CAP-<input id="fCapIn" class="mono capt" inputmode="numeric" placeholder="วว-ดด-hhmm" data-tmask="1" autocomplete="off"></label>
+          <label class="f" id="capInF" hidden>เวลา -CAP-<input id="fCapIn" class="mono capt" inputmode="numeric" data-tmask="1" autocomplete="off"></label>
           <label class="f">Berth<input id="fBerth" class="mono" placeholder="ชื่อท่า"></label>
           <label class="f">Draught<input id="fDraughtIn" class="mono" autocomplete="off"></label>
         </div>
@@ -527,9 +527,9 @@ table.reg{border-collapse:collapse;width:100%;min-width:520px}
       <section class="blk">
         <h3 class="lg">ขาออก<span class="spacer"></span><label class="sync"><input type="checkbox" id="invOut"> <span class="invlbl">แยกใบแจ้งหนี้</span></label></h3>
         <div class="g g3">
-          <label class="f">ATD Bar<input id="fAtd" class="mono" inputmode="numeric" placeholder="วว-ดด-hhmm" data-tmask="1" autocomplete="off"></label>
+          <label class="f">ATD Bar<input id="fAtd" class="mono" inputmode="numeric" data-tmask="1" autocomplete="off"></label>
           <label class="f">Pilot No.<input id="fPilotOut" class="mono" placeholder="เลข"></label>
-          <label class="f" id="capOutF" hidden>เวลา -CAP-<input id="fCapOut" class="mono capt" inputmode="numeric" placeholder="วว-ดด-hhmm" data-tmask="1" autocomplete="off"></label>
+          <label class="f" id="capOutF" hidden>เวลา -CAP-<input id="fCapOut" class="mono capt" inputmode="numeric" data-tmask="1" autocomplete="off"></label>
           <label class="f">Draught<input id="fDraughtOut" class="mono" autocomplete="off"></label>
           <label class="f s2">Agent<input id="fAgentOut"></label>
         </div>
@@ -1349,7 +1349,11 @@ let comboCur=null;
 document.addEventListener("scroll",e=>{if(e.target!==pop&&!pop.hidden)pop.hidden=true},true);
 window.addEventListener("resize",()=>{pop.hidden=true});
 const shipOpts=()=>vessels.map(v=>({v:v.name,meta:[v.loa&&v.loa+" ft",v.agent].filter(Boolean).join(" · ")})).sort((a,b)=>a.v.localeCompare(b.v));
-const agentOpts=()=>[...new Set(vessels.map(v=>(v.agent||"").trim()).filter(Boolean))].sort().map(v=>({v}));
+// agents from the ship register + every agent ever written in the log (ขาเข้า, ขาออก, ย้ายท่า)
+const agentOpts=()=>{const S=new Set();const put=v=>{v=String(v||"").trim();if(v&&v!=="-")S.add(v)};
+  vessels.forEach(v=>put(v.agent));allCalls.forEach(c=>{put(c.agent);put(c.agentOut);(c.shifts||[]).forEach(x=>put(x.agent))});
+  const seen=new Map();for(const v of S){const k=v.toUpperCase();if(!seen.has(k))seen.set(k,v)}
+  return [...seen.values()].sort().map(v=>({v}))};
 const portOpts=()=>cfg.ports.map(v=>({v}));
 const berthOpts=()=>cfg.berths.map(v=>({v}));
 const pilotOpts=()=>cfg.pilots.map(v=>v==="-CAP-"?{v,keys:"000 CAP",meta:"นายเรือนำเอง"}:{v});
@@ -1484,7 +1488,7 @@ function renderShifts(){
   if(!shifts.length){box.append(el("p",{class:"hint",style:"margin:0"},"ไม่มีการย้ายท่า (ถ้ามี กด “+ ย้ายท่า”)"));return}
   box.append(el("div",{class:"srow head","aria-hidden":"true"},el("span"),el("span",{},"Order"),el("span",{},"Pilot No."),el("span",{},"จากท่า"),el("span"),el("span",{},"ไปท่า"),el("span",{},"Draught"),el("span",{},"Agent"),el("span")));
   shifts.forEach((s,i)=>{
-    const or=el("input",{id:"so"+i,class:"mono","aria-label":"Order ครั้งที่ "+(i+1),placeholder:"วว-ดด-hhmm","data-tmask":"1",autocomplete:"off",value:s.order||""});or.oninput=()=>s.order=or.value.trim();
+    const or=el("input",{id:"so"+i,class:"mono","aria-label":"Order ครั้งที่ "+(i+1),"data-tmask":"1",autocomplete:"off",value:s.order||""});or.oninput=()=>s.order=or.value.trim();
     const pi=el("input",{id:"sp"+i,class:"mono","aria-label":"Pilot No.",placeholder:"Pilot",title:"-CAP- ใส่เวลาต่อท้ายได้ เช่น -CAP- 14-10-0700",value:capRaw(s.pilot,s.capTime)});combo(pi,pilotOpts);pi.oninput=()=>{const p=capSplit(pi.value);s.pilot=p.p;s.capTime=p.t};
     const fb=el("input",{id:"sf"+i,class:"mono","aria-label":"จากท่า",placeholder:"จากท่า",value:s.fromBerth||""});combo(fb,berthOpts,{upper:true});fb.oninput=()=>s.fromBerth=fb.value.trim();
     const be=el("input",{id:"sb"+i,class:"mono","aria-label":"ไปท่า",placeholder:"ไปท่า",value:s.berth||""});combo(be,berthOpts,{upper:true});be.oninput=()=>s.berth=be.value.trim();
