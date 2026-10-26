@@ -621,6 +621,7 @@
     const data = ships[name];
     if (data) {
       input.value = data.value;
+      autoFill = { name, value: String(data.value) };
       updateResult();
       showHint(`ดึงเลขล่าสุดของ "${name}" มาให้แล้ว (แก้ไขได้ถ้าต้องการ)`);
     }
@@ -629,7 +630,13 @@
     input.select();
   }
 
+  // number pulled in for a ship goes away again when that ship name is cleared/changed (unless it was edited by hand)
+  let autoFill = null;
   shipInput.addEventListener('input', () => {
+    if (autoFill && shipInput.value.trim() !== autoFill.name) {
+      if (String(input.value) === autoFill.value) { input.value = ''; updateResult(); }
+      autoFill = null;
+    }
     clearHint();
     updateSuggestions();
   });
