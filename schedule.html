@@ -95,7 +95,13 @@ main{padding-block:14px 40px;padding-left:max(16px,env(safe-area-inset-left,0px)
 table.st{border-collapse:collapse;table-layout:fixed;width:100%;font-size:17px}
 .st th,.st td{border:1px solid var(--grid);padding:8px 10px;text-align:center}
 .st thead th{position:sticky;top:0;background:var(--head);font-size:15px}
-.st td.nm{text-align:left;font-weight:600}.st td.nt{font-size:14px;color:var(--muted)}
+.st td{padding:0}.st td.num,.st td.empty{padding:8px 10px}
+.st input{width:100%;min-height:40px;border:0;background:transparent;text-align:center;font:500 17px var(--f-ui);color:var(--ink);padding:0 10px}
+.st input.nm{text-align:left;font-weight:600}.st input.nt{font-size:15px;color:var(--muted)}.st input.num{font-family:var(--f-num)}
+.st input:focus{outline:2px solid var(--focus);outline-offset:-2px;background:var(--accent-soft)}
+.st input.saved{background:var(--ok)}
+.st button.del{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:14px;color:var(--pilot)}
+.st button.del.arm{background:var(--pilot);color:#fff;border-color:var(--pilot)}
 .st td.empty{color:var(--muted);padding:24px}
 .st tbody tr:nth-child(even) td{background:color-mix(in srgb,var(--head) 35%,transparent)}
 
@@ -227,8 +233,8 @@ table.sheet{border-collapse:collapse;table-layout:fixed;width:100%;font-family:v
       <input id="nsAgent" placeholder="เอเย่นต์" aria-label="เอเย่นต์">
       <button type="submit" class="btn primary">เพิ่มเรือ</button>
     </form>
-    <div class="gridwrap"><table class="st"><colgroup><col style="width:6%"><col style="width:30%"><col style="width:10%"><col style="width:16%"><col style="width:16%"><col style="width:22%"></colgroup>
-      <thead><tr><th>#</th><th>ชื่อเรือ</th><th>LOA</th><th>ท่าประจำ</th><th>เอเย่นต์</th><th>หมายเหตุ</th></tr></thead><tbody id="shipBody"></tbody></table></div>
+    <div class="gridwrap"><table class="st"><colgroup><col style="width:5%"><col style="width:29%"><col style="width:9%"><col style="width:15%"><col style="width:15%"><col style="width:19%"><col style="width:8%"></colgroup>
+      <thead><tr><th>#</th><th>ชื่อเรือ</th><th>LOA</th><th>ท่าประจำ</th><th>เอเย่นต์</th><th>หมายเหตุ</th><th></th></tr></thead><tbody id="shipBody"></tbody></table></div>
   </section>
 
   <section id="view-print" hidden>
@@ -284,23 +290,27 @@ function parseTime(txt, D){
 }
 
 /* ---------- data layer ---------- */
-const LS_KEY='shipsched-demo-v1';
+const LS_KEY='shipsched-demo-v2';
 function lsGet(){ try{ return JSON.parse(localStorage.getItem(LS_KEY)||'null'); }catch(e){ return null; } }
 function lsSet(v){ try{ localStorage.setItem(LS_KEY, JSON.stringify(v)); }catch(e){} }
 const demo = {
   db:null,
-  boot(){ const saved=lsGet(); this.db = saved && saved.v===1 ? saved : {v:1, mv:SEED.movements.slice(), extraShips:[]}; },
+  boot(){ const saved=lsGet(); this.db = saved && saved.v===2 ? saved : {v:2, mv:SEED.movements.slice(), ships:SEED.init.ships.slice()}; },
   persist(){ lsSet(this.db); },
 };
 async function api(action, params={}, body=null){
   if(!CFG.API_URL){
     if(!SEED) throw new Error('ยังไม่ได้ตั้งค่า API_URL');
     if(!demo.db) demo.boot();
-    if(action==='init') return {...SEED.init, ships:[...SEED.init.ships, ...demo.db.extraShips]};
+    if(action==='init') return {...SEED.init, ships:demo.db.ships.slice()};
     if(action==='movements') return demo.db.mv.filter(m=>m.datetime>=params.from && m.datetime<params.to);
     if(action==='saveMovement'){ const i=demo.db.mv.findIndex(x=>x.id===body.m.id); if(i>=0) demo.db.mv[i]=body.m; else demo.db.mv.push(body.m); demo.persist(); return body.m; }
     if(action==='deleteMovement'){ demo.db.mv=demo.db.mv.filter(x=>x.id!==body.id); demo.persist(); return true; }
-    if(action==='saveShip'){ demo.db.extraShips.push(body.ship); demo.persist(); return body.ship; }
+    if(action==='saveShip'){ if(!demo.db.ships.some(x=>x.name===body.ship.name)) demo.db.ships.push(body.ship); demo.persist(); return body.ship; }
+    if(action==='updateShip'){ const i=demo.db.ships.findIndex(x=>x.name===body.oldName);
+      if(body.ship.name!==body.oldName && demo.db.ships.some(x=>x.name===body.ship.name)) throw new Error(body.ship.name+' มีในทะเบียนแล้ว');
+      if(i>=0) demo.db.ships[i]=body.ship; else demo.db.ships.push(body.ship); demo.persist(); return body.ship; }
+    if(action==='deleteShip'){ demo.db.ships=demo.db.ships.filter(x=>x.name!==body.name); demo.persist(); return true; }
   }
   let r;
   if(body){ r = await fetch(CFG.API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({token:CFG.TOKEN,action,...body})}); }
@@ -679,10 +689,31 @@ function renderShips(){
   const q=norm($('shipQ').value);
   const list=S.ships.filter(s=>!q || norm(s.name).includes(q) || norm(s.agent).includes(q) || norm(s.berth).includes(q)).sort((a,b)=>a.name.localeCompare(b.name));
   $('shipCount').textContent = q? `${list.length} / ${S.ships.length} ลำ` : `${S.ships.length} ลำ`;
-  $('shipBody').innerHTML = list.map((s,i)=>`<tr><td class="num">${i+1}</td><td class="nm">${esc(s.name)}</td><td class="num">${esc(s.loa)}</td><td>${esc(s.berth)}</td><td>${esc(s.agent)}</td><td class="nt">${esc(s.note)}</td></tr>`).join('')
-    || `<tr><td colspan="6" class="empty">ไม่พบเรือ</td></tr>`;
+  const cell=(s,f,cls='')=>`<td><input class="${cls}" data-ship="${esc(s.name)}" data-sf="${f}" value="${esc(s[f])}" autocomplete="off" spellcheck="false" aria-label="${f} ${esc(s.name)}"></td>`;
+  $('shipBody').innerHTML = list.map((s,i)=>`<tr><td class="num">${i+1}</td>${cell(s,'name','nm')}${cell(s,'loa','num')}${cell(s,'berth')}${cell(s,'agent')}${cell(s,'note','nt')}<td><button type="button" class="del" data-delship="${esc(s.name)}">ลบ</button></td></tr>`).join('')
+    || `<tr><td colspan="7" class="empty">ไม่พบเรือ</td></tr>`;
   $('tab-ships').textContent=`ทะเบียนเรือ (${S.ships.length})`;
 }
+function scriptOld(err){ return /ไม่รู้จักคำสั่ง/.test(err.message) ? 'ต้องอัปเดตสคริปต์ Schedule.gs ก่อน (Deploy › Manage deployments › New version)' : err.message; }
+$('shipBody').addEventListener('change',async e=>{
+  const inp=e.target.closest('input[data-sf]'); if(!inp) return;
+  const old=inp.dataset.ship, f=inp.dataset.sf, s=S.shipIdx.get(old); if(!s) return;
+  let v=inp.value.trim(); if(f!=='note' && f!=='loa') v=norm(v);
+  if(f==='name'){ if(!v){ inp.value=old; return; } if(v!==old && S.shipIdx.has(v)){ inp.value=old; return toast(`${v} มีในทะเบียนแล้ว`); } }
+  const ns={...s,[f]:v};
+  try{ await api('updateShip',{},{oldName:old, ship:ns});
+    Object.assign(s,ns); if(f==='name'){ S.shipIdx.delete(old); S.shipIdx.set(v,s); inp.dataset.ship=v; inp.closest('tr').querySelectorAll('[data-ship]').forEach(x=>x.dataset.ship=v); inp.closest('tr').querySelector('[data-delship]').dataset.delship=v; }
+    inp.value=v; inp.classList.add('saved'); setTimeout(()=>inp.classList.remove('saved'),900); }
+  catch(err){ inp.value=s[f]||''; toast('แก้ไม่สำเร็จ: '+scriptOld(err)); }
+});
+$('shipBody').addEventListener('keydown',e=>{ const i=e.target.closest('input[data-sf]'); if(!i) return;
+  if(e.key==='Enter'||e.key==='ArrowDown'||e.key==='ArrowUp'){ e.preventDefault(); const col=[...$('shipBody').querySelectorAll(`input[data-sf="${i.dataset.sf}"]`)]; const n=col[col.indexOf(i)+(e.key==='ArrowUp'?-1:1)]; if(n) n.focus(); else i.blur(); } });
+$('shipBody').addEventListener('focusin',e=>{ const i=e.target.closest('input'); if(i) i.select(); });
+$('shipBody').addEventListener('click',async e=>{ const b=e.target.closest('[data-delship]'); if(!b) return;
+  if(!b.classList.contains('arm')){ b.classList.add('arm'); b.textContent='ยืนยันลบ'; setTimeout(()=>{ if(b.isConnected){ b.classList.remove('arm'); b.textContent='ลบ'; } },3000); return; }
+  const name=b.dataset.delship;
+  try{ await api('deleteShip',{},{name}); S.ships=S.ships.filter(x=>x.name!==name); S.shipIdx.delete(name); renderShips(); toast(`ลบ ${name} ออกจากทะเบียนแล้ว`); }
+  catch(err){ toast('ลบไม่สำเร็จ: '+scriptOld(err)); } });
 $('shipQ').addEventListener('input',renderShips);
 $('shipAdd').addEventListener('submit',async e=>{ e.preventDefault();
   const name=norm($('nsName').value); if(!name){ $('nsName').focus(); return; }

@@ -30,6 +30,8 @@ function doPost(e) {
         case 'saveMovement': return saveMovement_(req.m);
         case 'deleteMovement': return deleteById_('Movements', req.id);
         case 'saveShip': return saveShip_(req.ship);
+        case 'updateShip': return updateShip_(req.oldName, req.ship);
+        case 'deleteShip': return deleteByCol_('Ships', 'ชื่อเรือ', req.name);
       }
       throw new Error('ไม่รู้จักคำสั่ง ' + req.action);
     } finally { lock.releaseLock(); }
@@ -131,4 +133,25 @@ function saveShip_(ship) {
   const map = { 'ชื่อเรือ': ship.name, 'LOA': ship.loa, 'ท่าประจำ': ship.berth, 'เอเย่นต์': ship.agent, 'หมายเหตุ': ship.note || '', 'ที่มา': 'เว็บ' };
   writeRow_(s, s.getLastRow() + 1, header, map);
   return ship;
+}
+
+const SHIP_COLS_ = { name: 'ชื่อเรือ', loa: 'LOA', berth: 'ท่าประจำ', agent: 'เอเย่นต์', note: 'หมายเหตุ' };
+function updateShip_(oldName, ship) {
+  const s = sh_('Ships');
+  const header = s.getRange(1, 1, 1, s.getLastColumn()).getValues()[0].map(String);
+  const name = str_(ship.name).toUpperCase();
+  if (!name) throw new Error('ชื่อเรือว่าง');
+  const r = findRow_(s, 'ชื่อเรือ', oldName);
+  if (name !== str_(oldName).toUpperCase() && findRow_(s, 'ชื่อเรือ', name) > 0) throw new Error(name + ' มีในทะเบียนแล้ว');
+  if (r < 0) return saveShip_(Object.assign({}, ship, { name: name }));
+  Object.keys(SHIP_COLS_).forEach(k => {
+    const c = header.indexOf(SHIP_COLS_[k]);
+    if (c >= 0 && ship[k] !== undefined) s.getRange(r, c + 1).setNumberFormat('@').setValue(k === 'name' ? name : str_(ship[k]));
+  });
+  return ship;
+}
+function deleteByCol_(name, col, value) {
+  const s = sh_(name); const r = findRow_(s, col, value);
+  if (r > 0) s.deleteRow(r);
+  return true;
 }
