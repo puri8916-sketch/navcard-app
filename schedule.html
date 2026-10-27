@@ -200,6 +200,10 @@ table.lsheet{border-collapse:separate;border-spacing:0;border-top:1px dotted #8C
 .btn.tb.red{color:#D0021B}
 #linePull.arm{background:var(--pilot);color:#fff;border-color:var(--pilot)}
 .lsheet+.lsheet{border-top:0}
+.btn.addblk{background:#1E8E3E;color:#fff;border:2px solid #1E8E3E;font-size:17px;font-weight:700;padding:9px 18px;box-shadow:0 2px 6px rgb(30 142 62 / .35)}
+.btn.addblk:hover{background:#18752F;border-color:#18752F}
+@media (prefers-reduced-motion:no-preference){.btn.addblk{animation:addpulse 1.6s ease-in-out 3}}
+@keyframes addpulse{50%{box-shadow:0 0 0 6px rgb(30 142 62 / .25)}}
 .lsheet.board td.title{position:relative}
 .blkdel{position:absolute;right:8px;top:50%;transform:translateY(-50%);font:600 14px var(--f-ui);color:#D0021B;background:#fff;border:1px solid #E3B3B3;border-radius:6px;padding:4px 10px;cursor:pointer;opacity:0;transition:opacity .15s}
 .lsheet.board:hover .blkdel,.blkdel:focus-visible{opacity:1}
@@ -1101,7 +1105,7 @@ function boardTable(b,bi){
 // a day's table that was taken out can be added back (empty) for a sudden extra ship
 function renderAddBlk(){
   const have=new Set(BD.blocks.map(b=>b.date)), want=[addDays(BD.date,-1), BD.date].filter(d=>!have.has(d));
-  $('addBlk').innerHTML = want.map(d=>`<button class="btn tb" data-addblk="${d}">+ เพิ่มตาราง ${longDate(d)}</button>`).join('');
+  $('addBlk').innerHTML = want.map(d=>`<button class="btn addblk" data-addblk="${d}">＋ เพิ่มตาราง ${longDate(d)}</button>`).join('');
 }
 $('addBlk').addEventListener('mousedown',e=>e.preventDefault());
 $('addBlk').addEventListener('click',e=>{ const b=e.target.closest('[data-addblk]'); if(!b||!BD) return; const d=b.dataset.addblk;
