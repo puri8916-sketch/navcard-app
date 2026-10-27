@@ -168,6 +168,7 @@ table.sheet{border-collapse:collapse;table-layout:fixed;width:100%;font-family:v
 .sheet .foot{background:#FFFF99;font-weight:700;white-space:pre}
 #printRoot{display:none}
 #measure{position:absolute;left:-99999px;top:0;width:1091px;visibility:hidden}
+#pdfStage{position:fixed;left:-99999px;top:0;width:1091px;background:#fff}
 @page{size:A4 landscape;margin:4.3mm}
 @media print{
   body{background:#fff}
@@ -237,6 +238,7 @@ table.sheet{border-collapse:collapse;table-layout:fixed;width:100%;font-family:v
   <section id="view-print" hidden>
     <div class="printbar">
       <button class="btn primary" id="printBtn">ปริ้น</button>
+      <button class="btn" id="pdfBtn">ดาวน์โหลด PDF</button>
       <span class="note" id="printNote">A4 แนวนอน · หน้าเดียว</span>
     </div>
     <div class="scrollx"><div class="paper" id="paperBig"></div></div>
@@ -729,8 +731,28 @@ $('setupForm').addEventListener('submit',async e=>{ e.preventDefault();
   catch(err){ Object.assign(CFG,old); msg.textContent='เชื่อมต่อไม่ได้: '+err.message; msg.className='hint bad'; } });
 $('sOff').addEventListener('click',()=>{ try{ localStorage.setItem(CFG_KEY, JSON.stringify({})); }catch(e){} location.reload(); });
 const framed = (()=>{ try{ return window.self!==window.top; }catch(e){ return true; } })();
-if(framed && !window.__CAN_PRINT__){ $('printBtn').hidden=true; $('printNote').textContent='ตัวอย่าง: ปุ่มปริ้นใช้ได้เมื่อเปิดจากเว็บของคุณ'; }
+if(framed && !window.__CAN_PRINT__){ $('printBtn').hidden=true; $('pdfBtn').hidden=true; $('printNote').textContent='ตัวอย่าง: ปุ่มปริ้นใช้ได้เมื่อเปิดจากเว็บของคุณ'; }
 $('printBtn').addEventListener('click',()=>window.print());
+/* PDF: draw the same sheet at print width and place it on one A4 landscape page */
+function loadScript(src){ return new Promise((ok,no)=>{ const s=document.createElement('script'); s.src=src; s.onload=ok; s.onerror=()=>no(new Error('โหลดตัวสร้าง PDF ไม่ได้ (ต้องต่อเน็ต)')); document.head.append(s); }); }
+async function downloadPdf(){
+  const btn=$('pdfBtn'); btn.disabled=true; const label=btn.textContent; btn.textContent='กำลังสร้าง PDF…';
+  try{
+    if(!window.html2canvas) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+    if(!window.jspdf) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+    const stage=document.createElement('div'); stage.id='pdfStage'; stage.innerHTML=shrinkToFit(sheetHTML(S.D).html); document.body.append(stage);
+    const canvas=await html2canvas(stage,{scale:3,backgroundColor:'#ffffff',logging:false}); stage.remove();
+    const pdf=new jspdf.jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
+    const M=4.3, W=297-2*M, H=210-2*M; let w=W, h=canvas.height*W/canvas.width; if(h>H){ h=H; w=canvas.width*H/canvas.height; }
+    pdf.addImage(canvas.toDataURL('image/jpeg',0.95),'JPEG',M+(W-w)/2,M,w,h);
+    const [y,m,d]=S.D.split('-').map(Number);
+    const name=`SHIP'S SCHEDULE ${d}-${m}-${String((y+543)%100).padStart(2,'0')}.pdf`;
+    const a=document.createElement('a'); a.href=URL.createObjectURL(pdf.output('blob')); a.download=name; document.body.append(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),5000);
+    toast('ดาวน์โหลด '+name);
+  }catch(err){ toast('สร้าง PDF ไม่สำเร็จ: '+err.message); }
+  finally{ btn.disabled=false; btn.textContent=label; }
+}
+$('pdfBtn').addEventListener('click',downloadPdf);
 
 (async function start(){
   $('modeBadge').textContent = CFG.API_URL? 'เชื่อม Google Sheet' : 'โหมดตัวอย่าง';
