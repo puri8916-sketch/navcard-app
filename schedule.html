@@ -284,6 +284,7 @@ table.lsheet.board{width:100%;font-size:17px}
       <div class="grp"><button class="btn primary" id="lineCopy">คัดลอกรูป</button></div>
       <div class="grp"><button class="btn tb" data-bact="undo" title="Ctrl+Z">↶ ย้อนกลับ</button><button class="btn tb" data-bact="redo" title="Ctrl+Y">↷ ทำซ้ำ</button></div>
       <div class="grp fcolor"><button class="btn tb fc-main" data-bact="color" title="สีตัวอักษร"><span class="fcA">A</span><span class="fcBar" id="fcBar"></span></button><button class="btn tb fc-drop" id="fcDrop" title="เลือกสี" aria-label="เลือกสีตัวอักษร">▾</button><div class="fc-pal" id="fcPal" hidden></div></div>
+      <div class="grp" id="addBlk"></div>
       <div class="grp"><label class="since" for="lineSince">ตั้งแต่</label><input id="lineSince" class="since num" autocomplete="off" aria-label="ดึงเรือตั้งแต่เวลา"><button class="btn" id="linePull">ดึงจากจัดตารางใหม่</button><span class="note" id="boardInfo"></span></div>
     </div>
     <div class="scrollx"><div class="paper linepaper" id="board"></div></div>
@@ -1097,8 +1098,18 @@ function boardTable(b,bi){
   });
   return h+'</table>';
 }
+// a day's table that was taken out can be added back (empty) for a sudden extra ship
+function renderAddBlk(){
+  const have=new Set(BD.blocks.map(b=>b.date)), want=[addDays(BD.date,-1), BD.date].filter(d=>!have.has(d));
+  $('addBlk').innerHTML = want.map(d=>`<button class="btn tb" data-addblk="${d}">+ เพิ่มตาราง ${longDate(d)}</button>`).join('');
+}
+$('addBlk').addEventListener('mousedown',e=>e.preventDefault());
+$('addBlk').addEventListener('click',e=>{ const b=e.target.closest('[data-addblk]'); if(!b||!BD) return; const d=b.dataset.addblk;
+  pushUndo(); const blk={date:d, label:longDate(d), rows:[blankRow(),blankRow(),blankRow()]};
+  const at=BD.blocks.findIndex(x=>(x.date||'')>d); if(at<0) BD.blocks.push(blk); else BD.blocks.splice(at,0,blk);
+  const bi=BD.blocks.indexOf(blk); SEL={b:bi,r1:1,c1:1,r2:1,c2:1}; boardSave(); renderBoard(); toast(`เพิ่มตาราง ${longDate(d)} แล้ว · พิมพ์เรือได้เลย`); });
 function renderBoard(){
-  if(!BD) return;
+  if(!BD) return; renderAddBlk();
   const keep=SEL;
   BD.blocks.forEach(ensureTrailing);
   $('board').innerHTML = BD.blocks.map((b,bi)=>boardTable(b,bi)).join('');
