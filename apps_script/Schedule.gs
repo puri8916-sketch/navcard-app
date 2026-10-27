@@ -36,6 +36,7 @@ function doPost(e) {
         case 'saveDuty': return saveDuty_(req.month, req.list);
         case 'saveFixed': return saveFixed_(req.fixed);
         case 'saveSnapshot': return saveSnapshot_(req.snap);
+        case 'saveBoard': return saveBoard_(req.board);
       }
       throw new Error('ไม่รู้จักคำสั่ง ' + req.action);
     } finally { lock.releaseLock(); }
@@ -97,7 +98,8 @@ function init_() {
     pilots, duty,
     fixed: rows_('FixedContacts').map(r => ({ text: str_(r['ข้อความในตาราง']), group: Number(r['กลุ่ม']) || 1 })).filter(f => f.text),
     settings,
-    snapshots: snapshots_()
+    snapshots: snapshots_(),
+    boards: boards_()
   };
 }
 function listMovements_(from, to) {
@@ -219,5 +221,28 @@ function saveSnapshot_(snap) {
   if (json.length > 49000) throw new Error('ข้อมูลจัดจ่ายใหญ่เกินไป');
   const r = findRow_(s, 'date', snap.date);
   s.getRange(r > 0 ? r : s.getLastRow() + 1, 1, 1, 3).setNumberFormat('@').setValues([[snap.date, str_(snap.at), json]]);
+  return true;
+}
+
+/* ---------- กระดานรูป LINE (แก้อิสระ แยกจากจัดตาราง) ---------- */
+function boards_() {
+  const s = SpreadsheetApp.getActive().getSheetByName('LineBoards'); if (!s) return {};
+  const since = Utilities.formatDate(new Date(Date.now() - 14 * 864e5), TZ, 'yyyy-MM-dd');
+  const out = {};
+  s.getDataRange().getValues().slice(1).forEach(r => {
+    const d = str_(cell_(r[0])).slice(0, 10);
+    if (d && d >= since) { try { out[d] = JSON.parse(r[2] || 'null'); } catch (e) {} }
+  });
+  return out;
+}
+function saveBoard_(board) {
+  const ss = SpreadsheetApp.getActive(); let s = ss.getSheetByName('LineBoards');
+  if (!s) { s = ss.insertSheet('LineBoards'); s.getRange(1, 1, 1, 3).setValues([['date', 'updated', 'json']]); s.getRange('A:C').setNumberFormat('@'); }
+  const json = JSON.stringify(board);
+  if (json.length > 49000) throw new Error('ตารางรูป LINE ยาวเกินไป');
+  const r = findRow_(s, 'date', board.date);
+  const old = r > 0 ? Number(s.getRange(r, 2).getValue()) || 0 : 0;
+  if (old > Number(board.updated)) return false;   // a newer version from another device is already there
+  s.getRange(r > 0 ? r : s.getLastRow() + 1, 1, 1, 3).setNumberFormat('@').setValues([[board.date, String(board.updated), json]]);
   return true;
 }

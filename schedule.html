@@ -193,6 +193,24 @@ table.lsheet{border-collapse:collapse;table-layout:fixed;width:1600px;font-famil
 .lsheet tr.red td{color:#FF0000}
 .lsheet td.red{color:#FF0000}
 .lsheet .gapb td{height:18px;border-left:0;border-right:0}
+.ltool{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin-bottom:12px;position:sticky;top:calc(env(safe-area-inset-top,0px) + 62px);z-index:4;background:var(--bg);padding-block:6px}
+.ltool .grp{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.btn.tb{padding:7px 12px;font-size:15px}
+.btn.tb.red{color:#D0021B}
+#linePull.arm{background:var(--pilot);color:#fff;border-color:var(--pilot)}
+.bgap{height:14px;background:#fff}
+#board.linepaper{width:100%;min-width:1180px}
+table.lsheet.board{width:100%;font-size:17px}
+.lsheet.board td{padding:0;height:34px}
+.lsheet.board td.date{font-size:26px}.lsheet.board td.title{font-size:21px}
+.lsheet.board input{width:100%;height:100%;min-height:35px;border:0;background:transparent;text-align:center;font:inherit;color:inherit;padding:0 3px}
+.lsheet.board td.l input{text-align:left}
+.lsheet.board td.date input{font-weight:700;min-height:45px}
+.lsheet.board td.pc input{color:#FF0000;font-weight:700}
+.lsheet.board td.red input{color:#FF0000}
+.lsheet.board tr.cur td{background:#F1F6FB}
+.lsheet.board tr.cur td.date{background:#FFFF99}
+.lsheet.board input:focus{outline:2px solid #3B8FD6;outline-offset:-2px;background:#E8F2FB}
 #measure{position:absolute;left:-99999px;top:0;width:1091px;visibility:hidden}
 #pdfStage{position:fixed;left:-99999px;top:0;width:1091px;background:#fff}
 #pdfStage table.sheet{border-collapse:separate;border-spacing:0;border-top:.4px solid #555;border-left:.4px solid #555}
@@ -285,12 +303,14 @@ table.lsheet{border-collapse:collapse;table-layout:fixed;width:1600px;font-famil
   </section>
 
   <section id="view-line" hidden>
-    <div class="printbar">
-      <label class="since" for="lineSince">ตั้งแต่</label><input id="lineSince" class="since num" autocomplete="off" aria-label="แสดงเรือตั้งแต่เวลา">
-      <button class="btn primary" id="lineCopy">คัดลอกรูป</button>
-      <button class="btn" id="lineSave">ดาวน์โหลดรูป</button>
+    <div class="ltool">
+      <div class="grp"><button class="btn primary" id="lineCopy">คัดลอกรูป</button><button class="btn" id="lineSave">ดาวน์โหลดรูป</button></div>
+      <div class="grp"><button class="btn tb red" data-bact="red" title="สลับสีแดง ช่องนี้">ตัวแดง</button><button class="btn tb red" data-bact="redrow" title="สลับสีแดง ทั้งฝั่งของแถวนี้">แดงทั้งแถว</button><button class="btn tb" data-bact="black" title="ฝั่งของแถวนี้เป็นตัวดำ">ตัวดำ</button></div>
+      <div class="grp"><button class="btn tb" data-bact="insup">แทรกแถวบน</button><button class="btn tb" data-bact="insdown">แทรกแถวล่าง</button><button class="btn tb" data-bact="del">ลบแถว</button><button class="btn tb" data-bact="clear">ล้างฝั่งนี้</button></div>
+      <div class="grp"><button class="btn tb" data-bact="up" title="เลื่อนทั้งแถวขึ้น">แถว ▲</button><button class="btn tb" data-bact="down" title="เลื่อนทั้งแถวลง">แถว ▼</button><button class="btn tb" data-bact="halfup" title="เลื่อนเฉพาะฝั่งนี้ขึ้น">ฝั่งนี้ ▲</button><button class="btn tb" data-bact="halfdown" title="เลื่อนเฉพาะฝั่งนี้ลง">ฝั่งนี้ ▼</button></div>
+      <div class="grp"><label class="since" for="lineSince">ตั้งแต่</label><input id="lineSince" class="since num" autocomplete="off" aria-label="ดึงเรือตั้งแต่เวลา"><button class="btn" id="linePull">ดึงจากจัดตารางใหม่</button><span class="note" id="boardInfo"></span></div>
     </div>
-    <div class="scrollx"><div class="paper linepaper" id="linePaper"></div></div>
+    <div class="scrollx"><div class="paper linepaper" id="board"></div></div>
   </section>
 
   <section id="view-print" hidden>
@@ -361,7 +381,7 @@ async function api(action, params={}, body=null){
   if(!CFG.API_URL){
     if(!SEED) throw new Error('ยังไม่ได้ตั้งค่า API_URL');
     if(!demo.db) demo.boot();
-    if(action==='init') return {...SEED.init, snapshots:demo.db.snaps||{}, ships:demo.db.ships.slice(), pilots:demo.db.pilots||SEED.init.pilots, duty:demo.db.duty||SEED.init.duty, fixed:demo.db.fixed||SEED.init.fixed};
+    if(action==='init') return {...SEED.init, snapshots:demo.db.snaps||{}, boards:demo.db.boards||{}, ships:demo.db.ships.slice(), pilots:demo.db.pilots||SEED.init.pilots, duty:demo.db.duty||SEED.init.duty, fixed:demo.db.fixed||SEED.init.fixed};
     if(action==='movements') return demo.db.mv.filter(m=>m.datetime>=params.from && m.datetime<params.to);
     if(action==='saveMovement'){ const i=demo.db.mv.findIndex(x=>x.id===body.m.id); if(i>=0) demo.db.mv[i]=body.m; else demo.db.mv.push(body.m); demo.persist(); return body.m; }
     if(action==='deleteMovement'){ demo.db.mv=demo.db.mv.filter(x=>x.id!==body.id); demo.persist(); return true; }
@@ -373,6 +393,7 @@ async function api(action, params={}, body=null){
     if(action==='saveDuty'){ SEED.init.duty[body.month]=body.list; demo.db.duty=SEED.init.duty; demo.persist(); return true; }
     if(action==='saveFixed'){ SEED.init.fixed=body.fixed; demo.db.fixed=body.fixed; demo.persist(); return true; }
     if(action==='saveSnapshot'){ demo.db.snaps=demo.db.snaps||{}; demo.db.snaps[body.snap.date]={at:body.snap.at,items:body.snap.items}; demo.persist(); return true; }
+    if(action==='saveBoard'){ demo.db.boards=demo.db.boards||{}; demo.db.boards[body.board.date]=body.board; demo.persist(); return true; }
     if(action==='deleteShip'){ demo.db.ships=demo.db.ships.filter(x=>x.name!==body.name); demo.persist(); return true; }
   }
   let r;
@@ -391,6 +412,7 @@ function applyInit(d){
   S.berths = d.berths; S.agents = d.agents; S.pilots = d.pilots; S.duty = d.duty; S.fixed = d.fixed;
   S.settings = {...S.settings, ...d.settings};
   S.snaps = d.snapshots || {};
+  S.boards = d.boards || {};
 }
 async function loadInit(){ applyInit(await api('init')); }
 const RANGE_BACK=35, RANGE_FWD=35;
@@ -572,7 +594,6 @@ function fitAll(){   // read all widths first, then write — one layout pass in
 function fitInput(i){ i.style.fontSize=''; if(!i.value || i.offsetParent===null) return; const base=parseFloat(getComputedStyle(i).fontSize);
   if(i.scrollWidth>i.clientWidth+1){ const k=(i.clientWidth-2)/i.scrollWidth; i.style.fontSize=Math.max(10,base*k).toFixed(1)+'px'; } }
 function renderAll(){
-  lineDirty=true; if(!$('view-line').hidden) renderLine();
   $('windowLabel').innerHTML = `รอบ <span class="num">${shortDate(S.D)} ${S.settings.cutoff}</span> – <span class="num">${shortDate(addDays(S.D,1))} ${addTimeLabel()}</span>`;
   renderGrid(); printDirty=true; if(!$('view-print').hidden) renderPrint();
 }
@@ -761,10 +782,12 @@ async function refresh(force){
     const changed = JSON.stringify(init)!==JSON.stringify(S.init) || JSON.stringify(list)!==JSON.stringify(S.mv);
     applyInit(init); S.mv=list; S.loaded=rangeFor(S.D); cacheSet();
     if(changed){ if(gridBusy()) pendingRender=true; else { rerender(); if(!$('view-ships').hidden) renderShips(); } }
+    const rb=(S.boards||{})[S.D];
+    if(rb && BD && BD.date===S.D && rb.updated>BD.updated && !$('view-line').hidden && !(document.activeElement && document.activeElement.closest && document.activeElement.closest('#board'))) openBoard(S.D);
   }catch(err){ toast('โหลดข้อมูลไม่สำเร็จ: '+err.message); }
 }
 async function goDate(D){
-  S.D=D; $('schedDate').value=D; hidePop();
+  S.D=D; $('schedDate').value=D; hidePop(); if(!$('view-line').hidden) openBoard(D);
   if(covered(D)){ renderAll(); refresh(false); return; }
   try{ await loadMovements(D); cacheSet(); }catch(err){ toast('โหลดข้อมูลไม่สำเร็จ: '+err.message); }
   renderAll();
@@ -772,7 +795,7 @@ async function goDate(D){
 $('schedDate').addEventListener('change',e=>{ if(e.target.value) goDate(e.target.value); });
 $('prevDay').addEventListener('click',()=>goDate(addDays(S.D,-1)));
 $('nextDay').addEventListener('click',()=>goDate(addDays(S.D,1)));
-function showTab(t){ for(const x of ['work','print','line','ships','pilots']){ $('tab-'+x).setAttribute('aria-selected', x===t); $('view-'+x).hidden = x!==t; } if(t==='work') fitAll(); if(t==='print'){ renderPrint(); renderDisp(); } if(t==='line'){ if(!$('lineSince').value) $('lineSince').value=fmtT(nowDt()); renderLine(); } $('view-setup').hidden = t!=='setup'; hidePop(); }
+function showTab(t){ for(const x of ['work','print','line','ships','pilots']){ $('tab-'+x).setAttribute('aria-selected', x===t); $('view-'+x).hidden = x!==t; } if(t==='work') fitAll(); if(t==='print'){ renderPrint(); renderDisp(); } if(t==='line'){ if(!$('lineSince').value) $('lineSince').value=fmtT(nowDt()); if(!BD || BD.date!==S.D) openBoard(S.D); else fitBoard(); } $('view-setup').hidden = t!=='setup'; hidePop(); }
 $('tab-work').addEventListener('click',()=>showTab('work')); $('tab-print').addEventListener('click',()=>showTab('print'));
 $('tab-line').addEventListener('click',()=>showTab('line'));
 $('tab-ships').addEventListener('click',()=>{ renderShips(); showTab('ships'); });
@@ -915,8 +938,14 @@ $('dispBtn').addEventListener('click',()=>{
   dispArm=false; dispatch(S.D);
 });
 
-/* ---------- รูป LINE (แทนแท็บ แก้ไข) ---------- */
+/* ---------- รูป LINE: กระดานแยกจากจัดตาราง (ดึงจากจัดตารางครั้งแรก แล้วแก้ได้อิสระ) ---------- */
 const LCOLW=[7.1,57.9,10,10.3,23,23,23.3,8.4,21.1,7.4,52,9.9,8.6,23,50.7,8.4,20.3];
+const LHEAD=['NO.',"SHIP'S&nbsp; NAME",'LOA','Drf','ETA','POB','BERTH','Pilot','AGENT','NO.',"SHIP'S&nbsp; NAME",'LOA','Drf','ETD','BERTH','Pilot','AGENT'];
+const LF={1:['ship','L'],6:['berth','L'],7:['pilot','L'],8:['agent','L'],10:['ship','R'],14:['berth','R'],15:['pilot','R'],16:['agent','R']};
+const PILOT_COLS=[7,15];
+const blankRow=()=>({c:Array(17).fill(''), r:Array(17).fill(false)});
+let BD=null, bcur=null, bSaveT=null;
+
 function pairRows(items){
   const list=items.slice().sort(sortMv), rows=[{gap:true}], slots=[]; let prev=null;
   for(const m of list){ const s=slots[slots.length-1]; if(s && s.dt===m.datetime) s.items.push(m); else slots.push({dt:m.datetime,items:[m]}); }
@@ -928,35 +957,145 @@ function pairRows(items){
   }
   return rows;
 }
-function lineBlock(D, items, snap){
+function blockFromSchedule(D, items, snap){
   const nos = buildMain(S.mv.filter(m=>inWin(m,D) && !+m.late)).no;
-  const tot=LCOLW.reduce((a,b)=>a+b,0);
-  let h=`<table class="lsheet"><colgroup>${LCOLW.map(w=>`<col style="width:${(w/tot*100).toFixed(3)}%">`).join('')}</colgroup>`;
-  h+=`<tr><td class="date" colspan="2">${longDate(D)}</td><td class="title" colspan="15">SHIP'S&nbsp;&nbsp; SCHEDULE&nbsp; FOR&nbsp; SONGKHLA&nbsp;&nbsp; PILOT</td></tr>`;
+  const rows = pairRows(items).map(pr=>{
+    const row=blankRow(); if(pr.gap) return row;
+    const put=(m,off,vals)=>{ const red=!!(+m.late || changed(m,snap)); vals.forEach((v,i)=>{ row.c[off+i]=String(v??''); row.r[off+i]=red; }); if(+m.late) row.r[off]=true; };
+    if(pr.L){ const m=pr.L; put(m,0,[+m.late?'พ':(nos.get(m.id)||''), m.ship, m.loa, m.drf, fmtT(m.datetime), fmtT(m.pob||m.datetime), m.to, m.pilot, m.agent]); }
+    if(pr.R){ const m=pr.R; put(m,9,[+m.late?'พ':(nos.get(m.id)||''), m.ship, m.loa, m.drf, fmtT(m.datetime), berthText(m), m.pilot, m.agent]); }
+    return row;
+  });
+  return {date:D, label:longDate(D), rows};
+}
+function boardFromSchedule(D){
+  const P=addDays(D,-1);
+  const since = parseTime($('lineSince').value||fmtT(nowDt()), P) || nowDt();
+  return { date:D, updated:Date.now(), blocks:[
+    blockFromSchedule(P, S.mv.filter(m=>inWin(m,P) && m.datetime>=since), snapOf(P)),
+    blockFromSchedule(D, S.mv.filter(m=>inWin(m,D) && !+m.late), snapOf(D)) ] };
+}
+
+/* storage: this device at once, the sheet shortly after */
+const BKEY=D=>'shipsched_board:'+(CFG.API_URL||'demo')+':'+D;
+function boardLocal(D){ try{ return JSON.parse(localStorage.getItem(BKEY(D))||'null'); }catch(e){ return null; } }
+function boardSave(){
+  if(!BD) return; BD.updated=Date.now();
+  try{ localStorage.setItem(BKEY(BD.date), JSON.stringify(BD)); }catch(e){}
+  S.boards=S.boards||{}; S.boards[BD.date]=BD;
+  clearTimeout(bSaveT); const snap=JSON.parse(JSON.stringify(BD));
+  bSaveT=setTimeout(async()=>{ try{ await api('saveBoard',{},{board:snap}); }catch(err){ toast('บันทึกรูป LINE ขึ้นชีตไม่สำเร็จ: '+scriptOld(err)); } },1200);
+}
+function openBoard(D){
+  const loc=boardLocal(D), rem=(S.boards||{})[D];
+  BD = (loc && (!rem || loc.updated>=rem.updated)) ? loc : rem ? JSON.parse(JSON.stringify(rem)) : null;
+  if(!BD){ BD=boardFromSchedule(D); boardSave(); }
+  renderBoard();
+}
+
+/* editable board, drawn like the image */
+function boardTable(b,bi){
+  const tot=LCOLW.reduce((a,x)=>a+x,0);
+  let h=`<table class="lsheet board"><colgroup>${LCOLW.map(w=>`<col style="width:${(w/tot*100).toFixed(3)}%">`).join('')}</colgroup>`;
+  h+=`<tr><td class="date" colspan="2"><input data-b="${bi}" data-hd="1" value="${esc(b.label)}" aria-label="วันที่"></td><td class="title" colspan="15">SHIP'S&nbsp;&nbsp; SCHEDULE&nbsp; FOR&nbsp; SONGKHLA&nbsp;&nbsp; PILOT</td></tr>`;
   h+=`<tr><td class="h-in" colspan="9">ENTERING</td><td class="h-out" colspan="8">SAILING &amp; SHIFTING</td></tr>`;
-  h+=`<tr>${['NO.',"SHIP'S&nbsp; NAME",'LOA','Drf','ETA','POB','BERTH','Pilot','AGENT','NO.',"SHIP'S&nbsp; NAME",'LOA','Drf','ETD','BERTH','Pilot','AGENT'].map(t=>`<td class="hd">${t}</td>`).join('')}</tr>`;
-  const half=(m,side)=>{
-    const n = side==='L'?9:8; if(!m) return '<td></td>'.repeat(n);
-    const red = +m.late || changed(m,snap); const c = red?' red':'';
-    const no = +m.late ? 'พ' : (nos.get(m.id)||'');
-    const cells = side==='L'
-      ? [no, m.ship, m.loa, m.drf, fmtT(m.datetime), fmtT(m.pob||m.datetime), m.to, m.pilot, m.agent]
-      : [no, m.ship, m.loa, m.drf, fmtT(m.datetime), berthText(m), m.pilot, m.agent];
-    const pIdx = side==='L'?7:6;
-    return cells.map((v,i)=>`<td class="${i===1?'l':''}${i===pIdx?' pc':c}${i===0&&+m.late?' pc':''}">${esc(v)}</td>`).join('');
-  };
-  for(const r of pairRows(items)) h += r.gap ? `<tr>${'<td></td>'.repeat(17)}</tr>` : `<tr>${half(r.L,'L')}${half(r.R,'R')}</tr>`;
+  h+=`<tr>${LHEAD.map(t=>`<td class="hd">${t}</td>`).join('')}</tr>`;
+  b.rows.forEach((row,ri)=>{
+    h+=`<tr data-b="${bi}" data-r="${ri}"${bcur&&bcur.b===bi&&bcur.r===ri?' class="cur"':''}>`;
+    for(let c=0;c<17;c++){
+      const f=LF[c]; const cls=[c===1||c===10?'l':'', PILOT_COLS.includes(c)?'pc':'', row.r[c]?'red':''].filter(Boolean).join(' ');
+      h+=`<td class="${cls}"><input data-b="${bi}" data-r="${ri}" data-c="${c}"${f?` data-f="${f[0]}" data-side="${f[1]}"`:''} value="${esc(row.c[c])}" autocomplete="off" spellcheck="false"></td>`;
+    }
+    h+='</tr>';
+  });
   return h+'</table>';
 }
-function lineHTML(){
-  const D=S.D, P=addDays(D,-1);
-  const since = parseTime($('lineSince').value||fmtT(nowDt()), P) || nowDt();
-  const snapP=snapOf(P), snapD=snapOf(D);
-  const top = S.mv.filter(m=>inWin(m,P) && m.datetime>=since);
-  const bottom = S.mv.filter(m=>inWin(m,D) && !+m.late);
-  return lineBlock(P, top, snapP) + '<div style="height:14px;background:#fff"></div>' + lineBlock(D, bottom, snapD);
+function renderBoard(focus){
+  if(!BD) return;
+  $('board').innerHTML = BD.blocks.map((b,bi)=>boardTable(b,bi)).join('<div class="bgap"></div>');
+  $('boardInfo').textContent = `แก้ล่าสุด ${new Date(BD.updated).toTimeString().slice(0,5)}`;
+  fitBoard();
+  if(focus){ const el=$('board').querySelector(`input[data-b="${focus.b}"][data-r="${focus.r}"][data-c="${focus.c}"]`); if(el){ el.focus(); } }
 }
-function renderLine(){ lineDirty=false; const html=shrinkLine(lineHTML()); $('linePaper').innerHTML=html; }
+function fitBoard(){
+  const list=[...$('board').querySelectorAll('input')].filter(i=>i.value); if(!list.length || $('view-line').hidden) return;
+  list.forEach(i=>i.style.fontSize='');
+  const m=list.map(i=>[i.scrollWidth,i.clientWidth,parseFloat(getComputedStyle(i).fontSize)]);
+  list.forEach((i,k)=>{ const [sw,cw,fs]=m[k]; if(sw>cw+1) i.style.fontSize=Math.max(9,fs*(cw-2)/sw).toFixed(1)+'px'; });
+}
+function cellOf(i){ return {b:+i.dataset.b, r:+i.dataset.r, c:+i.dataset.c}; }
+function markCur(){ $('board').querySelectorAll('tr.cur').forEach(t=>t.classList.remove('cur')); if(bcur){ const t=$('board').querySelector(`tr[data-b="${bcur.b}"][data-r="${bcur.r}"]`); if(t) t.classList.add('cur'); } }
+
+const BOARD=$('board');
+BOARD.addEventListener('focusin',e=>{ const i=e.target.closest('input'); if(!i) return; i.select();
+  if(i.dataset.r!==undefined){ bcur=cellOf(i); markCur(); } buildPop(i); });
+BOARD.addEventListener('input',e=>{ const i=e.target.closest('input'); if(!i||!BD) return;
+  if(i.dataset.hd){ BD.blocks[+i.dataset.b].label=i.value; }
+  else { const {b,r,c}=cellOf(i); BD.blocks[b].rows[r].c[c]=i.value; }
+  fitInput(i); buildPop(i); boardSave(); });
+BOARD.addEventListener('change',e=>{ const i=e.target.closest('input'); if(!i||!BD||i.dataset.r===undefined) return;
+  const {b,r,c}=cellOf(i); const row=BD.blocks[b].rows[r]; row.c[c]=i.value;
+  if(c===1||c===10){ const s=S.shipIdx.get(norm(i.value)); if(s){ row.c[c]=s.name;
+    const loa=c+1, ag=c===1?8:16, be=c===1?6:14;
+    if(!row.c[loa]) row.c[loa]=s.loa||''; if(!row.c[ag]) row.c[ag]=s.agent||''; if(!row.c[be]) row.c[be]= c===1 ? (s.berth||'') : (lastBerth(s.name, `${BD.date} 23:59`)||s.berth||'');
+    renderBoard({b,r,c}); } }
+  boardSave(); });
+function boardMove(i,d){ const {b,r,c}=cellOf(i); const n=BOARD.querySelector(`input[data-b="${b}"][data-r="${r+d}"][data-c="${c}"]`)
+  || (d>0 ? BOARD.querySelector(`input[data-b="${b+1}"][data-r="0"][data-c="${c}"]`) : null); if(n) n.focus(); }
+BOARD.addEventListener('keydown',e=>{ const i=e.target.closest('input'); if(!i) return;
+  const open=!pop.hidden && cb.inp===i;
+  if(open && (e.key==='ArrowDown'||e.key==='ArrowUp')){ e.preventDefault(); const n=cb.items.length; cb.act=(cb.act+(e.key==='ArrowDown'?1:-1)+n)%n;
+    [...pop.children].forEach((x,k)=>x.classList.toggle('act',k===cb.act)); pop.children[cb.act]?.scrollIntoView({block:'nearest'}); return; }
+  if(open && (e.key==='Enter'||e.key==='Tab') && cb.act>=0 && i.value.trim()){ if(e.key==='Enter') e.preventDefault(); pick(cb.act); return; }
+  if(e.key==='Escape'){ hidePop(); return; }
+  if(i.dataset.r===undefined) return;
+  if(e.key==='Enter'||e.key==='ArrowDown'){ e.preventDefault(); boardMove(i,1); }
+  else if(e.key==='ArrowUp'){ e.preventDefault(); boardMove(i,-1); }
+});
+BOARD.addEventListener('focusout',e=>{ const i=e.target.closest('input'); if(i) setTimeout(()=>{ if(cb.inp===i && document.activeElement!==i) hidePop(); },120); });
+
+/* toolbar — keeps the cursor in the cell it acts on */
+const HALF=c=>c<9?[0,9]:[9,17];
+function boardAct(act){
+  if(!BD) return;
+  if(!bcur){ toast('คลิกช่องในตารางก่อน'); return; }
+  const {b,r,c}=bcur, rows=BD.blocks[b].rows, row=rows[r]; let f={b,r,c};
+  if(act==='red'){ row.r[c]=!row.r[c]; }
+  else if(act==='redrow'){ const [a,z]=HALF(c); const on=!row.r.slice(a,z).every(Boolean); for(let k=a;k<z;k++) row.r[k]=on; }
+  else if(act==='black'){ const [a,z]=HALF(c); for(let k=a;k<z;k++) row.r[k]=false; }
+  else if(act==='insup'){ rows.splice(r,0,blankRow()); }
+  else if(act==='insdown'){ rows.splice(r+1,0,blankRow()); f={b,r:r+1,c}; }
+  else if(act==='clear'){ const [a,z]=HALF(c); for(let k=a;k<z;k++){ row.c[k]=''; row.r[k]=false; } }
+  else if(act==='del'){ rows.splice(r,1); if(!rows.length) rows.push(blankRow()); f={b,r:Math.min(r,rows.length-1),c}; }
+  else if(act==='up'){ if(r>0){ [rows[r-1],rows[r]]=[rows[r],rows[r-1]]; f={b,r:r-1,c}; } }
+  else if(act==='down'){ if(r<rows.length-1){ [rows[r+1],rows[r]]=[rows[r],rows[r+1]]; f={b,r:r+1,c}; } }
+  else if(act==='halfup'||act==='halfdown'){ const d=act==='halfup'?-1:1, t=r+d; if(t<0||t>=rows.length) return; const [a,z]=HALF(c);
+    for(let k=a;k<z;k++){ [rows[t].c[k],row.c[k]]=[row.c[k],rows[t].c[k]]; [rows[t].r[k],row.r[k]]=[row.r[k],rows[t].r[k]]; } f={b,r:t,c}; }
+  bcur=f; boardSave(); renderBoard(f);
+}
+document.querySelectorAll('[data-bact]').forEach(btn=>{
+  btn.addEventListener('mousedown',e=>e.preventDefault());
+  btn.addEventListener('click',()=>boardAct(btn.dataset.bact));
+});
+let pullArm=false;
+$('linePull').addEventListener('click',()=>{
+  if(!pullArm){ pullArm=true; $('linePull').textContent='ยืนยัน: แทนที่ด้วยข้อมูลจัดตาราง'; $('linePull').classList.add('arm'); setTimeout(()=>{ pullArm=false; $('linePull').textContent='ดึงจากจัดตารางใหม่'; $('linePull').classList.remove('arm'); },3500); return; }
+  pullArm=false; $('linePull').textContent='ดึงจากจัดตารางใหม่'; $('linePull').classList.remove('arm');
+  BD=boardFromSchedule(S.D); bcur=null; boardSave(); renderBoard(); toast('ดึงข้อมูลจากจัดตารางแล้ว');
+});
+
+/* image: drawn from the board, not from the schedule */
+function boardStaticHTML(){
+  const tot=LCOLW.reduce((a,x)=>a+x,0);
+  return BD.blocks.map(b=>{
+    let h=`<table class="lsheet"><colgroup>${LCOLW.map(w=>`<col style="width:${(w/tot*100).toFixed(3)}%">`).join('')}</colgroup>`;
+    h+=`<tr><td class="date" colspan="2">${esc(b.label)}</td><td class="title" colspan="15">SHIP'S&nbsp;&nbsp; SCHEDULE&nbsp; FOR&nbsp; SONGKHLA&nbsp;&nbsp; PILOT</td></tr>`;
+    h+=`<tr><td class="h-in" colspan="9">ENTERING</td><td class="h-out" colspan="8">SAILING &amp; SHIFTING</td></tr>`;
+    h+=`<tr>${LHEAD.map(t=>`<td class="hd">${t}</td>`).join('')}</tr>`;
+    for(const row of b.rows) h+=`<tr>${row.c.map((v,c)=>`<td class="${[c===1||c===10?'l':'', PILOT_COLS.includes(c)?'pc':'', row.r[c]?'red':''].filter(Boolean).join(' ')}">${esc(v)}</td>`).join('')}</tr>`;
+    return h+'</table>';
+  }).join('<div style="height:14px;background:#fff"></div>');
+}
 function shrinkLine(html){
   const box=$('measure'); box.style.width='1600px'; box.innerHTML=html;
   const tds=[...box.querySelectorAll('td')].filter(td=>td.textContent.trim());
@@ -964,22 +1103,20 @@ function shrinkLine(html){
   tds.forEach((td,k)=>{ const [sw,cw,fs]=m[k]; if(sw>cw+1) td.style.fontSize=(fs*(cw-6)/sw).toFixed(1)+'px'; });
   const out=box.innerHTML; box.innerHTML=''; box.style.width=''; return out;
 }
-$('lineSince').addEventListener('change',renderLine);
 async function lineCanvas(){
-  if(lineDirty) renderLine();
   if(!window.html2canvas) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
   const stage=document.createElement('div'); stage.style.cssText='position:fixed;left:-99999px;top:0;width:1600px;background:#fff';
-  stage.innerHTML=$('linePaper').innerHTML; document.body.append(stage);
+  stage.innerHTML=shrinkLine(boardStaticHTML()); document.body.append(stage);
   try{ return await html2canvas(stage,{scale:1.5,backgroundColor:'#ffffff',logging:false}); } finally{ stage.remove(); }
 }
-function lineName(){ const [y,m,d]=S.D.split('-').map(Number); return `SCHEDULE ${d}-${m}-${String((y+543)%100).padStart(2,'0')}.png`; }
+function lineName(){ const [y,m,d]=S.D.split('-').map(Number); const t=new Date(); return `SCHEDULE ${d}-${m}-${String((y+543)%100).padStart(2,'0')} ${pad(t.getHours())}${pad(t.getMinutes())}.png`; }
 $('lineCopy').addEventListener('click',async()=>{
   const b=$('lineCopy'); b.disabled=true;
   try{
     const canvas=await lineCanvas();
     const blob=await new Promise(r=>canvas.toBlob(r,'image/png'));
     if(navigator.clipboard && window.ClipboardItem){ await navigator.clipboard.write([new ClipboardItem({'image/png':blob})]); toast('คัดลอกรูปแล้ว · ไปวางในแชท LINE (Ctrl+V)'); }
-    else throw new Error('เบราว์เซอร์นี้คัดลอกรูปไม่ได้ ใช้ ดาวน์โหลดรูป แทน');
+    else throw new Error('เบราว์เซอร์นี้คัดลอกรูปไม่ได้');
   }catch(err){ toast('คัดลอกไม่สำเร็จ: '+(err.message||err)+' · ใช้ ดาวน์โหลดรูป แทน'); }
   finally{ b.disabled=false; }
 });
@@ -996,6 +1133,7 @@ $('lineSave').addEventListener('click',async()=>{
   }catch(err){ toast('สร้างรูปไม่สำเร็จ: '+err.message); }
   finally{ b.disabled=false; }
 });
+
 
 (async function start(){
   $('modeBadge').textContent = CFG.API_URL? 'เชื่อม Google Sheet' : 'โหมดตัวอย่าง';
