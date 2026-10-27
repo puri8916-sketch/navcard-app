@@ -181,11 +181,12 @@ table.sheet{border-collapse:collapse;table-layout:fixed;width:100%;font-family:v
 label.since{font-size:15px;color:var(--muted)}
 input.since{width:120px;font-size:18px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);text-align:center}
 .linepaper{width:1600px;padding:0}
-table.lsheet{border-collapse:collapse;table-layout:fixed;width:1600px;font-family:var(--f-sheet);font-size:19px;color:#000;background:#fff}
-.lsheet td{border:1px solid #444;height:36px;padding:0 4px;text-align:center;white-space:nowrap;overflow:hidden;line-height:1}
+/* like Excel's hair border: fine grey dots, one line between cells */
+table.lsheet{border-collapse:separate;border-spacing:0;border-top:1px dotted #8C8C8C;border-left:1px dotted #8C8C8C;table-layout:fixed;width:1600px;font-family:var(--f-sheet);font-size:19px;color:#000;background:#fff}
+.lsheet td{border:0;border-right:1px dotted #8C8C8C;border-bottom:1px dotted #8C8C8C;height:36px;padding:0 4px;text-align:center;white-space:nowrap;overflow:hidden;line-height:1}
 .lsheet .l{text-align:left}
 .lsheet .date{font-size:30px;font-weight:700;background:#FFFF99;height:46px}
-.lsheet .title{font-size:24px;font-weight:700;word-spacing:.3em}
+.lsheet .title{font-size:24px;font-weight:700}
 .lsheet .h-in{background:#CCFFFF;font-weight:700}
 .lsheet .h-out{background:#FFCC99;font-weight:700}
 .lsheet .hd{background:#EAEAEA;font-weight:700;font-size:17px}
@@ -198,7 +199,7 @@ table.lsheet{border-collapse:collapse;table-layout:fixed;width:1600px;font-famil
 .btn.tb{padding:7px 12px;font-size:15px}
 .btn.tb.red{color:#D0021B}
 #linePull.arm{background:var(--pilot);color:#fff;border-color:var(--pilot)}
-.lsheet+.lsheet{margin-top:-1px}
+.lsheet+.lsheet{border-top:0}
 #board.linepaper{width:100%;min-width:1180px}
 table.lsheet.board{width:100%;font-size:17px}
 .lsheet.board td{padding:0;height:34px}
