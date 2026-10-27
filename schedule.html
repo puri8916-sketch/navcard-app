@@ -102,6 +102,15 @@ table.st{border-collapse:collapse;table-layout:fixed;width:100%;font-size:17px}
 .st input.saved{background:var(--ok)}
 .st button.del{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:14px;color:var(--pilot)}
 .st button.del.arm{background:var(--pilot);color:#fff;border-color:var(--pilot)}
+.pgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;align-items:start}
+.pgrid .panel{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;min-width:0}
+.pgrid .panel h2{margin:0}
+.padd{display:flex;gap:8px}
+.padd input{flex:1;min-width:0;font-size:17px;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);text-align:center}
+.st select{width:100%;min-height:40px;border:0;background:transparent;font:600 18px var(--f-num);color:var(--pilot);text-align:center;cursor:pointer}
+.st th.lbl{font-weight:600;font-size:15px}
+#fixedText{width:100%;font:500 17px/1.6 var(--f-num);padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);resize:vertical}
+#fixedText.saved,.padd input.saved{background:var(--ok)}
 .st td.empty{color:var(--muted);padding:24px}
 .st tbody tr:nth-child(even) td{background:color-mix(in srgb,var(--head) 35%,transparent)}
 
@@ -167,6 +176,23 @@ table.sheet{border-collapse:collapse;table-layout:fixed;width:100%;font-family:v
 .sheet .late-h{background:#FFCCFF;font-weight:700;font-size:11pt}
 .sheet .foot{background:#FFFF99;font-weight:700;white-space:pre}
 #printRoot{display:none}
+.disp{font-size:14px;font-weight:600;padding:4px 10px;border-radius:99px;background:var(--warn);color:var(--warn-ink)}
+.disp.ok{background:var(--ok);color:var(--ok-ink)}
+label.since{font-size:15px;color:var(--muted)}
+input.since{width:120px;font-size:18px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);text-align:center}
+.linepaper{width:1600px;padding:0}
+table.lsheet{border-collapse:collapse;table-layout:fixed;width:1600px;font-family:var(--f-sheet);font-size:19px;color:#000;background:#fff}
+.lsheet td{border:1px solid #444;height:36px;padding:0 4px;text-align:center;white-space:nowrap;overflow:hidden;line-height:1}
+.lsheet .l{text-align:left}
+.lsheet .date{font-size:30px;font-weight:700;background:#FFFF99;height:46px}
+.lsheet .title{font-size:24px;font-weight:700;word-spacing:.3em}
+.lsheet .h-in{background:#CCFFFF;font-weight:700}
+.lsheet .h-out{background:#FFCC99;font-weight:700}
+.lsheet .hd{background:#EAEAEA;font-weight:700;font-size:17px}
+.lsheet .pc{color:#FF0000;font-weight:700}
+.lsheet tr.red td{color:#FF0000}
+.lsheet td.red{color:#FF0000}
+.lsheet .gapb td{height:18px;border-left:0;border-right:0}
 #measure{position:absolute;left:-99999px;top:0;width:1091px;visibility:hidden}
 #pdfStage{position:fixed;left:-99999px;top:0;width:1091px;background:#fff}
 #pdfStage table.sheet{border-collapse:separate;border-spacing:0;border-top:.4px solid #555;border-left:.4px solid #555}
@@ -198,7 +224,8 @@ table.sheet{border-collapse:collapse;table-layout:fixed;width:100%;font-family:v
     <button role="tab" id="tab-work" aria-selected="true">จัดตาราง</button>
     <button role="tab" id="tab-print" aria-selected="false">หน้าปริ้น</button>
     <button role="tab" id="tab-ships" aria-selected="false">ทะเบียนเรือ</button>
-    <button role="tab" id="tab-line" aria-selected="false" disabled title="ขั้นที่ 3">รูป LINE</button>
+    <button role="tab" id="tab-pilots" aria-selected="false">ผก. &amp; เวร</button>
+    <button role="tab" id="tab-line" aria-selected="false">รูป LINE</button>
   </nav>
 </header>
 
@@ -221,6 +248,26 @@ table.sheet{border-collapse:collapse;table-layout:fixed;width:100%;font-family:v
     </div>
   </section>
 
+  <section id="view-pilots" hidden>
+    <div class="pgrid">
+      <div class="panel">
+        <h2>เลขผก. และเบอร์โทร</h2>
+        <table class="st"><colgroup><col style="width:30%"><col style="width:52%"><col style="width:18%"></colgroup>
+          <thead><tr><th>เลขผก.</th><th>เบอร์โทร</th><th></th></tr></thead><tbody id="pilotBody"></tbody></table>
+        <form id="pilotAdd" class="padd" autocomplete="off"><input id="npNo" placeholder="เลขผก." inputmode="numeric" aria-label="เลขผก."><input id="npPhone" placeholder="เบอร์โทร" inputmode="tel" aria-label="เบอร์โทร"><button type="submit" class="btn primary">เพิ่ม</button></form>
+      </div>
+      <div class="panel">
+        <h2>เวรประจำเดือน</h2>
+        <div class="padd"><input type="month" id="dutyMonth" aria-label="เดือน"></div>
+        <table class="st"><colgroup><col style="width:45%"><col style="width:55%"></colgroup><tbody id="dutyBody"></tbody></table>
+      </div>
+      <div class="panel">
+        <h2>เบอร์ติดต่อ (คอลัมน์ PILOT ON DUTY)</h2>
+        <textarea id="fixedText" rows="12" spellcheck="false" aria-label="เบอร์ติดต่อ บรรทัดว่างคั่นกลุ่ม"></textarea>
+      </div>
+    </div>
+  </section>
+
   <section id="view-ships" hidden>
     <div class="shipbar">
       <input id="shipQ" type="search" placeholder="ค้นหา ชื่อเรือ / ท่า / เอเย่นต์" autocomplete="off" aria-label="ค้นหาเรือ">
@@ -237,11 +284,22 @@ table.sheet{border-collapse:collapse;table-layout:fixed;width:100%;font-family:v
       <thead><tr><th>#</th><th>ชื่อเรือ</th><th>LOA</th><th>ท่าประจำ</th><th>เอเย่นต์</th><th>หมายเหตุ</th><th></th></tr></thead><tbody id="shipBody"></tbody></table></div>
   </section>
 
+  <section id="view-line" hidden>
+    <div class="printbar">
+      <label class="since" for="lineSince">ตั้งแต่</label><input id="lineSince" class="since num" autocomplete="off" aria-label="แสดงเรือตั้งแต่เวลา">
+      <button class="btn primary" id="lineCopy">คัดลอกรูป</button>
+      <button class="btn" id="lineSave">ดาวน์โหลดรูป</button>
+    </div>
+    <div class="scrollx"><div class="paper linepaper" id="linePaper"></div></div>
+  </section>
+
   <section id="view-print" hidden>
     <div class="printbar">
       <button class="btn primary" id="printBtn">ปริ้น</button>
       <button class="btn" id="pdfBtn">ดาวน์โหลด PDF</button>
       <span class="note" id="printNote">A4 แนวนอน · หน้าเดียว</span>
+      <span class="disp" id="dispState"></span>
+      <button class="btn" id="dispBtn">บันทึกจัดจ่าย</button>
     </div>
     <div class="scrollx"><div class="paper" id="paperBig"></div></div>
   </section>
@@ -303,7 +361,7 @@ async function api(action, params={}, body=null){
   if(!CFG.API_URL){
     if(!SEED) throw new Error('ยังไม่ได้ตั้งค่า API_URL');
     if(!demo.db) demo.boot();
-    if(action==='init') return {...SEED.init, ships:demo.db.ships.slice()};
+    if(action==='init') return {...SEED.init, snapshots:demo.db.snaps||{}, ships:demo.db.ships.slice(), pilots:demo.db.pilots||SEED.init.pilots, duty:demo.db.duty||SEED.init.duty, fixed:demo.db.fixed||SEED.init.fixed};
     if(action==='movements') return demo.db.mv.filter(m=>m.datetime>=params.from && m.datetime<params.to);
     if(action==='saveMovement'){ const i=demo.db.mv.findIndex(x=>x.id===body.m.id); if(i>=0) demo.db.mv[i]=body.m; else demo.db.mv.push(body.m); demo.persist(); return body.m; }
     if(action==='deleteMovement'){ demo.db.mv=demo.db.mv.filter(x=>x.id!==body.id); demo.persist(); return true; }
@@ -311,6 +369,10 @@ async function api(action, params={}, body=null){
     if(action==='updateShip'){ const i=demo.db.ships.findIndex(x=>x.name===body.oldName);
       if(body.ship.name!==body.oldName && demo.db.ships.some(x=>x.name===body.ship.name)) throw new Error(body.ship.name+' มีในทะเบียนแล้ว');
       if(i>=0) demo.db.ships[i]=body.ship; else demo.db.ships.push(body.ship); demo.persist(); return body.ship; }
+    if(action==='savePilots'){ SEED.init.pilots=Object.fromEntries(body.pilots.map(p=>[p.no,p.phone])); demo.db.pilots=SEED.init.pilots; demo.persist(); return true; }
+    if(action==='saveDuty'){ SEED.init.duty[body.month]=body.list; demo.db.duty=SEED.init.duty; demo.persist(); return true; }
+    if(action==='saveFixed'){ SEED.init.fixed=body.fixed; demo.db.fixed=body.fixed; demo.persist(); return true; }
+    if(action==='saveSnapshot'){ demo.db.snaps=demo.db.snaps||{}; demo.db.snaps[body.snap.date]={at:body.snap.at,items:body.snap.items}; demo.persist(); return true; }
     if(action==='deleteShip'){ demo.db.ships=demo.db.ships.filter(x=>x.name!==body.name); demo.persist(); return true; }
   }
   let r;
@@ -328,6 +390,7 @@ function applyInit(d){
   S.ships = d.ships.filter(s=>s.name); S.shipIdx = new Map(S.ships.map(s=>[s.name.toUpperCase(), s]));
   S.berths = d.berths; S.agents = d.agents; S.pilots = d.pilots; S.duty = d.duty; S.fixed = d.fixed;
   S.settings = {...S.settings, ...d.settings};
+  S.snaps = d.snapshots || {};
 }
 async function loadInit(){ applyInit(await api('init')); }
 const RANGE_BACK=35, RANGE_FWD=35;
@@ -414,7 +477,7 @@ let toastT; function toast(msg){ const t=$('toast'); t.textContent=msg; t.hidden
 const newId = () => Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 
 /* ---------- print tab ---------- */
-let printDirty=true;
+let printDirty=true, lineDirty=true;
 function renderPrint(){
   printDirty=false;
   const sh = sheetHTML(S.D); sh.html = shrinkToFit(sh.html);
@@ -509,12 +572,14 @@ function fitAll(){   // read all widths first, then write — one layout pass in
 function fitInput(i){ i.style.fontSize=''; if(!i.value || i.offsetParent===null) return; const base=parseFloat(getComputedStyle(i).fontSize);
   if(i.scrollWidth>i.clientWidth+1){ const k=(i.clientWidth-2)/i.scrollWidth; i.style.fontSize=Math.max(10,base*k).toFixed(1)+'px'; } }
 function renderAll(){
+  lineDirty=true; if(!$('view-line').hidden) renderLine();
   $('windowLabel').innerHTML = `รอบ <span class="num">${shortDate(S.D)} ${S.settings.cutoff}</span> – <span class="num">${shortDate(addDays(S.D,1))} ${addTimeLabel()}</span>`;
   renderGrid(); printDirty=true; if(!$('view-print').hidden) renderPrint();
 }
 // re-render after an edit but keep the cursor where the user is typing
 let rrT=null, focusWant=null;
 function rerender(want){
+  lineDirty=true;
   pendingRender=false;
   if(want) focusWant=want;
   clearTimeout(rrT);
@@ -707,9 +772,46 @@ async function goDate(D){
 $('schedDate').addEventListener('change',e=>{ if(e.target.value) goDate(e.target.value); });
 $('prevDay').addEventListener('click',()=>goDate(addDays(S.D,-1)));
 $('nextDay').addEventListener('click',()=>goDate(addDays(S.D,1)));
-function showTab(t){ for(const x of ['work','print','ships']){ $('tab-'+x).setAttribute('aria-selected', x===t); $('view-'+x).hidden = x!==t; } if(t==='work') fitAll(); if(t==='print') renderPrint(); $('view-setup').hidden = t!=='setup'; hidePop(); }
+function showTab(t){ for(const x of ['work','print','line','ships','pilots']){ $('tab-'+x).setAttribute('aria-selected', x===t); $('view-'+x).hidden = x!==t; } if(t==='work') fitAll(); if(t==='print'){ renderPrint(); renderDisp(); } if(t==='line'){ if(!$('lineSince').value) $('lineSince').value=fmtT(nowDt()); renderLine(); } $('view-setup').hidden = t!=='setup'; hidePop(); }
 $('tab-work').addEventListener('click',()=>showTab('work')); $('tab-print').addEventListener('click',()=>showTab('print'));
+$('tab-line').addEventListener('click',()=>showTab('line'));
 $('tab-ships').addEventListener('click',()=>{ renderShips(); showTab('ships'); });
+$('tab-pilots').addEventListener('click',()=>{ renderPilots(); showTab('pilots'); });
+
+/* ---------- ผก. & เวร ---------- */
+const DUTY_LBL=['ผก.ประจำ 1','ผก.ประจำ 2','ผก.เวร 3','ผก.เวร 4'];
+function pilotList(){ return Object.keys(S.pilots).sort((a,b)=>(+a)-(+b)||a.localeCompare(b)); }
+function renderPilots(){
+  $('pilotBody').innerHTML = pilotList().map(p=>`<tr><td class="num" style="padding:8px;font-weight:700;color:var(--pilot)">${esc(p)}</td><td><input class="num" data-pphone="${esc(p)}" value="${esc(S.pilots[p])}" inputmode="tel" aria-label="เบอร์ ${esc(p)}"></td><td><button type="button" class="del" data-delpilot="${esc(p)}">ลบ</button></td></tr>`).join('')
+    || `<tr><td colspan="3" class="empty">ยังไม่มีเลขผก.</td></tr>`;
+  if(!$('dutyMonth').value) $('dutyMonth').value=S.D.slice(0,7);
+  const k=$('dutyMonth').value, cur=S.duty[k]||[];
+  const opts=v=>['',...pilotList(),...(v&&!S.pilots[v]?[v]:[])].map(p=>`<option value="${esc(p)}"${p===v?' selected':''}>${p||'—'}</option>`).join('');
+  $('dutyBody').innerHTML = DUTY_LBL.map((l,i)=>`<tr><th class="lbl">${l}</th><td><select data-duty="${i}" aria-label="${l}">${opts(cur[i]||'')}</select></td></tr>`).join('')
+    + (S.duty[k]? '' : `<tr><td colspan="2" class="empty">เดือนนี้ยังไม่ได้ตั้งเวร · ตารางใช้เวรเดือนก่อนหน้า</td></tr>`);
+  let txt='', g=null; for(const f of S.fixed){ if(g!==null && f.group!==g) txt+='\n'; txt+=f.text+'\n'; g=f.group; }
+  if(document.activeElement!==$('fixedText')) $('fixedText').value=txt.trim();
+}
+function flash(el){ el.classList.add('saved'); setTimeout(()=>el.classList.remove('saved'),900); }
+async function savePilots(){ await api('savePilots',{},{pilots:pilotList().map(no=>({no,phone:S.pilots[no]}))}); printDirty=true; cacheSet(); }
+$('pilotBody').addEventListener('change',async e=>{ const i=e.target.closest('[data-pphone]'); if(!i) return; const no=i.dataset.pphone, old=S.pilots[no];
+  S.pilots[no]=i.value.trim(); try{ await savePilots(); flash(i); }catch(err){ S.pilots[no]=old; i.value=old; toast('บันทึกไม่สำเร็จ: '+scriptOld(err)); } });
+$('pilotBody').addEventListener('click',async e=>{ const b=e.target.closest('[data-delpilot]'); if(!b) return;
+  if(!b.classList.contains('arm')){ b.classList.add('arm'); b.textContent='ยืนยันลบ'; setTimeout(()=>{ if(b.isConnected){ b.classList.remove('arm'); b.textContent='ลบ'; } },3000); return; }
+  const no=b.dataset.delpilot, old=S.pilots[no]; delete S.pilots[no];
+  try{ await savePilots(); renderPilots(); toast(`ลบผก. ${no} แล้ว`); }catch(err){ S.pilots[no]=old; toast('ลบไม่สำเร็จ: '+scriptOld(err)); } });
+$('pilotAdd').addEventListener('submit',async e=>{ e.preventDefault(); const no=$('npNo').value.replace(/^P\.?/i,'').trim(), ph=$('npPhone').value.trim();
+  if(!no){ $('npNo').focus(); return; } if(S.pilots[no]!==undefined){ toast(`ผก. ${no} มีอยู่แล้ว`); return; }
+  S.pilots[no]=ph; try{ await savePilots(); $('npNo').value=''; $('npPhone').value=''; renderPilots(); toast(`เพิ่มผก. ${no} แล้ว`); }catch(err){ delete S.pilots[no]; toast('เพิ่มไม่สำเร็จ: '+scriptOld(err)); } });
+$('dutyMonth').addEventListener('change',renderPilots);
+$('dutyBody').addEventListener('change',async e=>{ const sel=e.target.closest('[data-duty]'); if(!sel) return; const k=$('dutyMonth').value; if(!k) return;
+  const list=[...$('dutyBody').querySelectorAll('[data-duty]')].map(x=>x.value); const old=S.duty[k];
+  const clean=list.filter(Boolean); S.duty[k]=clean;
+  try{ await api('saveDuty',{},{month:k,list}); printDirty=true; cacheSet(); flash(sel); if(k===S.D.slice(0,7)) rerender(); renderPilots(); }
+  catch(err){ if(old) S.duty[k]=old; else delete S.duty[k]; renderPilots(); toast('บันทึกไม่สำเร็จ: '+scriptOld(err)); } });
+$('fixedText').addEventListener('change',async e=>{ const ta=e.target; const old=S.fixed;
+  const fixed=[]; let g=1, gap=false; for(const line of ta.value.split('\n')){ const t=line.trim(); if(!t){ if(fixed.length) gap=true; continue; } if(gap){ g++; gap=false; } fixed.push({text:t,group:g}); }
+  S.fixed=fixed; try{ await api('saveFixed',{},{fixed}); printDirty=true; cacheSet(); flash(ta); }catch(err){ S.fixed=old; toast('บันทึกไม่สำเร็จ: '+scriptOld(err)); } });
 
 /* ---------- ทะเบียนเรือ ---------- */
 function lastSeen(name){ const l=S.mv.filter(m=>m.ship===name).sort(sortMv).pop(); return l? fmtT(l.datetime)+' '+shortDate(l.datetime.slice(0,10)).split('/')[1].padStart(2,'0') : ''; }
@@ -761,8 +863,8 @@ $('setupForm').addEventListener('submit',async e=>{ e.preventDefault();
   catch(err){ Object.assign(CFG,old); msg.textContent='เชื่อมต่อไม่ได้: '+err.message; msg.className='hint bad'; } });
 $('sOff').addEventListener('click',()=>{ try{ localStorage.setItem(CFG_KEY, JSON.stringify({})); }catch(e){} location.reload(); });
 const framed = (()=>{ try{ return window.self!==window.top; }catch(e){ return true; } })();
-if(framed && !window.__CAN_PRINT__){ $('printBtn').hidden=true; $('pdfBtn').hidden=true; $('printNote').textContent='ตัวอย่าง: ปุ่มปริ้นใช้ได้เมื่อเปิดจากเว็บของคุณ'; }
-$('printBtn').addEventListener('click',()=>{ if(printDirty) renderPrint(); window.print(); });
+if(framed && !window.__CAN_PRINT__){ $('printBtn').hidden=true; $('pdfBtn').hidden=true; $('lineSave').hidden=true; $('printNote').textContent='ตัวอย่าง: ปุ่มปริ้นใช้ได้เมื่อเปิดจากเว็บของคุณ'; }
+$('printBtn').addEventListener('click',()=>{ if(printDirty) renderPrint(); autoDispatch(); window.print(); });
 window.addEventListener('beforeprint',()=>{ if(printDirty) renderPrint(); });
 /* PDF: draw the same sheet at print width and place it on one A4 landscape page */
 function loadScript(src){ return new Promise((ok,no)=>{ const s=document.createElement('script'); s.src=src; s.onload=ok; s.onerror=()=>no(new Error('โหลดตัวสร้าง PDF ไม่ได้ (ต้องต่อเน็ต)')); document.head.append(s); }); }
@@ -771,7 +873,7 @@ async function downloadPdf(){
   try{
     if(!window.html2canvas) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
     if(!window.jspdf) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
-    if(printDirty) renderPrint(); const stage=document.createElement('div'); stage.id='pdfStage'; stage.innerHTML=shrinkToFit(sheetHTML(S.D).html); document.body.append(stage);
+    if(printDirty) renderPrint(); autoDispatch(); const stage=document.createElement('div'); stage.id='pdfStage'; stage.innerHTML=shrinkToFit(sheetHTML(S.D).html); document.body.append(stage);
     const canvas=await html2canvas(stage,{scale:4,backgroundColor:'#ffffff',logging:false}); stage.remove();
     const pdf=new jspdf.jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
     const M=4.3, W=297-2*M, H=210-2*M; let w=W, h=canvas.height*W/canvas.width; if(h>H){ h=H; w=canvas.width*H/canvas.height; }
@@ -786,10 +888,119 @@ async function downloadPdf(){
 $('pdfBtn').addEventListener('click',downloadPdf);
 document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible' && S.init) refresh(false); });
 
+/* ---------- จัดจ่ายแล้ว (snapshot) ---------- */
+function nowDt(){ const d=new Date(); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`; }
+function snapOf(D){ return (S.snaps||{})[D]; }
+function changed(m, snap){
+  if(!snap) return false; const s=snap.items[m.id];
+  if(!s) return !+m.late;                         // added after dispatch
+  return s.dt!==m.datetime || s.b!==berthText(m);  // date-time or berth changed
+}
+function renderDisp(){
+  const sn=snapOf(S.D); const el=$('dispState');
+  el.textContent = sn ? `จัดจ่ายแล้ว ${sn.at}` : 'ยังไม่จัดจ่าย'; el.classList.toggle('ok',!!sn);
+  $('dispBtn').textContent = sn ? 'บันทึกจัดจ่ายใหม่' : 'บันทึกจัดจ่าย';
+}
+async function dispatch(D){
+  const items={}; S.mv.filter(m=>inWin(m,D)).forEach(m=>items[m.id]={dt:m.datetime,b:berthText(m)});
+  const at=`${shortDate(nowDt().slice(0,10))} ${nowDt().slice(11)}`;
+  const snap={date:D, at, items};
+  S.snaps=S.snaps||{}; S.snaps[D]={at,items}; if(S.init) S.init.snapshots=S.snaps; cacheSet(); renderDisp(); lineDirty=true;
+  try{ await api('saveSnapshot',{},{snap}); toast(`บันทึกจัดจ่ายตาราง ${shortDate(D)} แล้ว`); }catch(err){ toast('บันทึกจัดจ่ายไม่สำเร็จ: '+scriptOld(err)); }
+}
+function autoDispatch(){ if(!snapOf(S.D)) dispatch(S.D); }
+let dispArm=false;
+$('dispBtn').addEventListener('click',()=>{
+  if(snapOf(S.D) && !dispArm){ dispArm=true; $('dispBtn').textContent='ยืนยันบันทึกใหม่'; setTimeout(()=>{ dispArm=false; renderDisp(); },3000); return; }
+  dispArm=false; dispatch(S.D);
+});
+
+/* ---------- รูป LINE (แทนแท็บ แก้ไข) ---------- */
+const LCOLW=[7.1,57.9,10,10.3,23,23,23.3,8.4,21.1,7.4,52,9.9,8.6,23,50.7,8.4,20.3];
+function pairRows(items){
+  const list=items.slice().sort(sortMv), rows=[{gap:true}], slots=[]; let prev=null;
+  for(const m of list){ const s=slots[slots.length-1]; if(s && s.dt===m.datetime) s.items.push(m); else slots.push({dt:m.datetime,items:[m]}); }
+  for(const s of slots){
+    if(prev && (minutes(s.dt)-minutes(prev))/60 >= S.settings.gap) rows.push({gap:true});
+    const outs=s.items.filter(m=>m.type!=='IN'), ins=s.items.filter(m=>m.type==='IN');
+    for(let i=0;i<Math.max(outs.length,ins.length);i++) rows.push({L:ins[i], R:outs[i]});
+    prev=s.dt;
+  }
+  return rows;
+}
+function lineBlock(D, items, snap){
+  const nos = buildMain(S.mv.filter(m=>inWin(m,D) && !+m.late)).no;
+  const tot=LCOLW.reduce((a,b)=>a+b,0);
+  let h=`<table class="lsheet"><colgroup>${LCOLW.map(w=>`<col style="width:${(w/tot*100).toFixed(3)}%">`).join('')}</colgroup>`;
+  h+=`<tr><td class="date" colspan="2">${longDate(D)}</td><td class="title" colspan="15">SHIP'S&nbsp;&nbsp; SCHEDULE&nbsp; FOR&nbsp; SONGKHLA&nbsp;&nbsp; PILOT</td></tr>`;
+  h+=`<tr><td class="h-in" colspan="9">ENTERING</td><td class="h-out" colspan="8">SAILING &amp; SHIFTING</td></tr>`;
+  h+=`<tr>${['NO.',"SHIP'S&nbsp; NAME",'LOA','Drf','ETA','POB','BERTH','Pilot','AGENT','NO.',"SHIP'S&nbsp; NAME",'LOA','Drf','ETD','BERTH','Pilot','AGENT'].map(t=>`<td class="hd">${t}</td>`).join('')}</tr>`;
+  const half=(m,side)=>{
+    const n = side==='L'?9:8; if(!m) return '<td></td>'.repeat(n);
+    const red = +m.late || changed(m,snap); const c = red?' red':'';
+    const no = +m.late ? 'พ' : (nos.get(m.id)||'');
+    const cells = side==='L'
+      ? [no, m.ship, m.loa, m.drf, fmtT(m.datetime), fmtT(m.pob||m.datetime), m.to, m.pilot, m.agent]
+      : [no, m.ship, m.loa, m.drf, fmtT(m.datetime), berthText(m), m.pilot, m.agent];
+    const pIdx = side==='L'?7:6;
+    return cells.map((v,i)=>`<td class="${i===1?'l':''}${i===pIdx?' pc':c}${i===0&&+m.late?' pc':''}">${esc(v)}</td>`).join('');
+  };
+  for(const r of pairRows(items)) h += r.gap ? `<tr>${'<td></td>'.repeat(17)}</tr>` : `<tr>${half(r.L,'L')}${half(r.R,'R')}</tr>`;
+  return h+'</table>';
+}
+function lineHTML(){
+  const D=S.D, P=addDays(D,-1);
+  const since = parseTime($('lineSince').value||fmtT(nowDt()), P) || nowDt();
+  const snapP=snapOf(P), snapD=snapOf(D);
+  const top = S.mv.filter(m=>inWin(m,P) && m.datetime>=since);
+  const bottom = S.mv.filter(m=>inWin(m,D) && !+m.late);
+  return lineBlock(P, top, snapP) + '<div style="height:14px;background:#fff"></div>' + lineBlock(D, bottom, snapD);
+}
+function renderLine(){ lineDirty=false; const html=shrinkLine(lineHTML()); $('linePaper').innerHTML=html; }
+function shrinkLine(html){
+  const box=$('measure'); box.style.width='1600px'; box.innerHTML=html;
+  const tds=[...box.querySelectorAll('td')].filter(td=>td.textContent.trim());
+  const m=tds.map(td=>[td.scrollWidth,td.clientWidth,parseFloat(getComputedStyle(td).fontSize)]);
+  tds.forEach((td,k)=>{ const [sw,cw,fs]=m[k]; if(sw>cw+1) td.style.fontSize=(fs*(cw-6)/sw).toFixed(1)+'px'; });
+  const out=box.innerHTML; box.innerHTML=''; box.style.width=''; return out;
+}
+$('lineSince').addEventListener('change',renderLine);
+async function lineCanvas(){
+  if(lineDirty) renderLine();
+  if(!window.html2canvas) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+  const stage=document.createElement('div'); stage.style.cssText='position:fixed;left:-99999px;top:0;width:1600px;background:#fff';
+  stage.innerHTML=$('linePaper').innerHTML; document.body.append(stage);
+  try{ return await html2canvas(stage,{scale:1.5,backgroundColor:'#ffffff',logging:false}); } finally{ stage.remove(); }
+}
+function lineName(){ const [y,m,d]=S.D.split('-').map(Number); return `SCHEDULE ${d}-${m}-${String((y+543)%100).padStart(2,'0')}.png`; }
+$('lineCopy').addEventListener('click',async()=>{
+  const b=$('lineCopy'); b.disabled=true;
+  try{
+    const canvas=await lineCanvas();
+    const blob=await new Promise(r=>canvas.toBlob(r,'image/png'));
+    if(navigator.clipboard && window.ClipboardItem){ await navigator.clipboard.write([new ClipboardItem({'image/png':blob})]); toast('คัดลอกรูปแล้ว · ไปวางในแชท LINE (Ctrl+V)'); }
+    else throw new Error('เบราว์เซอร์นี้คัดลอกรูปไม่ได้ ใช้ ดาวน์โหลดรูป แทน');
+  }catch(err){ toast('คัดลอกไม่สำเร็จ: '+(err.message||err)+' · ใช้ ดาวน์โหลดรูป แทน'); }
+  finally{ b.disabled=false; }
+});
+$('lineSave').addEventListener('click',async()=>{
+  const b=$('lineSave'); b.disabled=true;
+  try{
+    const canvas=await lineCanvas(); const blob=await new Promise(r=>canvas.toBlob(r,'image/png'));
+    const file=new File([blob],lineName(),{type:'image/png'});
+    if(navigator.canShare && navigator.canShare({files:[file]}) && /Android|iPhone|iPad/i.test(navigator.userAgent)){
+      try{ await navigator.share({files:[file]}); return; }catch(e){ if(e.name==='AbortError') return; }
+    }
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=lineName(); document.body.append(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),5000);
+    toast('ดาวน์โหลด '+lineName());
+  }catch(err){ toast('สร้างรูปไม่สำเร็จ: '+err.message); }
+  finally{ b.disabled=false; }
+});
+
 (async function start(){
   $('modeBadge').textContent = CFG.API_URL? 'เชื่อม Google Sheet' : 'โหมดตัวอย่าง';
   $('modeBadge').classList.toggle('live', !!CFG.API_URL);
-  if(!CFG.API_URL && !SEED){ $('modeBadge').textContent='ยังไม่เชื่อมต่อ'; $('tab-work').disabled=true; $('tab-print').disabled=true; $('tab-ships').disabled=true; $('sBack').hidden=true; $('sOff').hidden=true; showTab('setup'); return; }
+  if(!CFG.API_URL && !SEED){ $('modeBadge').textContent='ยังไม่เชื่อมต่อ'; $('tab-work').disabled=true; $('tab-print').disabled=true; $('tab-ships').disabled=true; $('tab-line').disabled=true; $('tab-pilots').disabled=true; $('sBack').hidden=true; $('sOff').hidden=true; showTab('setup'); return; }
   const D0 = (!CFG.API_URL && SEED && SEED.startDate) ? SEED.startDate : todayYmd();
   const c = cacheGet();
   if(c && c.init){ applyInit(c.init); S.mv=c.mv||[]; S.loaded=c.loaded; S.D=D0; $('schedDate').value=D0; renderAll(); renderShips(); refresh(true); return; }

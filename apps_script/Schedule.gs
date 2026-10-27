@@ -32,6 +32,10 @@ function doPost(e) {
         case 'saveShip': return saveShip_(req.ship);
         case 'updateShip': return updateShip_(req.oldName, req.ship);
         case 'deleteShip': return deleteByCol_('Ships', 'ชื่อเรือ', req.name);
+        case 'savePilots': return savePilots_(req.pilots);
+        case 'saveDuty': return saveDuty_(req.month, req.list);
+        case 'saveFixed': return saveFixed_(req.fixed);
+        case 'saveSnapshot': return saveSnapshot_(req.snap);
       }
       throw new Error('ไม่รู้จักคำสั่ง ' + req.action);
     } finally { lock.releaseLock(); }
@@ -92,7 +96,8 @@ function init_() {
     agents: rows_('Agents').map(r => str_(r['เอเย่นต์'])).filter(Boolean),
     pilots, duty,
     fixed: rows_('FixedContacts').map(r => ({ text: str_(r['ข้อความในตาราง']), group: Number(r['กลุ่ม']) || 1 })).filter(f => f.text),
-    settings
+    settings,
+    snapshots: snapshots_()
   };
 }
 function listMovements_(from, to) {
@@ -153,5 +158,66 @@ function updateShip_(oldName, ship) {
 function deleteByCol_(name, col, value) {
   const s = sh_(name); const r = findRow_(s, col, value);
   if (r > 0) s.deleteRow(r);
+  return true;
+}
+
+/* ---------- ผก. / เวร / เบอร์ติดต่อ ---------- */
+function rewrite_(name, rowsObj) {
+  const s = sh_(name);
+  const header = s.getRange(1, 1, 1, s.getLastColumn()).getValues()[0].map(String);
+  const n = s.getLastRow();
+  if (n > 1) s.getRange(2, 1, n - 1, header.length).clearContent();
+  if (rowsObj.length) {
+    const vals = rowsObj.map(o => header.map(h => o[h] === undefined || o[h] === null ? '' : String(o[h])));
+    s.getRange(2, 1, vals.length, header.length).setNumberFormat('@').setValues(vals);
+  }
+  return rowsObj.length;
+}
+function savePilots_(list) {
+  const fixed = ['178', '189'];
+  return rewrite_('Pilots', (list || []).map(p => ({ 'เลขผก.': str_(p.no), 'เบอร์โทร': str_(p.phone), 'ประเภท': fixed.indexOf(str_(p.no)) >= 0 ? 'ประจำ' : 'หมุนเวียน' })));
+}
+function monthKey_(v) {
+  const m = str_(v); let x = m.match(/^(\d{4})-(\d{2})/); if (x) return x[1] + '-' + x[2];
+  x = m.match(/^(\d{1,2})\/(\d{4})$/); if (x) return x[2] + '-' + ('0' + x[1]).slice(-2);
+  return '';
+}
+function saveDuty_(month, list) {
+  const s = sh_('Duty');
+  const header = s.getRange(1, 1, 1, s.getLastColumn()).getValues()[0].map(String);
+  const v = s.getDataRange().getValues(); const c = header.indexOf('เดือน');
+  let r = -1; for (let i = 1; i < v.length; i++) if (monthKey_(cell_(v[i][c])) === month) { r = i + 1; break; }
+  const [y, m] = month.split('-');
+  const obj = { 'เดือน': m + '/' + y };
+  ['ผก.ประจำ 1', 'ผก.ประจำ 2', 'ผก.เวร 3', 'ผก.เวร 4'].forEach((k, i) => obj[k] = str_((list || [])[i]));
+  writeRow_(s, r > 0 ? r : s.getLastRow() + 1, header, obj);
+  return true;
+}
+function saveFixed_(list) {
+  return rewrite_('FixedContacts', (list || []).map((f, i) => ({ 'ลำดับ': i + 1, 'ข้อความในตาราง': str_(f.text), 'กลุ่ม': Number(f.group) || 1 })));
+}
+
+/* ---------- จัดจ่ายแล้ว (snapshot ไว้เทียบหาเรือที่แก้ไข → ตัวแดงในรูป LINE) ---------- */
+function snapSheet_() {
+  const ss = SpreadsheetApp.getActive(); let s = ss.getSheetByName('Snapshots');
+  if (!s) { s = ss.insertSheet('Snapshots'); s.getRange(1, 1, 1, 3).setValues([['date', 'at', 'json']]); s.getRange('A:C').setNumberFormat('@'); }
+  return s;
+}
+function snapshots_() {
+  const s = SpreadsheetApp.getActive().getSheetByName('Snapshots'); if (!s) return {};
+  const since = Utilities.formatDate(new Date(Date.now() - 70 * 864e5), TZ, 'yyyy-MM-dd');
+  const out = {};
+  s.getDataRange().getValues().slice(1).forEach(r => {
+    const d = str_(cell_(r[0])).slice(0, 10);
+    if (d && d >= since) { try { out[d] = { at: str_(r[1]), items: JSON.parse(r[2] || '{}') }; } catch (e) {} }
+  });
+  return out;
+}
+function saveSnapshot_(snap) {
+  const s = snapSheet_();
+  const json = JSON.stringify(snap.items || {});
+  if (json.length > 49000) throw new Error('ข้อมูลจัดจ่ายใหญ่เกินไป');
+  const r = findRow_(s, 'date', snap.date);
+  s.getRange(r > 0 ? r : s.getLastRow() + 1, 1, 1, 3).setNumberFormat('@').setValues([[snap.date, str_(snap.at), json]]);
   return true;
 }
