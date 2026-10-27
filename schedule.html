@@ -85,7 +85,19 @@ main{padding-block:14px 40px;padding-left:max(16px,env(safe-area-inset-left,0px)
 .chip{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:99px;font-size:15px;font-weight:600}
 .c-in{background:var(--in);color:var(--in-ink)}.c-out{background:var(--out);color:var(--out-ink)}.c-shift{background:var(--shift);color:var(--shift-ink)}
 .c-late{background:var(--late);color:var(--late-ink)}.c-warn{background:var(--warn);color:var(--warn-ink)}.c-ok{background:var(--ok);color:var(--ok-ink)}
-.bar .help{margin-left:auto;font-size:14px;color:var(--muted)}
+/* ship register */
+.shipbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.shipbar input{flex:1 1 320px;max-width:520px;font-size:18px;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.shipadd{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,.7fr) minmax(0,1fr) minmax(0,1fr) auto;gap:8px;margin-bottom:12px}
+.shipadd input{min-width:0;font-size:17px;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);text-align:center}
+.shipadd input#nsName{text-align:left}
+@media (max-width:640px){.shipadd{grid-template-columns:1fr 1fr}.shipadd #nsName{grid-column:1/-1}}
+table.st{border-collapse:collapse;table-layout:fixed;width:100%;font-size:17px}
+.st th,.st td{border:1px solid var(--grid);padding:8px 10px;text-align:center}
+.st thead th{position:sticky;top:0;background:var(--head);font-size:15px}
+.st td.nm{text-align:left;font-weight:600}.st td.nt{font-size:14px;color:var(--muted)}
+.st td.empty{color:var(--muted);padding:24px}
+.st tbody tr:nth-child(even) td{background:color-mix(in srgb,var(--head) 35%,transparent)}
 
 /* ---------- editable grid (same columns as the Excel tab) ---------- */
 .gridwrap{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:var(--r)}
@@ -178,6 +190,7 @@ table.sheet{border-collapse:collapse;table-layout:fixed;width:100%;font-family:v
   <nav class="tabs" role="tablist">
     <button role="tab" id="tab-work" aria-selected="true">จัดตาราง</button>
     <button role="tab" id="tab-print" aria-selected="false">หน้าปริ้น</button>
+    <button role="tab" id="tab-ships" aria-selected="false">ทะเบียนเรือ</button>
     <button role="tab" id="tab-line" aria-selected="false" disabled title="ขั้นที่ 3">รูป LINE</button>
   </nav>
 </header>
@@ -200,6 +213,22 @@ table.sheet{border-collapse:collapse;table-layout:fixed;width:100%;font-family:v
       </form>
       <div class="actions"><button type="button" class="btn" id="sBack">กลับไปจัดตาราง</button><button type="button" class="btn danger" id="sOff">ยกเลิกการเชื่อมต่อในเครื่องนี้</button></div>
     </div>
+  </section>
+
+  <section id="view-ships" hidden>
+    <div class="shipbar">
+      <input id="shipQ" type="search" placeholder="ค้นหา ชื่อเรือ / ท่า / เอเย่นต์" autocomplete="off" aria-label="ค้นหาเรือ">
+      <span class="chip c-in" id="shipCount"></span>
+    </div>
+    <form id="shipAdd" class="shipadd" autocomplete="off">
+      <input id="nsName" placeholder="ชื่อเรือใหม่" aria-label="ชื่อเรือ">
+      <input id="nsLoa" placeholder="LOA" inputmode="numeric" aria-label="LOA">
+      <input id="nsBerth" placeholder="ท่าประจำ" aria-label="ท่าประจำ">
+      <input id="nsAgent" placeholder="เอเย่นต์" aria-label="เอเย่นต์">
+      <button type="submit" class="btn primary">เพิ่มเรือ</button>
+    </form>
+    <div class="gridwrap"><table class="st"><colgroup><col style="width:6%"><col style="width:30%"><col style="width:10%"><col style="width:16%"><col style="width:16%"><col style="width:22%"></colgroup>
+      <thead><tr><th>#</th><th>ชื่อเรือ</th><th>LOA</th><th>ท่าประจำ</th><th>เอเย่นต์</th><th>หมายเหตุ</th></tr></thead><tbody id="shipBody"></tbody></table></div>
   </section>
 
   <section id="view-print" hidden>
@@ -399,7 +428,7 @@ function fieldVal(m,f,side){
 }
 function inputHTML(key,f,side,val,extra=''){
   const cls = f==='ship'?'ship':f==='agent'?'agent':f==='pilot'?'pil':'';
-  const ph = f==='ship' && extra.includes('data-new') ? 'พิมพ์ชื่อเรือ…' : f==='t' && extra.includes('data-new') ? '0630' : '';
+  const ph = '';
   return `<input class="${cls}" data-k="${key}:${f}" data-f="${f}" data-side="${side}" ${extra} value="${esc(val)}" placeholder="${ph}" autocomplete="off" spellcheck="false" aria-label="${side==='L'?'เข้า':'ออก'} ${f}">`;
 }
 function halfHTML(side, m, o){
@@ -457,8 +486,7 @@ function renderGrid(){
   const lateHere = inWinD.filter(m=>+m.late).length;
   $('stats').innerHTML = `<span class="chip c-in">เข้า ${nIn}</span><span class="chip c-out">ออก/ย้าย ${nOut}</span>`+
     (nIn+nOut+late.length ? (noPilot? `<span class="chip c-warn">ยังไม่มีผก. ${noPilot}</span>` : `<span class="chip c-ok">ใส่ผก.ครบ</span>`) : '')+
-    (lateHere? `<span class="chip c-late" title="อยู่ท้ายตารางวันที่ ${shortDate(addDays(D,1))}">พ รอบนี้ ${lateHere} → ท้ายตาราง ${shortDate(addDays(D,1))}</span>`:'')+
-    `<span class="help">พิมพ์แถว ＋ เพื่อเพิ่ม · Enter = บันทึก/ลงแถวถัดไป · ท่า A&lt;&gt;B = ย้ายท่า · กดเลข NO. = สลับ พ</span>`;
+    (lateHere? `<span class="chip c-late" title="อยู่ท้ายตารางวันที่ ${shortDate(addDays(D,1))}">พ รอบนี้ ${lateHere} → ท้ายตาราง ${shortDate(addDays(D,1))}</span>`:'');
 }
 function renderAll(){
   $('windowLabel').innerHTML = `รอบ <span class="num">${shortDate(S.D)} ${S.settings.cutoff}</span> – <span class="num">${shortDate(addDays(S.D,1))} ${addTimeLabel()}</span>`;
@@ -641,8 +669,27 @@ async function goDate(D){ S.D=D; $('schedDate').value=D; hidePop(); try{ await l
 $('schedDate').addEventListener('change',e=>{ if(e.target.value) goDate(e.target.value); });
 $('prevDay').addEventListener('click',()=>goDate(addDays(S.D,-1)));
 $('nextDay').addEventListener('click',()=>goDate(addDays(S.D,1)));
-function showTab(t){ for(const x of ['work','print']){ $('tab-'+x).setAttribute('aria-selected', x===t); $('view-'+x).hidden = x!==t; } $('view-setup').hidden = t!=='setup'; hidePop(); }
+function showTab(t){ for(const x of ['work','print','ships']){ $('tab-'+x).setAttribute('aria-selected', x===t); $('view-'+x).hidden = x!==t; } $('view-setup').hidden = t!=='setup'; hidePop(); }
 $('tab-work').addEventListener('click',()=>showTab('work')); $('tab-print').addEventListener('click',()=>showTab('print'));
+$('tab-ships').addEventListener('click',()=>{ renderShips(); showTab('ships'); });
+
+/* ---------- ทะเบียนเรือ ---------- */
+function lastSeen(name){ const l=S.mv.filter(m=>m.ship===name).sort(sortMv).pop(); return l? fmtT(l.datetime)+' '+shortDate(l.datetime.slice(0,10)).split('/')[1].padStart(2,'0') : ''; }
+function renderShips(){
+  const q=norm($('shipQ').value);
+  const list=S.ships.filter(s=>!q || norm(s.name).includes(q) || norm(s.agent).includes(q) || norm(s.berth).includes(q)).sort((a,b)=>a.name.localeCompare(b.name));
+  $('shipCount').textContent = q? `${list.length} / ${S.ships.length} ลำ` : `${S.ships.length} ลำ`;
+  $('shipBody').innerHTML = list.map((s,i)=>`<tr><td class="num">${i+1}</td><td class="nm">${esc(s.name)}</td><td class="num">${esc(s.loa)}</td><td>${esc(s.berth)}</td><td>${esc(s.agent)}</td><td class="nt">${esc(s.note)}</td></tr>`).join('')
+    || `<tr><td colspan="6" class="empty">ไม่พบเรือ</td></tr>`;
+  $('tab-ships').textContent=`ทะเบียนเรือ (${S.ships.length})`;
+}
+$('shipQ').addEventListener('input',renderShips);
+$('shipAdd').addEventListener('submit',async e=>{ e.preventDefault();
+  const name=norm($('nsName').value); if(!name){ $('nsName').focus(); return; }
+  if(S.shipIdx.has(name)){ toast(`${name} มีในทะเบียนแล้ว`); $('shipQ').value=name; renderShips(); return; }
+  const s={name, loa:$('nsLoa').value.trim(), berth:norm($('nsBerth').value), agent:norm($('nsAgent').value), note:''};
+  try{ await api('saveShip',{},{ship:s}); S.ships.push(s); S.shipIdx.set(name,s); ['nsName','nsLoa','nsBerth','nsAgent'].forEach(id=>$(id).value=''); $('shipQ').value=''; renderShips(); toast(`เพิ่ม ${name} แล้ว`); $('nsName').focus(); }
+  catch(err){ toast('เพิ่มไม่สำเร็จ: '+err.message); } });
 $('modeBadge').addEventListener('click',()=>{ if(!SEED || CFG.API_URL){ $('sUrl').value=CFG.API_URL; $('sKey').value=CFG.TOKEN; showTab('setup'); } });
 $('sBack').addEventListener('click',()=>showTab('work'));
 $('setupForm').addEventListener('submit',async e=>{ e.preventDefault();
@@ -661,11 +708,11 @@ $('printBtn').addEventListener('click',()=>window.print());
 (async function start(){
   $('modeBadge').textContent = CFG.API_URL? 'เชื่อม Google Sheet' : 'โหมดตัวอย่าง';
   $('modeBadge').classList.toggle('live', !!CFG.API_URL);
-  if(!CFG.API_URL && !SEED){ $('modeBadge').textContent='ยังไม่เชื่อมต่อ'; $('tab-work').disabled=true; $('tab-print').disabled=true; $('sBack').hidden=true; $('sOff').hidden=true; showTab('setup'); return; }
+  if(!CFG.API_URL && !SEED){ $('modeBadge').textContent='ยังไม่เชื่อมต่อ'; $('tab-work').disabled=true; $('tab-print').disabled=true; $('tab-ships').disabled=true; $('sBack').hidden=true; $('sOff').hidden=true; showTab('setup'); return; }
   try{ await loadInit(); }catch(err){ toast('โหลดฐานข้อมูลไม่สำเร็จ: '+err.message); $('sUrl').value=CFG.API_URL; $('sKey').value=CFG.TOKEN; $('sMsg').textContent='โหลดไม่สำเร็จ: '+err.message; $('sMsg').className='hint bad'; showTab('setup'); return; }
   const D = (!CFG.API_URL && SEED && SEED.startDate) ? SEED.startDate : todayYmd();
   try{ await document.fonts.ready; }catch(e){}
-  await goDate(D);
+  await goDate(D); renderShips();
 })();
 </script>
 
