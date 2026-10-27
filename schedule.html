@@ -208,9 +208,18 @@ table.lsheet.board{width:100%;font-size:17px}
 .lsheet.board td.date input{font-weight:700;min-height:45px}
 .lsheet.board td.pc input{color:#FF0000;font-weight:700}
 .lsheet.board td.red input{color:#FF0000}
-.lsheet.board tr.cur td{background:#F1F6FB}
-.lsheet.board tr.cur td.date{background:#FFFF99}
-.lsheet.board input:focus{outline:2px solid #3B8FD6;outline-offset:-2px;background:#E8F2FB}
+.lsheet.board input:focus{outline:2px solid #1F6FD1;outline-offset:-2px;background:#fff}
+.lsheet.board td.sel{background:#D6E6FA}
+.lsheet.board td.sel input{background:transparent}
+.lsheet.board td.anc{box-shadow:inset 0 0 0 2px #1F6FD1}
+#board.multi input:focus{outline:0;background:transparent;caret-color:transparent}
+#board.drag,#board.drag input{user-select:none;cursor:cell}
+.cmenu{position:fixed;z-index:90;min-width:230px;background:var(--surface);border:1px solid var(--line);border-radius:8px;box-shadow:0 10px 28px rgb(0 0 0 / .22);padding:4px}
+.cmenu button{display:flex;justify-content:space-between;gap:20px;width:100%;border:0;background:transparent;padding:7px 12px;border-radius:6px;font-size:15px;text-align:left;cursor:pointer;color:var(--ink)}
+.cmenu button:hover{background:var(--accent-soft)}
+.cmenu button.red span{color:#D0021B;font-weight:600}
+.cmenu kbd{font:13px var(--f-num);color:var(--muted)}
+.cmenu hr{border:0;border-top:1px solid var(--line);margin:4px 2px}
 #measure{position:absolute;left:-99999px;top:0;width:1091px;visibility:hidden}
 #pdfStage{position:fixed;left:-99999px;top:0;width:1091px;background:#fff}
 #pdfStage table.sheet{border-collapse:separate;border-spacing:0;border-top:.4px solid #555;border-left:.4px solid #555}
@@ -239,16 +248,28 @@ table.lsheet.board{width:100%;font-size:17px}
   <div class="window" id="windowLabel"></div>
   <button type="button" class="mode" id="modeBadge" title="ตั้งค่าการเชื่อมต่อ"></button>
   <nav class="tabs" role="tablist">
-    <button role="tab" id="tab-work" aria-selected="true">จัดตาราง</button>
+    <button role="tab" id="tab-line" aria-selected="true">แก้ไข</button>
+    <button role="tab" id="tab-work" aria-selected="false">จัดตาราง</button>
     <button role="tab" id="tab-print" aria-selected="false">หน้าปริ้น</button>
     <button role="tab" id="tab-ships" aria-selected="false">ทะเบียนเรือ</button>
     <button role="tab" id="tab-pilots" aria-selected="false">ผก. &amp; เวร</button>
-    <button role="tab" id="tab-line" aria-selected="false">รูป LINE</button>
   </nav>
 </header>
 
 <main>
-  <section id="view-work">
+
+  <section id="view-line">
+    <div class="ltool">
+      <div class="grp"><button class="btn primary" id="lineCopy">คัดลอกรูป</button><button class="btn" id="lineSave">ดาวน์โหลดรูป</button></div>
+      <div class="grp"><button class="btn tb" data-bact="undo" title="Ctrl+Z">↶ ย้อนกลับ</button><button class="btn tb" data-bact="redo" title="Ctrl+Y">↷ ทำซ้ำ</button></div>
+      <div class="grp"><button class="btn tb red" data-bact="red">ตัวแดง</button><button class="btn tb" data-bact="black">ตัวดำ</button><button class="btn tb" data-bact="clear" title="Delete">ลบข้อมูล</button></div>
+      <div class="grp"><button class="btn tb" data-bact="insup">แทรกแถวบน</button><button class="btn tb" data-bact="insdown">แทรกแถวล่าง</button><button class="btn tb" data-bact="delrow">ลบแถว</button></div>
+      <div class="grp"><button class="btn tb" data-bact="rowup">แถว ▲</button><button class="btn tb" data-bact="rowdown">แถว ▼</button><button class="btn tb" data-bact="selup" title="เลื่อนเฉพาะช่องที่เลือก">ช่องที่เลือก ▲</button><button class="btn tb" data-bact="seldown" title="เลื่อนเฉพาะช่องที่เลือก">ช่องที่เลือก ▼</button></div>
+      <div class="grp"><label class="since" for="lineSince">ตั้งแต่</label><input id="lineSince" class="since num" autocomplete="off" aria-label="ดึงเรือตั้งแต่เวลา"><button class="btn" id="linePull">ดึงจากจัดตารางใหม่</button><span class="note" id="boardInfo"></span></div>
+    </div>
+    <div class="scrollx"><div class="paper linepaper" id="board"></div></div>
+  </section>
+  <section id="view-work" hidden>
     <div class="sheetwrap"><table class="eg" id="grid"></table></div>
   </section>
 
@@ -302,16 +323,6 @@ table.lsheet.board{width:100%;font-size:17px}
       <thead><tr><th>#</th><th>ชื่อเรือ</th><th>LOA</th><th>ท่าประจำ</th><th>เอเย่นต์</th><th>หมายเหตุ</th><th></th></tr></thead><tbody id="shipBody"></tbody></table></div>
   </section>
 
-  <section id="view-line" hidden>
-    <div class="ltool">
-      <div class="grp"><button class="btn primary" id="lineCopy">คัดลอกรูป</button><button class="btn" id="lineSave">ดาวน์โหลดรูป</button></div>
-      <div class="grp"><button class="btn tb red" data-bact="red" title="สลับสีแดง ช่องนี้">ตัวแดง</button><button class="btn tb red" data-bact="redrow" title="สลับสีแดง ทั้งฝั่งของแถวนี้">แดงทั้งแถว</button><button class="btn tb" data-bact="black" title="ฝั่งของแถวนี้เป็นตัวดำ">ตัวดำ</button></div>
-      <div class="grp"><button class="btn tb" data-bact="insup">แทรกแถวบน</button><button class="btn tb" data-bact="insdown">แทรกแถวล่าง</button><button class="btn tb" data-bact="del">ลบแถว</button><button class="btn tb" data-bact="clear">ล้างฝั่งนี้</button></div>
-      <div class="grp"><button class="btn tb" data-bact="up" title="เลื่อนทั้งแถวขึ้น">แถว ▲</button><button class="btn tb" data-bact="down" title="เลื่อนทั้งแถวลง">แถว ▼</button><button class="btn tb" data-bact="halfup" title="เลื่อนเฉพาะฝั่งนี้ขึ้น">ฝั่งนี้ ▲</button><button class="btn tb" data-bact="halfdown" title="เลื่อนเฉพาะฝั่งนี้ลง">ฝั่งนี้ ▼</button></div>
-      <div class="grp"><label class="since" for="lineSince">ตั้งแต่</label><input id="lineSince" class="since num" autocomplete="off" aria-label="ดึงเรือตั้งแต่เวลา"><button class="btn" id="linePull">ดึงจากจัดตารางใหม่</button><span class="note" id="boardInfo"></span></div>
-    </div>
-    <div class="scrollx"><div class="paper linepaper" id="board"></div></div>
-  </section>
 
   <section id="view-print" hidden>
     <div class="printbar">
@@ -327,6 +338,7 @@ table.lsheet.board{width:100%;font-size:17px}
 
 <div id="printRoot"></div><div id="measure" aria-hidden="true"></div>
 <div class="combo-pop" id="pop" role="listbox" hidden></div>
+<div class="cmenu" id="cmenu" role="menu" hidden></div>
 <div class="toast" id="toast" hidden></div>
 
 <script>
@@ -938,13 +950,15 @@ $('dispBtn').addEventListener('click',()=>{
   dispArm=false; dispatch(S.D);
 });
 
-/* ---------- รูป LINE: กระดานแยกจากจัดตาราง (ดึงจากจัดตารางครั้งแรก แล้วแก้ได้อิสระ) ---------- */
+/* ---------- แก้ไข (รูป LINE): ตารางแยกจากจัดตาราง ดึงครั้งแรกแล้วแก้อิสระ ใช้งานแบบ Excel ---------- */
 const LCOLW=[7.1,57.9,10,10.3,23,23,23.3,8.4,21.1,7.4,52,9.9,8.6,23,50.7,8.4,20.3];
 const LHEAD=['NO.',"SHIP'S&nbsp; NAME",'LOA','Drf','ETA','POB','BERTH','Pilot','AGENT','NO.',"SHIP'S&nbsp; NAME",'LOA','Drf','ETD','BERTH','Pilot','AGENT'];
 const LF={1:['ship','L'],6:['berth','L'],7:['pilot','L'],8:['agent','L'],10:['ship','R'],14:['berth','R'],15:['pilot','R'],16:['agent','R']};
 const PILOT_COLS=[7,15];
 const blankRow=()=>({c:Array(17).fill(''), r:Array(17).fill(false)});
-let BD=null, bcur=null, bSaveT=null;
+let BD=null, bSaveT=null;
+let SEL=null;            // {b, r1,c1 (anchor), r2,c2 (active end)}
+let UNDO=[], REDO=[], typingKey=null, CLIP=null;
 
 function pairRows(items){
   const list=items.slice().sort(sortMv), rows=[{gap:true}], slots=[]; let prev=null;
@@ -983,17 +997,24 @@ function boardSave(){
   if(!BD) return; BD.updated=Date.now();
   try{ localStorage.setItem(BKEY(BD.date), JSON.stringify(BD)); }catch(e){}
   S.boards=S.boards||{}; S.boards[BD.date]=BD;
+  $('boardInfo').textContent = `บันทึก ${new Date(BD.updated).toTimeString().slice(0,5)}`;
   clearTimeout(bSaveT); const snap=JSON.parse(JSON.stringify(BD));
-  bSaveT=setTimeout(async()=>{ try{ await api('saveBoard',{},{board:snap}); }catch(err){ toast('บันทึกรูป LINE ขึ้นชีตไม่สำเร็จ: '+scriptOld(err)); } },1200);
+  bSaveT=setTimeout(async()=>{ try{ await api('saveBoard',{},{board:snap}); }catch(err){ toast('บันทึกตารางแก้ไขขึ้นชีตไม่สำเร็จ: '+scriptOld(err)); } },1200);
 }
 function openBoard(D){
   const loc=boardLocal(D), rem=(S.boards||{})[D];
   BD = (loc && (!rem || loc.updated>=rem.updated)) ? loc : rem ? JSON.parse(JSON.stringify(rem)) : null;
+  UNDO=[]; REDO=[]; SEL=null;
   if(!BD){ BD=boardFromSchedule(D); boardSave(); }
   renderBoard();
 }
 
-/* editable board, drawn like the image */
+/* undo / redo */
+function pushUndo(){ if(!BD) return; UNDO.push(JSON.stringify(BD.blocks)); if(UNDO.length>200) UNDO.shift(); REDO=[]; }
+function undo(){ if(!UNDO.length) return toast('ย้อนกลับไม่ได้แล้ว'); REDO.push(JSON.stringify(BD.blocks)); BD.blocks=JSON.parse(UNDO.pop()); typingKey=null; boardSave(); renderBoard(); }
+function redo(){ if(!REDO.length) return toast('ไม่มีให้ทำซ้ำ'); UNDO.push(JSON.stringify(BD.blocks)); BD.blocks=JSON.parse(REDO.pop()); typingKey=null; boardSave(); renderBoard(); }
+
+/* drawing */
 function boardTable(b,bi){
   const tot=LCOLW.reduce((a,x)=>a+x,0);
   let h=`<table class="lsheet board"><colgroup>${LCOLW.map(w=>`<col style="width:${(w/tot*100).toFixed(3)}%">`).join('')}</colgroup>`;
@@ -1001,21 +1022,23 @@ function boardTable(b,bi){
   h+=`<tr><td class="h-in" colspan="9">ENTERING</td><td class="h-out" colspan="8">SAILING &amp; SHIFTING</td></tr>`;
   h+=`<tr>${LHEAD.map(t=>`<td class="hd">${t}</td>`).join('')}</tr>`;
   b.rows.forEach((row,ri)=>{
-    h+=`<tr data-b="${bi}" data-r="${ri}"${bcur&&bcur.b===bi&&bcur.r===ri?' class="cur"':''}>`;
+    h+=`<tr data-b="${bi}" data-r="${ri}">`;
     for(let c=0;c<17;c++){
       const f=LF[c]; const cls=[c===1||c===10?'l':'', PILOT_COLS.includes(c)?'pc':'', row.r[c]?'red':''].filter(Boolean).join(' ');
-      h+=`<td class="${cls}"><input data-b="${bi}" data-r="${ri}" data-c="${c}"${f?` data-f="${f[0]}" data-side="${f[1]}"`:''} value="${esc(row.c[c])}" autocomplete="off" spellcheck="false"></td>`;
+      h+=`<td class="${cls}" data-b="${bi}" data-r="${ri}" data-c="${c}"><input data-b="${bi}" data-r="${ri}" data-c="${c}"${f?` data-f="${f[0]}" data-side="${f[1]}"`:''} value="${esc(row.c[c])}" autocomplete="off" spellcheck="false"></td>`;
     }
     h+='</tr>';
   });
   return h+'</table>';
 }
-function renderBoard(focus){
+function renderBoard(){
   if(!BD) return;
+  const keep=SEL;
   $('board').innerHTML = BD.blocks.map((b,bi)=>boardTable(b,bi)).join('<div class="bgap"></div>');
-  $('boardInfo').textContent = `แก้ล่าสุด ${new Date(BD.updated).toTimeString().slice(0,5)}`;
+  $('boardInfo').textContent = `บันทึก ${new Date(BD.updated).toTimeString().slice(0,5)}`;
   fitBoard();
-  if(focus){ const el=$('board').querySelector(`input[data-b="${focus.b}"][data-r="${focus.r}"][data-c="${focus.c}"]`); if(el){ el.focus(); } }
+  if(keep && BD.blocks[keep.b]){ const n=BD.blocks[keep.b].rows.length-1;
+    SEL={b:keep.b, r1:Math.min(keep.r1,n), c1:keep.c1, r2:Math.min(keep.r2,n), c2:keep.c2}; paintSel(); focusCell(SEL.b,SEL.r1,SEL.c1,true); }
 }
 function fitBoard(){
   const list=[...$('board').querySelectorAll('input')].filter(i=>i.value); if(!list.length || $('view-line').hidden) return;
@@ -1023,55 +1046,170 @@ function fitBoard(){
   const m=list.map(i=>[i.scrollWidth,i.clientWidth,parseFloat(getComputedStyle(i).fontSize)]);
   list.forEach((i,k)=>{ const [sw,cw,fs]=m[k]; if(sw>cw+1) i.style.fontSize=Math.max(9,fs*(cw-2)/sw).toFixed(1)+'px'; });
 }
-function cellOf(i){ return {b:+i.dataset.b, r:+i.dataset.r, c:+i.dataset.c}; }
-function markCur(){ $('board').querySelectorAll('tr.cur').forEach(t=>t.classList.remove('cur')); if(bcur){ const t=$('board').querySelector(`tr[data-b="${bcur.b}"][data-r="${bcur.r}"]`); if(t) t.classList.add('cur'); } }
 
+/* selection (Excel-style: click, drag, Shift+click, Shift+arrows) */
 const BOARD=$('board');
-BOARD.addEventListener('focusin',e=>{ const i=e.target.closest('input'); if(!i) return; i.select();
-  if(i.dataset.r!==undefined){ bcur=cellOf(i); markCur(); } buildPop(i); });
+const cellOf=el=>({b:+el.dataset.b, r:+el.dataset.r, c:+el.dataset.c});
+const inp=(b,r,c)=>BOARD.querySelector(`input[data-b="${b}"][data-r="${r}"][data-c="${c}"]`);
+function rect(){ return SEL ? {b:SEL.b, r0:Math.min(SEL.r1,SEL.r2), r1:Math.max(SEL.r1,SEL.r2), c0:Math.min(SEL.c1,SEL.c2), c1:Math.max(SEL.c1,SEL.c2)} : null; }
+const multi=()=>{ const R=rect(); return !!R && (R.r0!==R.r1 || R.c0!==R.c1); };
+function paintSel(){
+  BOARD.querySelectorAll('td.sel,td.anc').forEach(td=>td.classList.remove('sel','anc'));
+  const R=rect(); if(!R) return;
+  for(let r=R.r0;r<=R.r1;r++) for(let c=R.c0;c<=R.c1;c++){ const td=BOARD.querySelector(`td[data-b="${R.b}"][data-r="${r}"][data-c="${c}"]`); if(td) td.classList.add('sel'); }
+  const a=BOARD.querySelector(`td[data-b="${SEL.b}"][data-r="${SEL.r1}"][data-c="${SEL.c1}"]`); if(a) a.classList.add('anc');
+  BOARD.classList.toggle('multi', multi());
+}
+function focusCell(b,r,c,quiet){ const i=inp(b,r,c); if(i){ quietFocus=!!quiet; i.focus({preventScroll:!!quiet}); quietFocus=false; } }
+let quietFocus=false, dragging=false;
+function setSel(b,r,c,extend){
+  if(extend && SEL && SEL.b===b){ SEL.r2=r; SEL.c2=c; }
+  else SEL={b,r1:r,c1:c,r2:r,c2:c};
+  paintSel();
+}
+let rightDown=false;
+BOARD.addEventListener('mousedown',e=>{
+  rightDown = e.button===2; if(e.button!==0) return;
+  const td=e.target.closest('td[data-r]'); hideMenu(); if(!td) return;
+  const {b,r,c}=cellOf(td);
+  if(e.shiftKey && SEL && SEL.b===b){ e.preventDefault(); setSel(b,r,c,true); return; }
+  setSel(b,r,c,false); dragging=true; BOARD.classList.add('drag');
+});
+BOARD.addEventListener('mouseover',e=>{
+  if(!dragging) return; const td=e.target.closest('td[data-r]'); if(!td) return;
+  const {b,r,c}=cellOf(td); if(!SEL || b!==SEL.b) return;
+  if(r!==SEL.r2 || c!==SEL.c2){ SEL.r2=r; SEL.c2=c; paintSel(); if(multi()){ try{ window.getSelection().removeAllRanges(); }catch(x){} hidePop(); } }
+});
+BOARD.addEventListener('dragstart',e=>e.preventDefault());   // no text drag-and-drop between cells; dragging selects cells
+BOARD.addEventListener('drop',e=>e.preventDefault());
+document.addEventListener('mouseup',()=>{ if(dragging){ dragging=false; BOARD.classList.remove('drag'); } });
+
+/* editing */
+BOARD.addEventListener('focusin',e=>{ const i=e.target.closest('input'); if(!i) return; i.select(); typingKey=null;
+  if(i.dataset.r!==undefined && !dragging && !quietFocus){ const {b,r,c}=cellOf(i); const R=rect(); const inside=R && R.b===b && r>=R.r0 && r<=R.r1 && c>=R.c0 && c<=R.c1; if(!SEL || !(inside && (multi()||rightDown))) { if(!(SEL && SEL.b===b && SEL.r1===r && SEL.c1===c)) setSel(b,r,c,false); } }
+  hidePop(); });   // the list opens when typing, so dragging across cells is not blocked
 BOARD.addEventListener('input',e=>{ const i=e.target.closest('input'); if(!i||!BD) return;
+  const key=i.dataset.hd? 'hd'+i.dataset.b : `${i.dataset.b}:${i.dataset.r}:${i.dataset.c}`;
+  if(typingKey!==key){ pushUndo(); typingKey=key; }
   if(i.dataset.hd){ BD.blocks[+i.dataset.b].label=i.value; }
   else { const {b,r,c}=cellOf(i); BD.blocks[b].rows[r].c[c]=i.value; }
   fitInput(i); buildPop(i); boardSave(); });
 BOARD.addEventListener('change',e=>{ const i=e.target.closest('input'); if(!i||!BD||i.dataset.r===undefined) return;
   const {b,r,c}=cellOf(i); const row=BD.blocks[b].rows[r]; row.c[c]=i.value;
-  if(c===1||c===10){ const s=S.shipIdx.get(norm(i.value)); if(s){ row.c[c]=s.name;
-    const loa=c+1, ag=c===1?8:16, be=c===1?6:14;
-    if(!row.c[loa]) row.c[loa]=s.loa||''; if(!row.c[ag]) row.c[ag]=s.agent||''; if(!row.c[be]) row.c[be]= c===1 ? (s.berth||'') : (lastBerth(s.name, `${BD.date} 23:59`)||s.berth||'');
-    renderBoard({b,r,c}); } }
+  if(c===1||c===10){ const s=S.shipIdx.get(norm(i.value)); if(s){
+    const loa=c+1, ag=c===1?8:16, be=c===1?6:14; const need=!row.c[loa]||!row.c[ag]||!row.c[be]||row.c[c]!==s.name;
+    if(need){ if(typingKey===null) pushUndo(); row.c[c]=s.name;
+      if(!row.c[loa]) row.c[loa]=s.loa||''; if(!row.c[ag]) row.c[ag]=s.agent||'';
+      if(!row.c[be]) row.c[be]= c===1 ? (s.berth||'') : (lastBerth(s.name, `${BD.date} 23:59`)||s.berth||'');
+      boardSave(); renderBoard(); } } }
   boardSave(); });
-function boardMove(i,d){ const {b,r,c}=cellOf(i); const n=BOARD.querySelector(`input[data-b="${b}"][data-r="${r+d}"][data-c="${c}"]`)
-  || (d>0 ? BOARD.querySelector(`input[data-b="${b+1}"][data-r="0"][data-c="${c}"]`) : null); if(n) n.focus(); }
+
+/* range operations */
+function eachSel(fn){ const R=rect(); if(!R) return; for(let r=R.r0;r<=R.r1;r++) for(let c=R.c0;c<=R.c1;c++) fn(BD.blocks[R.b].rows[r],r,c); }
+function needSel(){ if(!SEL){ toast('คลิกช่องในตารางก่อน'); return false; } return true; }
+function clearSel(){ if(!needSel()) return; pushUndo(); eachSel(row=>{}); eachSel((row,r,c)=>{ row.c[c]=''; }); boardSave(); renderBoard(); }
+function setRed(on){ if(!needSel()) return; pushUndo(); eachSel((row,r,c)=>{ row.r[c]= on===null ? !row.r[c] : on; }); boardSave(); renderBoard(); }
+function toggleRed(){ if(!needSel()) return; let all=true; eachSel((row,r,c)=>{ if(!row.r[c]) all=false; }); setRed(!all); }
+function insRows(where){ if(!needSel()) return; const R=rect(); const n=R.r1-R.r0+1; pushUndo(); const rows=BD.blocks[R.b].rows;
+  const at = where==='up'? R.r0 : R.r1+1; rows.splice(at,0,...Array.from({length:n},blankRow));
+  if(where==='down') SEL={b:R.b,r1:at,c1:SEL.c1,r2:at+n-1,c2:SEL.c2};
+  boardSave(); renderBoard(); }
+function delRows(){ if(!needSel()) return; const R=rect(); pushUndo(); const rows=BD.blocks[R.b].rows; rows.splice(R.r0,R.r1-R.r0+1); if(!rows.length) rows.push(blankRow());
+  SEL={b:R.b,r1:Math.min(R.r0,rows.length-1),c1:SEL.c1,r2:Math.min(R.r0,rows.length-1),c2:SEL.c1}; boardSave(); renderBoard(); }
+function moveSel(d, whole){ if(!needSel()) return; const R=rect(); const rows=BD.blocks[R.b].rows;
+  if(R.r0+d<0 || R.r1+d>=rows.length) return; pushUndo();
+  const c0=whole?0:R.c0, c1=whole?16:R.c1;
+  const take=r=>({c:rows[r].c.slice(c0,c1+1), r:rows[r].r.slice(c0,c1+1)});
+  const put=(r,v)=>{ for(let k=0;k<=c1-c0;k++){ rows[r].c[c0+k]=v.c[k]; rows[r].r[c0+k]=v.r[k]; } };
+  const block=[]; for(let r=R.r0;r<=R.r1;r++) block.push(take(r));
+  const other = take(d<0? R.r0-1 : R.r1+1);
+  if(d<0){ block.forEach((v,k)=>put(R.r0-1+k,v)); put(R.r1,other); } else { block.forEach((v,k)=>put(R.r0+1+k,v)); put(R.r0,other); }
+  SEL={b:R.b, r1:SEL.r1+d, c1:SEL.c1, r2:SEL.r2+d, c2:SEL.c2}; boardSave(); renderBoard(); }
+
+/* clipboard: Ctrl+C / X / V like Excel (tab-separated, keeps red when pasted here) */
+function selTSV(){ const R=rect(), out=[], red=[]; for(let r=R.r0;r<=R.r1;r++){ const row=BD.blocks[R.b].rows[r]; out.push(row.c.slice(R.c0,R.c1+1)); red.push(row.r.slice(R.c0,R.c1+1)); } return {cells:out, red, text:out.map(x=>x.join('\t')).join('\n')}; }
+function pasteGrid(cells, red){
+  if(!needSel()) return; const R=rect(); pushUndo(); const rows=BD.blocks[R.b].rows;
+  const single = cells.length===1 && cells[0].length===1;
+  const h = single ? R.r1-R.r0+1 : cells.length, w = single ? R.c1-R.c0+1 : Math.max(...cells.map(x=>x.length));
+  for(let i=0;i<h;i++){ const r=R.r0+i; if(r>=rows.length) rows.push(blankRow());
+    for(let j=0;j<w;j++){ const c=R.c0+j; if(c>16) break; const v=single?cells[0][0]:(cells[i]?.[j]??''); rows[r].c[c]=v; if(red) rows[r].r[c]=single?red[0][0]:!!red[i]?.[j]; } }
+  SEL={b:R.b, r1:R.r0, c1:R.c0, r2:R.r0+h-1, c2:Math.min(16,R.c0+w-1)}; boardSave(); renderBoard();
+}
+function parseTSV(t){ return t.replace(/\r/g,'').replace(/\n$/,'').split('\n').map(l=>l.split('\t')); }
+function inBoard(e){ return e.target && e.target.closest && e.target.closest('#board') && e.target.dataset.r!==undefined; }
+document.addEventListener('copy',e=>{ if(!inBoard(e)||!SEL) return; const i=e.target;
+  if(!multi() && i.selectionStart!==i.selectionEnd && !(i.selectionStart===0 && i.selectionEnd===i.value.length)) return;   // part of one cell: normal copy
+  const t=selTSV(); CLIP=t; e.clipboardData.setData('text/plain',t.text); e.preventDefault(); });
+document.addEventListener('cut',e=>{ if(!inBoard(e)||!SEL) return; const i=e.target;
+  if(!multi() && i.selectionStart!==i.selectionEnd && !(i.selectionStart===0 && i.selectionEnd===i.value.length)) return;
+  const t=selTSV(); CLIP=t; e.clipboardData.setData('text/plain',t.text); e.preventDefault(); clearSel(); });
+document.addEventListener('paste',e=>{ if(!inBoard(e)||!SEL) return;
+  const t=e.clipboardData.getData('text/plain'); if(t==null) return;
+  const own = CLIP && CLIP.text===t.replace(/\r/g,'').replace(/\n$/,'');
+  if(!multi() && !own && !/[\t\n]/.test(t.replace(/\n$/,''))) return;   // plain text into one cell: normal paste
+  e.preventDefault(); pasteGrid(own?CLIP.cells:parseTSV(t), own?CLIP.red:null); });
+async function menuPaste(){
+  try{ const t=await navigator.clipboard.readText(); const own=CLIP && CLIP.text===t.replace(/\r/g,'').replace(/\n$/,''); pasteGrid(own?CLIP.cells:parseTSV(t), own?CLIP.red:null); }
+  catch(err){ if(CLIP) pasteGrid(CLIP.cells, CLIP.red); else toast('ใช้ Ctrl+V เพื่อวาง'); }
+}
+async function menuCopy(cut){ if(!needSel()) return; const t=selTSV(); CLIP=t; try{ await navigator.clipboard.writeText(t.text); }catch(e){} if(cut) clearSel(); else toast('คัดลอกแล้ว'); }
+
+/* keyboard */
 BOARD.addEventListener('keydown',e=>{ const i=e.target.closest('input'); if(!i) return;
-  const open=!pop.hidden && cb.inp===i;
-  if(open && (e.key==='ArrowDown'||e.key==='ArrowUp')){ e.preventDefault(); const n=cb.items.length; cb.act=(cb.act+(e.key==='ArrowDown'?1:-1)+n)%n;
-    [...pop.children].forEach((x,k)=>x.classList.toggle('act',k===cb.act)); pop.children[cb.act]?.scrollIntoView({block:'nearest'}); return; }
-  if(open && (e.key==='Enter'||e.key==='Tab') && cb.act>=0 && i.value.trim()){ if(e.key==='Enter') e.preventDefault(); pick(cb.act); return; }
-  if(e.key==='Escape'){ hidePop(); return; }
+  const open=!pop.hidden && cb.inp===i; const k=e.key, mod=e.ctrlKey||e.metaKey;
+  if(mod && (k==='z'||k==='Z') && !e.shiftKey){ e.preventDefault(); undo(); return; }
+  if(mod && (k==='y'||k==='Y'||((k==='z'||k==='Z') && e.shiftKey))){ e.preventDefault(); redo(); return; }
+  if(open && (k==='ArrowDown'||k==='ArrowUp')){ e.preventDefault(); const n=cb.items.length; cb.act=(cb.act+(k==='ArrowDown'?1:-1)+n)%n;
+    [...pop.children].forEach((x,j)=>x.classList.toggle('act',j===cb.act)); pop.children[cb.act]?.scrollIntoView({block:'nearest'}); return; }
+  if(open && (k==='Enter'||k==='Tab') && cb.act>=0 && i.value.trim()){ if(k==='Enter') e.preventDefault(); pick(cb.act); return; }
+  if(k==='Escape'){ hidePop(); hideMenu(); if(SEL && multi()){ SEL={b:SEL.b,r1:SEL.r1,c1:SEL.c1,r2:SEL.r1,c2:SEL.c1}; paintSel(); } return; }
   if(i.dataset.r===undefined) return;
-  if(e.key==='Enter'||e.key==='ArrowDown'){ e.preventDefault(); boardMove(i,1); }
-  else if(e.key==='ArrowUp'){ e.preventDefault(); boardMove(i,-1); }
+  if((k==='Delete'||k==='Backspace') && multi()){ e.preventDefault(); clearSel(); return; }
+  if(k==='Delete' && !multi() && i.selectionStart===0 && i.selectionEnd===i.value.length){ e.preventDefault(); clearSel(); return; }
+  const {b,r,c}=cellOf(i); const rows=BD.blocks[b].rows.length;
+  const go=(dr,dc)=>{ e.preventDefault(); hidePop();
+    if(e.shiftKey){ const r2=Math.max(0,Math.min(rows-1,SEL.r2+dr)), c2=Math.max(0,Math.min(16,SEL.c2+dc)); SEL.r2=r2; SEL.c2=c2; paintSel(); return; }
+    let nr=r+dr, nc=c+dc, nb=b;
+    if(nr>=rows && b<BD.blocks.length-1){ nb=b+1; nr=0; } else if(nr<0 && b>0){ nb=b-1; nr=BD.blocks[nb].rows.length-1; }
+    nr=Math.max(0,Math.min(BD.blocks[nb].rows.length-1,nr)); nc=Math.max(0,Math.min(16,nc));
+    setSel(nb,nr,nc,false); focusCell(nb,nr,nc); };
+  const whole = i.selectionStart===0 && i.selectionEnd===i.value.length;
+  if(k==='ArrowDown'||k==='Enter') go(1,0);
+  else if(k==='ArrowUp') go(-1,0);
+  else if(k==='ArrowLeft' && (e.shiftKey || whole || i.selectionStart===0)) go(0,-1);
+  else if(k==='ArrowRight' && (e.shiftKey || whole || i.selectionEnd===i.value.length)) go(0,1);
 });
 BOARD.addEventListener('focusout',e=>{ const i=e.target.closest('input'); if(i) setTimeout(()=>{ if(cb.inp===i && document.activeElement!==i) hidePop(); },120); });
 
-/* toolbar — keeps the cursor in the cell it acts on */
-const HALF=c=>c<9?[0,9]:[9,17];
-function boardAct(act){
+/* right-click menu */
+const MENU=$('cmenu');
+const MENU_ITEMS=[
+  ['undo','ย้อนกลับ','Ctrl+Z'],['redo','ทำซ้ำ','Ctrl+Y'],['-'],
+  ['cut','ตัด','Ctrl+X'],['copy','คัดลอก','Ctrl+C'],['paste','วาง','Ctrl+V'],['clear','ลบข้อมูล','Delete'],['-'],
+  ['red','ตัวแดง','',' red'],['black','ตัวดำ',''],['-'],
+  ['insup','แทรกแถวด้านบน',''],['insdown','แทรกแถวด้านล่าง',''],['delrow','ลบแถว',''],['-'],
+  ['rowup','เลื่อนแถวขึ้น',''],['rowdown','เลื่อนแถวลง',''],['selup','เลื่อนช่องที่เลือกขึ้น',''],['seldown','เลื่อนช่องที่เลือกลง','']];
+MENU.innerHTML = MENU_ITEMS.map(x=>x[0]==='-'?'<hr>':`<button type="button" data-m="${x[0]}" class="${x[3]||''}"><span>${x[1]}</span><kbd>${x[2]}</kbd></button>`).join('');
+function hideMenu(){ MENU.hidden=true; }
+BOARD.addEventListener('contextmenu',e=>{
+  const td=e.target.closest('td[data-r]'); if(!td) return; e.preventDefault(); hidePop();
+  const {b,r,c}=cellOf(td); const R=rect();
+  if(!R || R.b!==b || r<R.r0 || r>R.r1 || c<R.c0 || c>R.c1){ setSel(b,r,c,false); focusCell(b,r,c,true); }
+  MENU.hidden=false; const W=window.innerWidth, H=window.innerHeight, mw=MENU.offsetWidth, mh=MENU.offsetHeight;
+  MENU.style.left=Math.min(e.clientX, W-mw-8)+'px'; MENU.style.top=Math.max(8,Math.min(e.clientY, H-mh-8))+'px';
+});
+MENU.addEventListener('mousedown',e=>e.preventDefault());
+MENU.addEventListener('click',e=>{ const b=e.target.closest('[data-m]'); if(!b) return; hideMenu(); boardAct(b.dataset.m); });
+document.addEventListener('mousedown',e=>{ if(!MENU.hidden && !e.target.closest('#cmenu')) hideMenu(); });
+document.addEventListener('scroll',()=>hideMenu(),true);
+
+function boardAct(a){
   if(!BD) return;
-  if(!bcur){ toast('คลิกช่องในตารางก่อน'); return; }
-  const {b,r,c}=bcur, rows=BD.blocks[b].rows, row=rows[r]; let f={b,r,c};
-  if(act==='red'){ row.r[c]=!row.r[c]; }
-  else if(act==='redrow'){ const [a,z]=HALF(c); const on=!row.r.slice(a,z).every(Boolean); for(let k=a;k<z;k++) row.r[k]=on; }
-  else if(act==='black'){ const [a,z]=HALF(c); for(let k=a;k<z;k++) row.r[k]=false; }
-  else if(act==='insup'){ rows.splice(r,0,blankRow()); }
-  else if(act==='insdown'){ rows.splice(r+1,0,blankRow()); f={b,r:r+1,c}; }
-  else if(act==='clear'){ const [a,z]=HALF(c); for(let k=a;k<z;k++){ row.c[k]=''; row.r[k]=false; } }
-  else if(act==='del'){ rows.splice(r,1); if(!rows.length) rows.push(blankRow()); f={b,r:Math.min(r,rows.length-1),c}; }
-  else if(act==='up'){ if(r>0){ [rows[r-1],rows[r]]=[rows[r],rows[r-1]]; f={b,r:r-1,c}; } }
-  else if(act==='down'){ if(r<rows.length-1){ [rows[r+1],rows[r]]=[rows[r],rows[r+1]]; f={b,r:r+1,c}; } }
-  else if(act==='halfup'||act==='halfdown'){ const d=act==='halfup'?-1:1, t=r+d; if(t<0||t>=rows.length) return; const [a,z]=HALF(c);
-    for(let k=a;k<z;k++){ [rows[t].c[k],row.c[k]]=[row.c[k],rows[t].c[k]]; [rows[t].r[k],row.r[k]]=[row.r[k],rows[t].r[k]]; } f={b,r:t,c}; }
-  bcur=f; boardSave(); renderBoard(f);
+  ({undo, redo, cut:()=>menuCopy(true), copy:()=>menuCopy(false), paste:menuPaste, clear:clearSel,
+    red:()=>setRed(true), black:()=>setRed(false), togglered:toggleRed,
+    insup:()=>insRows('up'), insdown:()=>insRows('down'), delrow:delRows,
+    rowup:()=>moveSel(-1,true), rowdown:()=>moveSel(1,true), selup:()=>moveSel(-1,false), seldown:()=>moveSel(1,false)}[a]||(()=>{}))();
 }
 document.querySelectorAll('[data-bact]').forEach(btn=>{
   btn.addEventListener('mousedown',e=>e.preventDefault());
@@ -1081,10 +1219,10 @@ let pullArm=false;
 $('linePull').addEventListener('click',()=>{
   if(!pullArm){ pullArm=true; $('linePull').textContent='ยืนยัน: แทนที่ด้วยข้อมูลจัดตาราง'; $('linePull').classList.add('arm'); setTimeout(()=>{ pullArm=false; $('linePull').textContent='ดึงจากจัดตารางใหม่'; $('linePull').classList.remove('arm'); },3500); return; }
   pullArm=false; $('linePull').textContent='ดึงจากจัดตารางใหม่'; $('linePull').classList.remove('arm');
-  BD=boardFromSchedule(S.D); bcur=null; boardSave(); renderBoard(); toast('ดึงข้อมูลจากจัดตารางแล้ว');
+  pushUndo(); const nb=boardFromSchedule(S.D); BD.blocks=nb.blocks; SEL=null; boardSave(); renderBoard(); toast('ดึงข้อมูลจากจัดตารางแล้ว (ย้อนกลับได้)');
 });
 
-/* image: drawn from the board, not from the schedule */
+/* image: drawn from this table, not from the schedule */
 function boardStaticHTML(){
   const tot=LCOLW.reduce((a,x)=>a+x,0);
   return BD.blocks.map(b=>{
@@ -1134,16 +1272,15 @@ $('lineSave').addEventListener('click',async()=>{
   finally{ b.disabled=false; }
 });
 
-
 (async function start(){
   $('modeBadge').textContent = CFG.API_URL? 'เชื่อม Google Sheet' : 'โหมดตัวอย่าง';
   $('modeBadge').classList.toggle('live', !!CFG.API_URL);
   if(!CFG.API_URL && !SEED){ $('modeBadge').textContent='ยังไม่เชื่อมต่อ'; $('tab-work').disabled=true; $('tab-print').disabled=true; $('tab-ships').disabled=true; $('tab-line').disabled=true; $('tab-pilots').disabled=true; $('sBack').hidden=true; $('sOff').hidden=true; showTab('setup'); return; }
   const D0 = (!CFG.API_URL && SEED && SEED.startDate) ? SEED.startDate : todayYmd();
   const c = cacheGet();
-  if(c && c.init){ applyInit(c.init); S.mv=c.mv||[]; S.loaded=c.loaded; S.D=D0; $('schedDate').value=D0; renderAll(); renderShips(); refresh(true); return; }
+  if(c && c.init){ applyInit(c.init); S.mv=c.mv||[]; S.loaded=c.loaded; S.D=D0; $('schedDate').value=D0; renderAll(); renderShips(); showTab('line'); refresh(true); return; }
   try{ await Promise.all([loadInit(), (S.D=D0, loadMovements(D0))]); cacheSet(); }catch(err){ toast('โหลดฐานข้อมูลไม่สำเร็จ: '+err.message); $('sUrl').value=CFG.API_URL; $('sKey').value=CFG.TOKEN; $('sMsg').textContent='โหลดไม่สำเร็จ: '+err.message; $('sMsg').className='hint bad'; showTab('setup'); return; }
-  $('schedDate').value=D0; renderAll(); renderShips();
+  $('schedDate').value=D0; renderAll(); renderShips(); showTab('line');
   try{ document.fonts.ready.then(()=>fitAll()); }catch(e){}
 })();
 </script>
