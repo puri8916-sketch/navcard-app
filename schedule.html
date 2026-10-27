@@ -200,6 +200,13 @@ table.lsheet{border-collapse:separate;border-spacing:0;border-top:1px dotted #8C
 .btn.tb.red{color:#D0021B}
 #linePull.arm{background:var(--pilot);color:#fff;border-color:var(--pilot)}
 .lsheet+.lsheet{border-top:0}
+/* LINE image = the แก้ไข tab at 100%: 20 pt text, 40.5–43.5 pt rows, 30 pt date, 28 pt title, 22 pt band */
+table.lsheet.xl{width:auto;font-size:26.67px}
+.lsheet.xl td{height:53px;padding:0 5px;border-right:1px dotted #8C8C8C;border-bottom:1px dotted #8C8C8C}
+.lsheet.xl .date{font-size:40px;height:80px}
+.lsheet.xl .title{font-size:37.33px}
+.lsheet.xl .h-in,.lsheet.xl .h-out{font-size:29.33px;height:54px}
+.lsheet.xl .hd{font-size:26.67px;height:54px}
 #board.linepaper{width:100%;min-width:1180px}
 table.lsheet.board{width:100%;font-size:17px}
 .lsheet.board td{padding:0;height:34px}
@@ -271,7 +278,7 @@ table.lsheet.board{width:100%;font-size:17px}
 
   <section id="view-line">
     <div class="ltool">
-      <div class="grp"><button class="btn primary" id="lineCopy">คัดลอกรูป</button><button class="btn" id="lineSave">ดาวน์โหลดรูป</button></div>
+      <div class="grp"><button class="btn primary" id="lineCopy">คัดลอกรูป</button></div>
       <div class="grp"><button class="btn tb" data-bact="undo" title="Ctrl+Z">↶ ย้อนกลับ</button><button class="btn tb" data-bact="redo" title="Ctrl+Y">↷ ทำซ้ำ</button></div>
       <div class="grp fcolor"><button class="btn tb fc-main" data-bact="color" title="สีตัวอักษร"><span class="fcA">A</span><span class="fcBar" id="fcBar"></span></button><button class="btn tb fc-drop" id="fcDrop" title="เลือกสี" aria-label="เลือกสีตัวอักษร">▾</button><div class="fc-pal" id="fcPal" hidden></div></div>
       <div class="grp"><label class="since" for="lineSince">ตั้งแต่</label><input id="lineSince" class="since num" autocomplete="off" aria-label="ดึงเรือตั้งแต่เวลา"><button class="btn" id="linePull">ดึงจากจัดตารางใหม่</button><span class="note" id="boardInfo"></span></div>
@@ -279,6 +286,7 @@ table.lsheet.board{width:100%;font-size:17px}
     <div class="scrollx"><div class="paper linepaper" id="board"></div></div>
   </section>
   <section id="view-work" hidden>
+    <div class="ltool"><div class="grp"><button class="btn tb" id="gUndo" title="Ctrl+Z">↶ ย้อนกลับ</button><button class="btn tb" id="gRedo" title="Ctrl+Y">↷ ทำซ้ำ</button></div></div>
     <div class="sheetwrap"><table class="eg" id="grid"></table></div>
   </section>
 
@@ -654,9 +662,21 @@ async function ensureShip(m){
   S.ships.push(s); S.shipIdx.set(m.ship,s);
   try{ await api('saveShip',{},{ship:s}); toast(`เพิ่ม ${m.ship} เข้าทะเบียนเรือแล้ว`); }catch(err){ toast('เพิ่มเรือใหม่ไม่สำเร็จ: '+err.message); }
 }
+/* จัดตาราง: ย้อนกลับ / ทำซ้ำ (each step = one ship before/after, also written back to the sheet) */
+let GU=[], GR=[];
+const cl=o=>o?JSON.parse(JSON.stringify(o)):null;
+function gRecord(before, after){ GU.push({before:cl(before), after:cl(after)}); if(GU.length>200) GU.shift(); GR=[]; }
+async function gApply(target, current){
+  const id=(target||current).id;
+  if(target){ const i=S.mv.findIndex(x=>x.id===id); if(i>=0) S.mv[i]=cl(target); else S.mv.push(cl(target)); rerender(); persist(cl(target)); }
+  else { S.mv=S.mv.filter(x=>x.id!==id); rerender(); try{ await api('deleteMovement',{},{id}); }catch(err){ toast('ย้อนกลับไม่สำเร็จ: '+err.message); } }
+}
+function gUndo(){ const op=GU.pop(); if(!op) return toast('ย้อนกลับไม่ได้แล้ว'); GR.push(op); gApply(op.before, op.after); }
+function gRedo(){ const op=GR.pop(); if(!op) return toast('ไม่มีให้ทำซ้ำ'); GU.push(op); gApply(op.after, op.before); }
 function onCellChange(inp){
   if(inp.dataset.draft) return draftFill(inp);
   const [id,f]=inp.dataset.k.split(':'); const m=S.mv.find(x=>x.id===id); if(!m) return;
+  const before=cl(m);
   const v=inp.value.trim(), side=inp.dataset.side, base=inp.dataset.base;
   inp.classList.remove('bad');
   if(f==='ship'){ if(!v){ inp.value=m.ship; return toast('ลบเรือ ใช้ปุ่ม ลบ ในช่องชื่อเรือ'); }
@@ -669,6 +689,7 @@ function onCellChange(inp){
   else if(f==='agent') m.agent=norm(v);
   else if(f==='pilot') m.pilot=v.replace(/^P\.?/i,'').trim();
   else m[f]=v;
+  if(JSON.stringify(before)!==JSON.stringify(m)) gRecord(before,m);
   persist(m); rerender();
 }
 // draft rows: picking a known ship fills the rest of the row
@@ -694,19 +715,19 @@ async function commitDraft(p, fromBlur){
   if(side==='L'){ m.type='IN'; m.to=norm(q('berth').value)||s.berth||''; m.from='';
     const pv=q('pob').value.trim(); m.pob = pv ? (parseTime(pv,base)||dt) : dt; }
   else { const b=parseBerthR(q('berth').value||lastBerth(ship,dt)||s.berth||''); m.type=b.type; m.from=b.from; m.to=b.to; m.pob=''; }
-  S.mv.push(m); ensureShip(m); persist(m);
+  S.mv.push(m); gRecord(null,m); ensureShip(m); persist(m);
   const sd=schedOf(dt); if(!late && sd!==S.D) toast(`บันทึกแล้ว · เวลา ${fmtT(dt)} อยู่ตารางวันที่ ${shortDate(sd)}`);
   const wantNew = late ? (side==='L'?'lateL':'lateR') : (side==='L'?'newL':'newR');
   rerender(`${wantNew}:ship`);
   return true;
 }
 async function delMv(id){
-  const m=S.mv.find(x=>x.id===id); if(!m) return;
+  const m=S.mv.find(x=>x.id===id); if(!m) return; gRecord(m,null);
   S.mv=S.mv.filter(x=>x.id!==id); rerender();
   try{ await api('deleteMovement',{},{id}); toast(`ลบ ${m.ship} ${fmtT(m.datetime)} แล้ว`); }catch(err){ toast('ลบไม่สำเร็จ: '+err.message); }
 }
 function toggleLate(id){
-  const m=S.mv.find(x=>x.id===id); if(!m) return; m.late=+m.late?0:1; persist(m); rerender();
+  const m=S.mv.find(x=>x.id===id); if(!m) return; const before=cl(m); m.late=+m.late?0:1; gRecord(before,m); persist(m); rerender();
   const sd=schedOf(m.datetime);
   toast(+m.late? `${m.ship} เป็น พ → อยู่ท้ายตารางวันที่ ${shortDate(addDays(sd,1))}` : `${m.ship} กลับเข้าตารางวันที่ ${shortDate(sd)}`);
 }
@@ -776,6 +797,8 @@ function moveV(inp,d){
 }
 G.addEventListener('keydown',e=>{
   const i=e.target.closest('input'); if(!i) return;
+  const mod=e.ctrlKey||e.metaKey, k=e.key;
+  if(mod && (k==='z'||k==='Z'||k==='y'||k==='Y') && i.value===i.defaultValue){ e.preventDefault(); if((k==='z'||k==='Z') && !e.shiftKey) gUndo(); else gRedo(); return; }
   const open=!pop.hidden && cb.inp===i;
   if(open && (e.key==='ArrowDown'||e.key==='ArrowUp')){ e.preventDefault(); const n=cb.items.length; cb.act=(cb.act+(e.key==='ArrowDown'?1:-1)+n)%n;
     [...pop.children].forEach((c,k)=>c.classList.toggle('act',k===cb.act)); pop.children[cb.act]?.scrollIntoView({block:'nearest'}); return; }
@@ -907,7 +930,7 @@ $('setupForm').addEventListener('submit',async e=>{ e.preventDefault();
   catch(err){ Object.assign(CFG,old); msg.textContent='เชื่อมต่อไม่ได้: '+err.message; msg.className='hint bad'; } });
 $('sOff').addEventListener('click',()=>{ try{ localStorage.setItem(CFG_KEY, JSON.stringify({})); }catch(e){} location.reload(); });
 const framed = (()=>{ try{ return window.self!==window.top; }catch(e){ return true; } })();
-if(framed && !window.__CAN_PRINT__){ $('printBtn').hidden=true; $('pdfBtn').hidden=true; $('lineSave').hidden=true; $('printNote').textContent='ตัวอย่าง: ปุ่มปริ้นใช้ได้เมื่อเปิดจากเว็บของคุณ'; }
+if(framed && !window.__CAN_PRINT__){ $('printBtn').hidden=true; $('pdfBtn').hidden=true; $('printNote').textContent='ตัวอย่าง: ปุ่มปริ้นใช้ได้เมื่อเปิดจากเว็บของคุณ'; }
 $('printBtn').addEventListener('click',()=>{ if(printDirty) renderPrint(); autoDispatch(); window.print(); });
 window.addEventListener('beforeprint',()=>{ if(printDirty) renderPrint(); });
 /* PDF: draw the same sheet at print width and place it on one A4 landscape page */
@@ -930,6 +953,7 @@ async function downloadPdf(){
   finally{ btn.disabled=false; btn.textContent=label; }
 }
 $('pdfBtn').addEventListener('click',downloadPdf);
+['gUndo','gRedo'].forEach(id=>{ $(id).addEventListener('mousedown',e=>e.preventDefault()); }); $('gUndo').addEventListener('click',gUndo); $('gRedo').addEventListener('click',gRedo);
 document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible' && S.init) refresh(false); });
 
 /* ---------- จัดจ่ายแล้ว (snapshot) ---------- */
@@ -1287,16 +1311,17 @@ $('linePull').addEventListener('click',()=>{
 function boardStaticHTML(){
   const tot=LCOLW.reduce((a,x)=>a+x,0);
   return BD.blocks.map(b=>{
-    let h=`<table class="lsheet"><colgroup>${LCOLW.map(w=>`<col style="width:${(w/tot*100).toFixed(3)}%">`).join('')}</colgroup>`;
-    h+=`<tr><td class="date" colspan="2">${esc(b.label)}</td><td class="title" colspan="15">SHIP'S&nbsp;&nbsp; SCHEDULE&nbsp; FOR&nbsp; SONGKHLA&nbsp;&nbsp; PILOT</td></tr>`;
+    let h=`<table class="lsheet xl"><colgroup>${LCOLW.map(w=>`<col style="width:${Math.round(w*7+5)}px">`).join('')}</colgroup>`;
+    h+=`<tr><td class="date" colspan="2">${esc(b.label)}</td><td class="title" colspan="15">SHIP'S&nbsp;&nbsp;&nbsp;SCHEDULE&nbsp;&nbsp;FOR&nbsp;&nbsp;SONGKHLA&nbsp;&nbsp;&nbsp;PILOT</td></tr>`;
     h+=`<tr><td class="h-in" colspan="9">ENTERING</td><td class="h-out" colspan="8">SAILING &amp; SHIFTING</td></tr>`;
     h+=`<tr>${LHEAD.map(t=>`<td class="hd">${t}</td>`).join('')}</tr>`;
     for(const row of oneTrailing(b.rows)) h+=`<tr>${row.c.map((v,c)=>`<td class="${[c===1||c===10?'l':'', PILOT_COLS.includes(c)?'pc':''].filter(Boolean).join(' ')}"${tdStyle(row,c)}>${cellHTML(row,c)}</td>`).join('')}</tr>`;
     return h+'</table>';
   }).join('');
 }
+const XLW=LCOLW.reduce((a,w)=>a+Math.round(w*7+5),0);   // Excel column width → px (Calibri 11 default)
 function shrinkLine(html){
-  const box=$('measure'); box.style.width='1600px'; box.innerHTML=html;
+  const box=$('measure'); box.style.width=XLW+'px'; box.innerHTML=html;
   const tds=[...box.querySelectorAll('td')].filter(td=>td.textContent.trim());
   const m=tds.map(td=>[td.scrollWidth,td.clientWidth,parseFloat(getComputedStyle(td).fontSize)]);
   tds.forEach((td,k)=>{ const [sw,cw,fs]=m[k]; if(sw>cw+1) td.style.fontSize=(fs*(cw-6)/sw).toFixed(1)+'px'; });
@@ -1304,9 +1329,9 @@ function shrinkLine(html){
 }
 async function lineCanvas(){
   if(!window.html2canvas) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
-  const stage=document.createElement('div'); stage.style.cssText='position:fixed;left:-99999px;top:0;width:1600px;background:#fff';
+  const stage=document.createElement('div'); stage.style.cssText=`position:fixed;left:-99999px;top:0;width:${XLW}px;background:#fff`;
   stage.innerHTML=shrinkLine(boardStaticHTML()); document.body.append(stage);
-  try{ return await html2canvas(stage,{scale:1.5,backgroundColor:'#ffffff',logging:false}); } finally{ stage.remove(); }
+  try{ return await html2canvas(stage,{scale:1,backgroundColor:'#ffffff',logging:false}); } finally{ stage.remove(); }
 }
 function lineName(){ const [y,m,d]=S.D.split('-').map(Number); const t=new Date(); return `SCHEDULE ${d}-${m}-${String((y+543)%100).padStart(2,'0')} ${pad(t.getHours())}${pad(t.getMinutes())}.png`; }
 $('lineCopy').addEventListener('click',async()=>{
@@ -1317,19 +1342,6 @@ $('lineCopy').addEventListener('click',async()=>{
     if(navigator.clipboard && window.ClipboardItem){ await navigator.clipboard.write([new ClipboardItem({'image/png':blob})]); toast('คัดลอกรูปแล้ว · ไปวางในแชท LINE (Ctrl+V)'); }
     else throw new Error('เบราว์เซอร์นี้คัดลอกรูปไม่ได้');
   }catch(err){ toast('คัดลอกไม่สำเร็จ: '+(err.message||err)+' · ใช้ ดาวน์โหลดรูป แทน'); }
-  finally{ b.disabled=false; }
-});
-$('lineSave').addEventListener('click',async()=>{
-  const b=$('lineSave'); b.disabled=true;
-  try{
-    const canvas=await lineCanvas(); const blob=await new Promise(r=>canvas.toBlob(r,'image/png'));
-    const file=new File([blob],lineName(),{type:'image/png'});
-    if(navigator.canShare && navigator.canShare({files:[file]}) && /Android|iPhone|iPad/i.test(navigator.userAgent)){
-      try{ await navigator.share({files:[file]}); return; }catch(e){ if(e.name==='AbortError') return; }
-    }
-    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=lineName(); document.body.append(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),5000);
-    toast('ดาวน์โหลด '+lineName());
-  }catch(err){ toast('สร้างรูปไม่สำเร็จ: '+err.message); }
   finally{ b.disabled=false; }
 });
 
