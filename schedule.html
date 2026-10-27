@@ -203,17 +203,17 @@ table.lsheet{border-collapse:collapse;table-layout:fixed;width:1600px;font-famil
 table.lsheet.board{width:100%;font-size:17px}
 .lsheet.board td{padding:0;height:34px}
 .lsheet.board td.date{font-size:26px}.lsheet.board td.title{font-size:21px}
-.lsheet.board input{width:100%;height:100%;min-height:35px;border:0;background:transparent;text-align:center;font:inherit;color:inherit;padding:0 3px}
-.lsheet.board td.l input{text-align:left}
-.lsheet.board td.date input{font-weight:700;min-height:45px}
-.lsheet.board td.pc input{color:#FF0000;font-weight:700}
-.lsheet.board td.red input{color:#FF0000}
-.lsheet.board input:focus{outline:2px solid #1F6FD1;outline-offset:-2px;background:#fff}
+.lsheet.board .ce{width:100%;min-height:35px;line-height:35px;white-space:nowrap;overflow:hidden;text-align:center;padding:0 3px;outline:0;cursor:cell}
+.lsheet.board td.l .ce{text-align:left}
+.lsheet.board td.date .ce{font-weight:700;min-height:45px;line-height:45px}
+.lsheet.board td.pc .ce{color:#FF0000;font-weight:700}
+.lsheet.board .ce:focus{box-shadow:inset 0 0 0 2px #1F6FD1;background:#fff;cursor:text}
 .lsheet.board td.sel{background:#D6E6FA}
-.lsheet.board td.sel input{background:transparent}
+.lsheet.board td.sel .ce{background:transparent}
 .lsheet.board td.anc{box-shadow:inset 0 0 0 2px #1F6FD1}
-#board.multi input:focus{outline:0;background:transparent;caret-color:transparent}
-#board.drag,#board.drag input{user-select:none;cursor:cell}
+#board.multi .ce:focus{box-shadow:none;background:transparent;caret-color:transparent}
+#board.multi .ce::selection,#board.multi .ce *::selection{background:transparent}
+#board.drag,#board.drag .ce{user-select:none;cursor:cell}
 .cmenu{position:fixed;z-index:90;min-width:230px;background:var(--surface);border:1px solid var(--line);border-radius:8px;box-shadow:0 10px 28px rgb(0 0 0 / .22);padding:4px}
 .cmenu button{display:flex;justify-content:space-between;gap:20px;width:100%;border:0;background:transparent;padding:7px 12px;border-radius:6px;font-size:15px;text-align:left;cursor:pointer;color:var(--ink)}
 .cmenu button:hover{background:var(--accent-soft)}
@@ -963,11 +963,33 @@ const LCOLW=[7.1,57.9,10,10.3,23,23,23.3,8.4,21.1,7.4,52,9.9,8.6,23,50.7,8.4,20.
 const LHEAD=['NO.',"SHIP'S&nbsp; NAME",'LOA','Drf','ETA','POB','BERTH','Pilot','AGENT','NO.',"SHIP'S&nbsp; NAME",'LOA','Drf','ETD','BERTH','Pilot','AGENT'];
 const LF={1:['ship','L'],6:['berth','L'],7:['pilot','L'],8:['agent','L'],10:['ship','R'],14:['berth','R'],15:['pilot','R'],16:['agent','R']};
 const PILOT_COLS=[7,15];
-const blankRow=()=>({c:Array(17).fill(''), r:Array(17).fill(false)});
-const FC=['#FF0000','#C00000','#FFC000','#00B050','#0070C0','#002060','#7030A0','#808080'];   // font colours (Excel standard)
+const blankRow=()=>({c:Array(17).fill(''), r:Array(17).fill(false), h:Array(17).fill('')});
+const FC=['#000000','#FF0000','#C00000','#FFC000','#00B050','#0070C0','#002060','#7030A0','#808080'];   // font colours (Excel standard)
 let curColor='#FF0000';
 const colOf=(row,c)=>{ const v=row.r[c]; return v===true?'#FF0000':(v||''); };   // old data stored red as true
 const tdStyle=(row,c)=>{ const k=colOf(row,c); return k?` style="color:${k}"`:''; };
+const hOf=(row,c)=>(row.h&&row.h[c])||'';
+function setH(row,c,v){ if(!row.h) row.h=Array(17).fill(''); row.h[c]=v; }
+const cellHTML=(row,c)=>hOf(row,c)||esc(row.c[c]);
+// keep only text + colour spans from an edited cell
+function cleanHTML(el){
+  let colored=false;
+  const walk=n=>[...n.childNodes].map(x=>{
+    if(x.nodeType===3) return esc(x.nodeValue);
+    if(x.nodeType!==1 || x.tagName==='BR') return '';
+    const col=(x.style&&x.style.color)||x.getAttribute('color')||''; const inner=walk(x);
+    if(col && inner){ colored=true; return `<span style="color:${esc(col)}">${inner}</span>`; } return inner;
+  }).join('');
+  const h=walk(el); return colored?h:'';
+}
+/* contenteditable cells behave like the inputs the rest of the code expects */
+function selOff(el){ const s=window.getSelection(); if(!s.rangeCount) return [0,0]; const r=s.getRangeAt(0); if(!el.contains(r.startContainer)) return [0,0];
+  const pre=document.createRange(); pre.selectNodeContents(el); pre.setEnd(r.startContainer,r.startOffset); const a=pre.toString().length; return [a, a+r.toString().length]; }
+function enhance(el){
+  Object.defineProperties(el,{ value:{get(){ return el.textContent; }, set(v){ el.textContent=v; }},
+    selectionStart:{get(){ return selOff(el)[0]; }}, selectionEnd:{get(){ return selOff(el)[1]; }} });
+  el.select=()=>{ const r=document.createRange(); r.selectNodeContents(el); const s=window.getSelection(); s.removeAllRanges(); s.addRange(r); };
+}
 const rowEmpty=row=>row.c.every(v=>!String(v).trim());
 // every block ends with exactly one empty row after its last ship
 function oneTrailing(rows){ const out=rows.slice(); while(out.length && rowEmpty(out[out.length-1])) out.pop(); out.push(blankRow()); return out; }
@@ -1034,14 +1056,14 @@ function redo(){ if(!REDO.length) return toast('ไม่มีให้ทำ�
 function boardTable(b,bi){
   const tot=LCOLW.reduce((a,x)=>a+x,0);
   let h=`<table class="lsheet board"><colgroup>${LCOLW.map(w=>`<col style="width:${(w/tot*100).toFixed(3)}%">`).join('')}</colgroup>`;
-  h+=`<tr><td class="date" colspan="2"><input data-b="${bi}" data-hd="1" value="${esc(b.label)}" aria-label="วันที่"></td><td class="title" colspan="15">SHIP'S&nbsp;&nbsp; SCHEDULE&nbsp; FOR&nbsp; SONGKHLA&nbsp;&nbsp; PILOT</td></tr>`;
+  h+=`<tr><td class="date" colspan="2"><div class="ce" contenteditable="true" data-b="${bi}" data-hd="1" aria-label="วันที่">${esc(b.label)}</div></td><td class="title" colspan="15">SHIP'S&nbsp;&nbsp; SCHEDULE&nbsp; FOR&nbsp; SONGKHLA&nbsp;&nbsp; PILOT</td></tr>`;
   h+=`<tr><td class="h-in" colspan="9">ENTERING</td><td class="h-out" colspan="8">SAILING &amp; SHIFTING</td></tr>`;
   h+=`<tr>${LHEAD.map(t=>`<td class="hd">${t}</td>`).join('')}</tr>`;
   b.rows.forEach((row,ri)=>{
     h+=`<tr data-b="${bi}" data-r="${ri}">`;
     for(let c=0;c<17;c++){
       const f=LF[c]; const cls=[c===1||c===10?'l':'', PILOT_COLS.includes(c)?'pc':''].filter(Boolean).join(' ');
-      h+=`<td class="${cls}" data-b="${bi}" data-r="${ri}" data-c="${c}"${tdStyle(row,c)}><input${colOf(row,c)?` style="color:${colOf(row,c)}"`:''} data-b="${bi}" data-r="${ri}" data-c="${c}"${f?` data-f="${f[0]}" data-side="${f[1]}"`:''} value="${esc(row.c[c])}" autocomplete="off" spellcheck="false"></td>`;
+      h+=`<td class="${cls}" data-b="${bi}" data-r="${ri}" data-c="${c}"${tdStyle(row,c)}><div class="ce" contenteditable="true"${colOf(row,c)?` style="color:${colOf(row,c)}"`:''} data-b="${bi}" data-r="${ri}" data-c="${c}"${f?` data-f="${f[0]}" data-side="${f[1]}"`:''} spellcheck="false">${cellHTML(row,c)}</div></td>`;
     }
     h+='</tr>';
   });
@@ -1052,13 +1074,14 @@ function renderBoard(){
   const keep=SEL;
   BD.blocks.forEach(ensureTrailing);
   $('board').innerHTML = BD.blocks.map((b,bi)=>boardTable(b,bi)).join('');
+  $('board').querySelectorAll('.ce').forEach(enhance);
   $('boardInfo').textContent = `บันทึก ${new Date(BD.updated).toTimeString().slice(0,5)}`;
   fitBoard();
   if(keep && BD.blocks[keep.b]){ const n=BD.blocks[keep.b].rows.length-1;
     SEL={b:keep.b, r1:Math.min(keep.r1,n), c1:keep.c1, r2:Math.min(keep.r2,n), c2:keep.c2}; paintSel(); focusCell(SEL.b,SEL.r1,SEL.c1,true); }
 }
 function fitBoard(){
-  const list=[...$('board').querySelectorAll('input')].filter(i=>i.value); if(!list.length || $('view-line').hidden) return;
+  const list=[...$('board').querySelectorAll('.ce')].filter(i=>i.value); if(!list.length || $('view-line').hidden) return;
   list.forEach(i=>i.style.fontSize='');
   const m=list.map(i=>[i.scrollWidth,i.clientWidth,parseFloat(getComputedStyle(i).fontSize)]);
   list.forEach((i,k)=>{ const [sw,cw,fs]=m[k]; if(sw>cw+1) i.style.fontSize=Math.max(9,fs*(cw-2)/sw).toFixed(1)+'px'; });
@@ -1067,7 +1090,7 @@ function fitBoard(){
 /* selection (Excel-style: click, drag, Shift+click, Shift+arrows) */
 const BOARD=$('board');
 const cellOf=el=>({b:+el.dataset.b, r:+el.dataset.r, c:+el.dataset.c});
-const inp=(b,r,c)=>BOARD.querySelector(`input[data-b="${b}"][data-r="${r}"][data-c="${c}"]`);
+const inp=(b,r,c)=>BOARD.querySelector(`.ce[data-b="${b}"][data-r="${r}"][data-c="${c}"]`);
 function rect(){ return SEL ? {b:SEL.b, r0:Math.min(SEL.r1,SEL.r2), r1:Math.max(SEL.r1,SEL.r2), c0:Math.min(SEL.c1,SEL.c2), c1:Math.max(SEL.c1,SEL.c2)} : null; }
 const multi=()=>{ const R=rect(); return !!R && (R.r0!==R.r1 || R.c0!==R.c1); };
 function paintSel(){
@@ -1090,32 +1113,32 @@ BOARD.addEventListener('mousedown',e=>{
   const td=e.target.closest('td[data-r]'); hideMenu(); if(!td) return;
   const {b,r,c}=cellOf(td);
   if(e.shiftKey && SEL && SEL.b===b){ e.preventDefault(); setSel(b,r,c,true); return; }
-  setSel(b,r,c,false); dragging=true; BOARD.classList.add('drag');
+  setSel(b,r,c,false); dragging=true;
 });
 BOARD.addEventListener('mouseover',e=>{
   if(!dragging) return; const td=e.target.closest('td[data-r]'); if(!td) return;
   const {b,r,c}=cellOf(td); if(!SEL || b!==SEL.b) return;
-  if(r!==SEL.r2 || c!==SEL.c2){ SEL.r2=r; SEL.c2=c; paintSel(); if(multi()){ try{ window.getSelection().removeAllRanges(); }catch(x){} hidePop(); } }
+  if(r!==SEL.r2 || c!==SEL.c2){ SEL.r2=r; SEL.c2=c; paintSel(); if(multi()){ BOARD.classList.add('drag'); try{ window.getSelection().removeAllRanges(); }catch(x){} hidePop(); } }
 });
 BOARD.addEventListener('dragstart',e=>e.preventDefault());   // no text drag-and-drop between cells; dragging selects cells
 BOARD.addEventListener('drop',e=>e.preventDefault());
 document.addEventListener('mouseup',()=>{ if(dragging){ dragging=false; BOARD.classList.remove('drag'); } });
 
 /* editing */
-BOARD.addEventListener('focusin',e=>{ const i=e.target.closest('input'); if(!i) return; i.select(); typingKey=null;
+BOARD.addEventListener('focusin',e=>{ const i=e.target.closest('.ce'); if(!i) return; i.select(); typingKey=null; i._v0=i.value;
   if(i.dataset.r!==undefined && !dragging && !quietFocus){ const {b,r,c}=cellOf(i); const R=rect(); const inside=R && R.b===b && r>=R.r0 && r<=R.r1 && c>=R.c0 && c<=R.c1; if(!SEL || !(inside && (multi()||rightDown))) { if(!(SEL && SEL.b===b && SEL.r1===r && SEL.c1===c)) setSel(b,r,c,false); } }
   hidePop(); });   // the list opens when typing, so dragging across cells is not blocked
-BOARD.addEventListener('input',e=>{ const i=e.target.closest('input'); if(!i||!BD) return;
+BOARD.addEventListener('input',e=>{ const i=e.target.closest('.ce'); if(!i||!BD) return;
   const key=i.dataset.hd? 'hd'+i.dataset.b : `${i.dataset.b}:${i.dataset.r}:${i.dataset.c}`;
   if(typingKey!==key){ pushUndo(); typingKey=key; }
   if(i.dataset.hd){ BD.blocks[+i.dataset.b].label=i.value; }
-  else { const {b,r,c}=cellOf(i); BD.blocks[b].rows[r].c[c]=i.value; }
+  else { const {b,r,c}=cellOf(i); const row=BD.blocks[b].rows[r]; row.c[c]=i.value; setH(row,c,cleanHTML(i)); }
   fitInput(i); buildPop(i); boardSave(); });
-BOARD.addEventListener('change',e=>{ const i=e.target.closest('input'); if(!i||!BD||i.dataset.r===undefined) return;
+BOARD.addEventListener('change',e=>{ const i=e.target.closest('.ce'); if(!i||!BD||i.dataset.r===undefined) return;
   const {b,r,c}=cellOf(i); const row=BD.blocks[b].rows[r]; row.c[c]=i.value;
   if(c===1||c===10){ const s=S.shipIdx.get(norm(i.value)); if(s){
     const loa=c+1, ag=c===1?8:16, be=c===1?6:14; const need=!row.c[loa]||!row.c[ag]||!row.c[be]||row.c[c]!==s.name;
-    if(need){ if(typingKey===null) pushUndo(); row.c[c]=s.name;
+    if(need){ if(typingKey===null) pushUndo(); if(row.c[c]!==s.name){ row.c[c]=s.name; setH(row,c,''); }
       if(!row.c[loa]) row.c[loa]=s.loa||''; if(!row.c[ag]) row.c[ag]=s.agent||'';
       if(!row.c[be]) row.c[be]= c===1 ? (s.berth||'') : (lastBerth(s.name, `${BD.date} 23:59`)||s.berth||'');
       boardSave(); renderBoard(); } } }
@@ -1124,8 +1147,22 @@ BOARD.addEventListener('change',e=>{ const i=e.target.closest('input'); if(!i||!
 /* range operations */
 function eachSel(fn){ const R=rect(); if(!R) return; for(let r=R.r0;r<=R.r1;r++) for(let c=R.c0;c<=R.c1;c++) fn(BD.blocks[R.b].rows[r],r,c); }
 function needSel(){ if(!SEL){ toast('คลิกช่องในตารางก่อน'); return false; } return true; }
-function clearSel(){ if(!needSel()) return; pushUndo(); eachSel(row=>{}); eachSel((row,r,c)=>{ row.c[c]=''; }); boardSave(); renderBoard(); }
-function setColor(col){ if(!needSel()) return; pushUndo(); eachSel((row,r,c)=>{ row.r[c]=col; }); boardSave(); renderBoard(); }
+function clearSel(){ if(!needSel()) return; pushUndo(); eachSel((row,r,c)=>{ row.c[c]=''; setH(row,c,''); }); boardSave(); renderBoard(); }
+function setColor(col){
+  if(!needSel()) return;
+  // part of the text inside one cell selected → colour only those letters
+  const el=document.activeElement, sel=window.getSelection();
+  if(!multi() && el && el.classList && el.classList.contains('ce') && el.dataset.r!==undefined && sel.rangeCount && !sel.isCollapsed && el.contains(sel.getRangeAt(0).commonAncestorContainer)){
+    const [a,z]=selOff(el);
+    if(!(a===0 && z===el.value.length)){
+      pushUndo(); typingKey=`${el.dataset.b}:${el.dataset.r}:${el.dataset.c}`;
+      document.execCommand('styleWithCSS',false,true);
+      document.execCommand('foreColor',false,col||(PILOT_COLS.includes(+el.dataset.c)?'#FF0000':'#000000'));
+      const {b,r,c}=cellOf(el); const row=BD.blocks[b].rows[r]; row.c[c]=el.value; setH(row,c,cleanHTML(el)); boardSave(); return;
+    }
+  }
+  pushUndo(); eachSel((row,r,c)=>{ row.r[c]=col; setH(row,c,''); }); boardSave(); renderBoard();
+}
 function pickColor(col){ if(col) { curColor=col; $('fcBar').style.background=col; } setColor(col); $('fcPal').hidden=true; }
 function insRows(where){ if(!needSel()) return; const R=rect(); const n=R.r1-R.r0+1; pushUndo(); const rows=BD.blocks[R.b].rows;
   const at = where==='up'? R.r0 : R.r1+1; rows.splice(at,0,...Array.from({length:n},blankRow));
@@ -1136,21 +1173,21 @@ function delRows(){ if(!needSel()) return; const R=rect(); pushUndo(); const row
 function moveSel(d, whole){ if(!needSel()) return; const R=rect(); const rows=BD.blocks[R.b].rows;
   if(R.r0+d<0 || R.r1+d>=rows.length) return; pushUndo();
   const c0=whole?0:R.c0, c1=whole?16:R.c1;
-  const take=r=>({c:rows[r].c.slice(c0,c1+1), r:rows[r].r.slice(c0,c1+1)});
-  const put=(r,v)=>{ for(let k=0;k<=c1-c0;k++){ rows[r].c[c0+k]=v.c[k]; rows[r].r[c0+k]=v.r[k]; } };
+  const take=r=>({c:rows[r].c.slice(c0,c1+1), r:rows[r].r.slice(c0,c1+1), h:Array.from({length:c1-c0+1},(x,k)=>hOf(rows[r],c0+k))});
+  const put=(r,v)=>{ for(let k=0;k<=c1-c0;k++){ rows[r].c[c0+k]=v.c[k]; rows[r].r[c0+k]=v.r[k]; setH(rows[r],c0+k,v.h[k]); } };
   const block=[]; for(let r=R.r0;r<=R.r1;r++) block.push(take(r));
   const other = take(d<0? R.r0-1 : R.r1+1);
   if(d<0){ block.forEach((v,k)=>put(R.r0-1+k,v)); put(R.r1,other); } else { block.forEach((v,k)=>put(R.r0+1+k,v)); put(R.r0,other); }
   SEL={b:R.b, r1:SEL.r1+d, c1:SEL.c1, r2:SEL.r2+d, c2:SEL.c2}; boardSave(); renderBoard(); }
 
 /* clipboard: Ctrl+C / X / V like Excel (tab-separated, keeps red when pasted here) */
-function selTSV(){ const R=rect(), out=[], red=[]; for(let r=R.r0;r<=R.r1;r++){ const row=BD.blocks[R.b].rows[r]; out.push(row.c.slice(R.c0,R.c1+1)); red.push(row.r.slice(R.c0,R.c1+1)); } return {cells:out, red, text:out.map(x=>x.join('\t')).join('\n')}; }
-function pasteGrid(cells, red){
+function selTSV(){ const R=rect(), out=[], red=[], hh=[]; for(let r=R.r0;r<=R.r1;r++){ const row=BD.blocks[R.b].rows[r]; out.push(row.c.slice(R.c0,R.c1+1)); red.push(row.r.slice(R.c0,R.c1+1)); hh.push(Array.from({length:R.c1-R.c0+1},(x,k)=>hOf(row,R.c0+k))); } return {cells:out, red, hh, text:out.map(x=>x.join('\t')).join('\n')}; }
+function pasteGrid(cells, red, hh){
   if(!needSel()) return; const R=rect(); pushUndo(); const rows=BD.blocks[R.b].rows;
   const single = cells.length===1 && cells[0].length===1;
   const h = single ? R.r1-R.r0+1 : cells.length, w = single ? R.c1-R.c0+1 : Math.max(...cells.map(x=>x.length));
   for(let i=0;i<h;i++){ const r=R.r0+i; if(r>=rows.length) rows.push(blankRow());
-    for(let j=0;j<w;j++){ const c=R.c0+j; if(c>16) break; const v=single?cells[0][0]:(cells[i]?.[j]??''); rows[r].c[c]=v; if(red) rows[r].r[c]=single?red[0][0]:(red[i]?.[j]||''); } }
+    for(let j=0;j<w;j++){ const c=R.c0+j; if(c>16) break; const v=single?cells[0][0]:(cells[i]?.[j]??''); rows[r].c[c]=v; setH(rows[r],c, hh ? (single?hh[0][0]:(hh[i]?.[j]||'')) : ''); if(red) rows[r].r[c]=single?red[0][0]:(red[i]?.[j]||''); } }
   SEL={b:R.b, r1:R.r0, c1:R.c0, r2:R.r0+h-1, c2:Math.min(16,R.c0+w-1)}; boardSave(); renderBoard();
 }
 function parseTSV(t){ return t.replace(/\r/g,'').replace(/\n$/,'').split('\n').map(l=>l.split('\t')); }
@@ -1164,16 +1201,16 @@ document.addEventListener('cut',e=>{ if(!inBoard(e)||!SEL) return; const i=e.tar
 document.addEventListener('paste',e=>{ if(!inBoard(e)||!SEL) return;
   const t=e.clipboardData.getData('text/plain'); if(t==null) return;
   const own = CLIP && CLIP.text===t.replace(/\r/g,'').replace(/\n$/,'');
-  if(!multi() && !own && !/[\t\n]/.test(t.replace(/\n$/,''))) return;   // plain text into one cell: normal paste
-  e.preventDefault(); pasteGrid(own?CLIP.cells:parseTSV(t), own?CLIP.red:null); });
+  if(!multi() && !own && !/[\t\n]/.test(t.replace(/\n$/,''))){ e.preventDefault(); document.execCommand('insertText',false,t.replace(/\n$/,'')); return; }   // plain text into one cell
+  e.preventDefault(); pasteGrid(own?CLIP.cells:parseTSV(t), own?CLIP.red:null, own?CLIP.hh:null); });
 async function menuPaste(){
-  try{ const t=await navigator.clipboard.readText(); const own=CLIP && CLIP.text===t.replace(/\r/g,'').replace(/\n$/,''); pasteGrid(own?CLIP.cells:parseTSV(t), own?CLIP.red:null); }
-  catch(err){ if(CLIP) pasteGrid(CLIP.cells, CLIP.red); else toast('ใช้ Ctrl+V เพื่อวาง'); }
+  try{ const t=await navigator.clipboard.readText(); const own=CLIP && CLIP.text===t.replace(/\r/g,'').replace(/\n$/,''); pasteGrid(own?CLIP.cells:parseTSV(t), own?CLIP.red:null, own?CLIP.hh:null); }
+  catch(err){ if(CLIP) pasteGrid(CLIP.cells, CLIP.red, CLIP.hh); else toast('ใช้ Ctrl+V เพื่อวาง'); }
 }
 async function menuCopy(cut){ if(!needSel()) return; const t=selTSV(); CLIP=t; try{ await navigator.clipboard.writeText(t.text); }catch(e){} if(cut) clearSel(); else toast('คัดลอกแล้ว'); }
 
 /* keyboard */
-BOARD.addEventListener('keydown',e=>{ const i=e.target.closest('input'); if(!i) return;
+BOARD.addEventListener('keydown',e=>{ const i=e.target.closest('.ce'); if(!i) return;
   const open=!pop.hidden && cb.inp===i; const k=e.key, mod=e.ctrlKey||e.metaKey;
   if(mod && (k==='z'||k==='Z') && !e.shiftKey){ e.preventDefault(); undo(); return; }
   if(mod && (k==='y'||k==='Y'||((k==='z'||k==='Z') && e.shiftKey))){ e.preventDefault(); redo(); return; }
@@ -1197,7 +1234,7 @@ BOARD.addEventListener('keydown',e=>{ const i=e.target.closest('input'); if(!i) 
   else if(k==='ArrowLeft' && (e.shiftKey || whole || i.selectionStart===0)) go(0,-1);
   else if(k==='ArrowRight' && (e.shiftKey || whole || i.selectionEnd===i.value.length)) go(0,1);
 });
-BOARD.addEventListener('focusout',e=>{ const i=e.target.closest('input'); if(i) setTimeout(()=>{ if(cb.inp===i && document.activeElement!==i) hidePop(); },120); });
+BOARD.addEventListener('focusout',e=>{ const i=e.target.closest('.ce'); if(i && i._v0!==undefined && i.value!==i._v0 && i.dataset.r!==undefined){ i._v0=i.value; i.dispatchEvent(new Event('change',{bubbles:true})); } if(i) setTimeout(()=>{ if(cb.inp===i && document.activeElement!==i) hidePop(); },120); });
 
 /* right-click menu */
 const MENU=$('cmenu');
@@ -1254,7 +1291,7 @@ function boardStaticHTML(){
     h+=`<tr><td class="date" colspan="2">${esc(b.label)}</td><td class="title" colspan="15">SHIP'S&nbsp;&nbsp; SCHEDULE&nbsp; FOR&nbsp; SONGKHLA&nbsp;&nbsp; PILOT</td></tr>`;
     h+=`<tr><td class="h-in" colspan="9">ENTERING</td><td class="h-out" colspan="8">SAILING &amp; SHIFTING</td></tr>`;
     h+=`<tr>${LHEAD.map(t=>`<td class="hd">${t}</td>`).join('')}</tr>`;
-    for(const row of oneTrailing(b.rows)) h+=`<tr>${row.c.map((v,c)=>`<td class="${[c===1||c===10?'l':'', PILOT_COLS.includes(c)?'pc':''].filter(Boolean).join(' ')}"${tdStyle(row,c)}>${esc(v)}</td>`).join('')}</tr>`;
+    for(const row of oneTrailing(b.rows)) h+=`<tr>${row.c.map((v,c)=>`<td class="${[c===1||c===10?'l':'', PILOT_COLS.includes(c)?'pc':''].filter(Boolean).join(' ')}"${tdStyle(row,c)}>${cellHTML(row,c)}</td>`).join('')}</tr>`;
     return h+'</table>';
   }).join('');
 }
