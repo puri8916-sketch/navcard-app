@@ -992,8 +992,8 @@ async function refresh(force){
     const changed = JSON.stringify(init)!==JSON.stringify(S.init) || JSON.stringify(list)!==JSON.stringify(S.mv);
     applyInit(init); S.mv=list; S.loaded=rangeFor(S.D); cacheSet();
     if(changed){ if(gridBusy()) pendingRender=true; else { rerender(); if(!$('view-ships').hidden) renderShips(); } }
-    const rb=(S.boards||{})[S.D];
-    if(rb && BD && BD.date===S.D && rb.updated>BD.updated && !$('view-line').hidden && !(document.activeElement && document.activeElement.closest && document.activeElement.closest('#board'))) openBoard(S.D);
+    if(BD && BD.date===S.D && !$('view-line').hidden && !(document.activeElement && document.activeElement.closest && document.activeElement.closest('#board'))
+       && Object.keys(BD.all).some(d=>{ const r=dayRemote(d); return r && (r.updated||0)>(BD.all[d].updated||0); })) openBoard(S.D);
   }catch(err){ toast('โหลดข้อมูลไม่สำเร็จ: '+err.message); }
 }
 async function goDate(D){
@@ -1219,23 +1219,50 @@ function boardFromSchedule(D){
     blockFromSchedule(D, S.mv.filter(m=>inWin(m,D) && !+m.late), snapOf(D)) ] };
 }
 
-/* storage: this device at once, the sheet shortly after */
-const BKEY=D=>'shipsched_board:'+(CFG.API_URL||'demo')+':'+D;
-function boardLocal(D){ try{ return JSON.parse(localStorage.getItem(BKEY(D))||'null'); }catch(e){ return null; } }
+/* storage: one table per day, shared by every view that shows that day
+   (27's table is the bottom of view 27 and the top of view 28 — the same data) */
+const BKEY=D=>'shipsched_board:'+(CFG.API_URL||'demo')+':'+D;      // older per-view boards
+const KB=d=>'shipsched_day:'+(CFG.API_URL||'demo')+':'+d;
+const dayKey=b=>JSON.stringify([b.label,b.rows,!!b.hidden]);
+function dayLocal(d){ try{ return JSON.parse(localStorage.getItem(KB(d))||'null'); }catch(e){ return null; } }
+function dayRemote(d){ const x=(S.boards||{})[d]; return x && x.rows ? x : null; }
+function dayLegacy(d){
+  for(const key of [d, addDays(d,1)]){
+    let lb=null; try{ lb=JSON.parse(localStorage.getItem(BKEY(key))||'null'); }catch(e){}
+    const rb=(S.boards||{})[key];
+    const cands=[lb, rb&&rb.blocks?rb:null].filter(Boolean).sort((x,y)=>(y.updated||0)-(x.updated||0));
+    for(const c of cands){ const blk=(c.blocks||[]).find(x=>x.date===d); if(blk) return {...blk, updated:c.updated||0}; }
+  }
+  return null;
+}
+function getDay(d){ const a=dayLocal(d), r=dayRemote(d); let x=a&&r?((a.updated||0)>=(r.updated||0)?a:r):(a||r); if(!x) x=dayLegacy(d); return x?JSON.parse(JSON.stringify(x)):null; }
 function boardSave(){
-  if(!BD) return; BD.updated=Date.now();
-  try{ localStorage.setItem(BKEY(BD.date), JSON.stringify(BD)); }catch(e){}
-  S.boards=S.boards||{}; S.boards[BD.date]=BD;
-  $('boardInfo').textContent = `บันทึก ${new Date(BD.updated).toTimeString().slice(0,5)}`;
-  clearTimeout(bSaveT); const snap=JSON.parse(JSON.stringify(BD));
-  bSaveT=setTimeout(async()=>{ try{ await api('saveBoard',{},{board:snap}); }catch(err){ toast('บันทึกตารางแก้ไขขึ้นชีตไม่สำเร็จ: '+scriptOld(err)); } },1200);
+  if(!BD) return; const now=Date.now(), changed=[];
+  for(const d of Object.keys(BD.all)){ const vis=BD.blocks.find(x=>x.date===d); if(vis){ vis.hidden=false; BD.all[d]=vis; } else BD.all[d].hidden=true; }
+  for(const blk of Object.values(BD.all)){
+    const k=dayKey(blk); if(BD.saved[blk.date]===k) continue;      // only days that really changed are written
+    BD.saved[blk.date]=k; blk.updated=now; changed.push(blk);
+    try{ localStorage.setItem(KB(blk.date), JSON.stringify(blk)); }catch(e){}
+    S.boards=S.boards||{}; S.boards[blk.date]=blk;
+  }
+  if(!changed.length) return;
+  BD.updated=now; $('boardInfo').textContent = `บันทึก ${new Date(now).toTimeString().slice(0,5)}`;
+  const snap=JSON.parse(JSON.stringify(changed)); BD.pending=Object.assign(BD.pending||{}, Object.fromEntries(snap.map(b=>[b.date,b])));
+  clearTimeout(bSaveT);
+  bSaveT=setTimeout(async()=>{ const list=Object.values(BD.pending||{}); BD.pending={};
+    try{ for(const blk of list) await api('saveBoard',{},{board:blk}); }catch(err){ toast('บันทึกตารางแก้ไขขึ้นชีตไม่สำเร็จ: '+scriptOld(err)); } },1200);
 }
 function openBoard(D){
-  const loc=boardLocal(D), rem=(S.boards||{})[D];
-  BD = (loc && (!rem || loc.updated>=rem.updated)) ? loc : rem ? JSON.parse(JSON.stringify(rem)) : null;
+  const P=addDays(D,-1); let fresh=null;
+  BD={date:D, all:{}, blocks:[], saved:{}, pending:{}, updated:0};
+  for(const [d,i] of [[P,0],[D,1]]){
+    let b=getDay(d);
+    if(!b){ fresh=fresh||boardFromSchedule(D); b={...fresh.blocks[i], updated:0}; }
+    else BD.saved[d]=dayKey(b);
+    b.date=d; BD.all[d]=b; if(!b.hidden) BD.blocks.push(b); BD.updated=Math.max(BD.updated,b.updated||0);
+  }
   UNDO=[]; REDO=[]; SEL=null;
-  if(!BD){ BD=boardFromSchedule(D); boardSave(); }
-  renderBoard();
+  boardSave(); renderBoard();
 }
 
 /* undo / redo */
