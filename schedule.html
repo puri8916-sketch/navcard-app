@@ -169,6 +169,8 @@ table.sheet{border-collapse:collapse;table-layout:fixed;width:100%;font-family:v
 #printRoot{display:none}
 #measure{position:absolute;left:-99999px;top:0;width:1091px;visibility:hidden}
 #pdfStage{position:fixed;left:-99999px;top:0;width:1091px;background:#fff}
+#pdfStage table.sheet{border-collapse:separate;border-spacing:0;border-top:.4px solid #555;border-left:.4px solid #555}
+#pdfStage .sheet td{border:0;border-right:.4px solid #555;border-bottom:.4px solid #555}
 @page{size:A4 landscape;margin:4.3mm}
 @media print{
   body{background:#fff}
@@ -317,22 +319,24 @@ async function api(action, params={}, body=null){
   const j = await r.json(); if(!j.ok) throw new Error(j.error||'ผิดพลาด'); return j.data;
 }
 
-async function loadInit(){
-  const d = await api('init');
+/* cache: show the last data at once, then refresh from the sheet in the background */
+const CACHE_KEY = () => 'shipsched_cache_v1:'+(CFG.API_URL||'demo');
+function cacheGet(){ try{ return JSON.parse(localStorage.getItem(CACHE_KEY())||'null'); }catch(e){ return null; } }
+function cacheSet(){ try{ localStorage.setItem(CACHE_KEY(), JSON.stringify({init:S.init, mv:S.mv, loaded:S.loaded})); }catch(e){} }
+function applyInit(d){
+  S.init=d;
   S.ships = d.ships.filter(s=>s.name); S.shipIdx = new Map(S.ships.map(s=>[s.name.toUpperCase(), s]));
   S.berths = d.berths; S.agents = d.agents; S.pilots = d.pilots; S.duty = d.duty; S.fixed = d.fixed;
   S.settings = {...S.settings, ...d.settings};
-  fillDatalists();
 }
-async function loadMovements(){
-  const from=`${addDays(S.D,-14)} 00:00`, to=`${addDays(S.D,3)} 23:59`;
-  S.mv = await api('movements',{from,to});
-  S.loaded=[from,to];
-}
-function fillDatalists(){
-  $('dlShips').innerHTML = S.ships.map(s=>`<option value="${esc(s.name)}">${esc([s.loa,s.berth,s.agent].filter(Boolean).join(' · '))}</option>`).join('');
-  $('dlBerths').innerHTML = S.berths.map(b=>`<option value="${esc(b)}">`).join('');
-  $('dlAgents').innerHTML = S.agents.map(a=>`<option value="${esc(a)}">`).join('');
+async function loadInit(){ applyInit(await api('init')); }
+const RANGE_BACK=35, RANGE_FWD=35;
+function rangeFor(D){ return [`${addDays(D,-RANGE_BACK)} 00:00`, `${addDays(D,RANGE_FWD)} 23:59`]; }
+function covered(D){ const L=S.loaded; return L && L[0]<=`${addDays(D,-14)} 00:00` && L[1]>=`${addDays(D,3)} 23:59`; }
+async function loadMovements(D){
+  const [from,to]=rangeFor(D||S.D);
+  const list = await api('movements',{from,to});
+  S.mv=list; S.loaded=[from,to];
 }
 function dutyPilots(D){ const k=D.slice(0,7); const keys=Object.keys(S.duty).sort();
   let best=null; for(const x of keys){ if(x<=k) best=x; } return (best? S.duty[best] : (keys.length? S.duty[keys[0]]:['178','189'])).filter(Boolean); }
@@ -405,13 +409,14 @@ function shrinkToFit(html){
 }
 function addTimeLabel(){ const [h,m]=S.settings.cutoff.split(':').map(Number); const t=h*60+m-1; return `${pad(Math.floor(t/60))}:${pad(t%60)}`; }
 
-function fillDatalists(){ /* options come from the combo popup */ }
 const norm = s => String(s||'').toUpperCase().replace(/\s+/g,' ').trim();
 let toastT; function toast(msg){ const t=$('toast'); t.textContent=msg; t.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>t.hidden=true,2800); }
 const newId = () => Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 
 /* ---------- print tab ---------- */
+let printDirty=true;
 function renderPrint(){
+  printDirty=false;
   const sh = sheetHTML(S.D); sh.html = shrinkToFit(sh.html);
   $('paperBig').innerHTML = sh.html;
   const fit = Math.min(1, 33/sh.nRows);
@@ -489,20 +494,28 @@ function renderGrid(){
   h += `<tr class="newrow">${halfHTML('L',null,{draft:'lateL',base:P,isNew:true,late:true})}${halfHTML('R',null,{draft:'lateR',base:P,isNew:true,late:true})}</tr>`;
   h += `<tr class="foot"><td colspan="17"> SHIP'S  ENTERING   ${main.nIn}  VESSEL SAILING &amp; SHIFTING  ${main.nOut}  VESSEL   E.mail  ${EMAIL} </td></tr></tbody>`;
   $('grid').innerHTML = h;
-  $('grid').querySelectorAll('input').forEach(fitInput);
+  fitAll();
 
 
 }
 // shrink long text to fit its cell, like Excel's shrink-to-fit
+function fitAll(){   // read all widths first, then write — one layout pass instead of one per cell
+  const list=[...$('grid').querySelectorAll('input')].filter(i=>i.value);
+  if(!list.length || $('view-work').hidden) return;
+  list.forEach(i=>{ if(i.style.fontSize) i.style.fontSize=''; });
+  const m=list.map(i=>[i.scrollWidth,i.clientWidth]);
+  list.forEach((i,k)=>{ const [sw,cw]=m[k]; if(sw>cw+1) i.style.fontSize=Math.max(10,16*(cw-2)/sw).toFixed(1)+'px'; });
+}
 function fitInput(i){ i.style.fontSize=''; if(!i.value || i.offsetParent===null) return; const base=parseFloat(getComputedStyle(i).fontSize);
   if(i.scrollWidth>i.clientWidth+1){ const k=(i.clientWidth-2)/i.scrollWidth; i.style.fontSize=Math.max(10,base*k).toFixed(1)+'px'; } }
 function renderAll(){
   $('windowLabel').innerHTML = `รอบ <span class="num">${shortDate(S.D)} ${S.settings.cutoff}</span> – <span class="num">${shortDate(addDays(S.D,1))} ${addTimeLabel()}</span>`;
-  renderGrid(); renderPrint();
+  renderGrid(); printDirty=true; if(!$('view-print').hidden) renderPrint();
 }
 // re-render after an edit but keep the cursor where the user is typing
 let rrT=null, focusWant=null;
 function rerender(want){
+  pendingRender=false;
   if(want) focusWant=want;
   clearTimeout(rrT);
   rrT=setTimeout(()=>{
@@ -562,6 +575,7 @@ function draftFill(inp){
   if(!q('berth').value){ q('berth').value = side==='L' ? (s.berth||'') : (lastBerth(name, inp.dataset.def || `${S.D} 23:59`) || s.berth || ''); }
 }
 async function commitDraft(p, fromBlur){
+  if(pendingRender) setTimeout(()=>{ if(pendingRender && !gridBusy()) rerender(); },0);
   const q=f=>document.querySelector(`#grid [data-k="${p}:${f}"]`); const sh=q('ship'); if(!sh) return false;
   const ship=norm(sh.value); if(!ship) return false;
   const side=sh.dataset.side, base=sh.dataset.base, def=sh.dataset.def, late=sh.dataset.late==='1';
@@ -673,11 +687,27 @@ G.addEventListener('click',e=>{
 });
 
 /* ---------- navigation / tabs / setup ---------- */
-async function goDate(D){ S.D=D; $('schedDate').value=D; hidePop(); try{ await loadMovements(); }catch(err){ toast('โหลดข้อมูลไม่สำเร็จ: '+err.message); } renderAll(); }
+let refreshT=0, pendingRender=false;
+function gridBusy(){ const a=document.activeElement; return !!(a && a.closest && a.closest('#grid') && a.dataset.draft && a.value); }
+async function refresh(force){
+  if(!force && Date.now()-refreshT<20000) return; refreshT=Date.now();
+  try{
+    const [init,list]=await Promise.all([api('init'), api('movements',(()=>{ const [from,to]=rangeFor(S.D); return {from,to}; })())]);
+    const changed = JSON.stringify(init)!==JSON.stringify(S.init) || JSON.stringify(list)!==JSON.stringify(S.mv);
+    applyInit(init); S.mv=list; S.loaded=rangeFor(S.D); cacheSet();
+    if(changed){ if(gridBusy()) pendingRender=true; else { rerender(); if(!$('view-ships').hidden) renderShips(); } }
+  }catch(err){ toast('โหลดข้อมูลไม่สำเร็จ: '+err.message); }
+}
+async function goDate(D){
+  S.D=D; $('schedDate').value=D; hidePop();
+  if(covered(D)){ renderAll(); refresh(false); return; }
+  try{ await loadMovements(D); cacheSet(); }catch(err){ toast('โหลดข้อมูลไม่สำเร็จ: '+err.message); }
+  renderAll();
+}
 $('schedDate').addEventListener('change',e=>{ if(e.target.value) goDate(e.target.value); });
 $('prevDay').addEventListener('click',()=>goDate(addDays(S.D,-1)));
 $('nextDay').addEventListener('click',()=>goDate(addDays(S.D,1)));
-function showTab(t){ for(const x of ['work','print','ships']){ $('tab-'+x).setAttribute('aria-selected', x===t); $('view-'+x).hidden = x!==t; } if(t==='work') $('grid').querySelectorAll('input').forEach(fitInput); $('view-setup').hidden = t!=='setup'; hidePop(); }
+function showTab(t){ for(const x of ['work','print','ships']){ $('tab-'+x).setAttribute('aria-selected', x===t); $('view-'+x).hidden = x!==t; } if(t==='work') fitAll(); if(t==='print') renderPrint(); $('view-setup').hidden = t!=='setup'; hidePop(); }
 $('tab-work').addEventListener('click',()=>showTab('work')); $('tab-print').addEventListener('click',()=>showTab('print'));
 $('tab-ships').addEventListener('click',()=>{ renderShips(); showTab('ships'); });
 
@@ -732,7 +762,8 @@ $('setupForm').addEventListener('submit',async e=>{ e.preventDefault();
 $('sOff').addEventListener('click',()=>{ try{ localStorage.setItem(CFG_KEY, JSON.stringify({})); }catch(e){} location.reload(); });
 const framed = (()=>{ try{ return window.self!==window.top; }catch(e){ return true; } })();
 if(framed && !window.__CAN_PRINT__){ $('printBtn').hidden=true; $('pdfBtn').hidden=true; $('printNote').textContent='ตัวอย่าง: ปุ่มปริ้นใช้ได้เมื่อเปิดจากเว็บของคุณ'; }
-$('printBtn').addEventListener('click',()=>window.print());
+$('printBtn').addEventListener('click',()=>{ if(printDirty) renderPrint(); window.print(); });
+window.addEventListener('beforeprint',()=>{ if(printDirty) renderPrint(); });
 /* PDF: draw the same sheet at print width and place it on one A4 landscape page */
 function loadScript(src){ return new Promise((ok,no)=>{ const s=document.createElement('script'); s.src=src; s.onload=ok; s.onerror=()=>no(new Error('โหลดตัวสร้าง PDF ไม่ได้ (ต้องต่อเน็ต)')); document.head.append(s); }); }
 async function downloadPdf(){
@@ -740,8 +771,8 @@ async function downloadPdf(){
   try{
     if(!window.html2canvas) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
     if(!window.jspdf) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
-    const stage=document.createElement('div'); stage.id='pdfStage'; stage.innerHTML=shrinkToFit(sheetHTML(S.D).html); document.body.append(stage);
-    const canvas=await html2canvas(stage,{scale:3,backgroundColor:'#ffffff',logging:false}); stage.remove();
+    if(printDirty) renderPrint(); const stage=document.createElement('div'); stage.id='pdfStage'; stage.innerHTML=shrinkToFit(sheetHTML(S.D).html); document.body.append(stage);
+    const canvas=await html2canvas(stage,{scale:4,backgroundColor:'#ffffff',logging:false}); stage.remove();
     const pdf=new jspdf.jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
     const M=4.3, W=297-2*M, H=210-2*M; let w=W, h=canvas.height*W/canvas.width; if(h>H){ h=H; w=canvas.width*H/canvas.height; }
     pdf.addImage(canvas.toDataURL('image/jpeg',0.95),'JPEG',M+(W-w)/2,M,w,h);
@@ -753,15 +784,18 @@ async function downloadPdf(){
   finally{ btn.disabled=false; btn.textContent=label; }
 }
 $('pdfBtn').addEventListener('click',downloadPdf);
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible' && S.init) refresh(false); });
 
 (async function start(){
   $('modeBadge').textContent = CFG.API_URL? 'เชื่อม Google Sheet' : 'โหมดตัวอย่าง';
   $('modeBadge').classList.toggle('live', !!CFG.API_URL);
   if(!CFG.API_URL && !SEED){ $('modeBadge').textContent='ยังไม่เชื่อมต่อ'; $('tab-work').disabled=true; $('tab-print').disabled=true; $('tab-ships').disabled=true; $('sBack').hidden=true; $('sOff').hidden=true; showTab('setup'); return; }
-  try{ await loadInit(); }catch(err){ toast('โหลดฐานข้อมูลไม่สำเร็จ: '+err.message); $('sUrl').value=CFG.API_URL; $('sKey').value=CFG.TOKEN; $('sMsg').textContent='โหลดไม่สำเร็จ: '+err.message; $('sMsg').className='hint bad'; showTab('setup'); return; }
-  const D = (!CFG.API_URL && SEED && SEED.startDate) ? SEED.startDate : todayYmd();
-  try{ await document.fonts.ready; }catch(e){}
-  await goDate(D); renderShips();
+  const D0 = (!CFG.API_URL && SEED && SEED.startDate) ? SEED.startDate : todayYmd();
+  const c = cacheGet();
+  if(c && c.init){ applyInit(c.init); S.mv=c.mv||[]; S.loaded=c.loaded; S.D=D0; $('schedDate').value=D0; renderAll(); renderShips(); refresh(true); return; }
+  try{ await Promise.all([loadInit(), (S.D=D0, loadMovements(D0))]); cacheSet(); }catch(err){ toast('โหลดฐานข้อมูลไม่สำเร็จ: '+err.message); $('sUrl').value=CFG.API_URL; $('sKey').value=CFG.TOKEN; $('sMsg').textContent='โหลดไม่สำเร็จ: '+err.message; $('sMsg').className='hint bad'; showTab('setup'); return; }
+  $('schedDate').value=D0; renderAll(); renderShips();
+  try{ document.fonts.ready.then(()=>fitAll()); }catch(e){}
 })();
 </script>
 
