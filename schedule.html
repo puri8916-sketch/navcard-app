@@ -591,7 +591,7 @@ function halfHTML(side, m, o){
     }
   } else if(o.draft){
     for(const f of F){
-      if(f==='no'){ h+=`<td class="no${mid}">${o.isNew?'＋':''}</td>`; continue; }
+      if(f==='no'){ h+=`<td class="no${mid}"></td>`; continue; }
       const cell = inputHTML(o.draft,f,side,'',`data-draft="${o.draft}" data-base="${o.base}" data-def="${o.def||''}" data-late="${o.late?1:0}"${o.isNew?' data-new="1"':''}`);
       h+= f==='ship' ? `<td class="shipc">${cell}</td>` : `<td>${cell}</td>`;
     }
