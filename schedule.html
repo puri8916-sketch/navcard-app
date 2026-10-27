@@ -200,6 +200,9 @@ table.lsheet{border-collapse:separate;border-spacing:0;border-top:1px dotted #8C
 .btn.tb.red{color:#D0021B}
 #linePull.arm{background:var(--pilot);color:#fff;border-color:var(--pilot)}
 .lsheet+.lsheet{border-top:0}
+.lsheet.board td.title{position:relative}
+.blkdel{position:absolute;right:8px;top:50%;transform:translateY(-50%);font:600 14px var(--f-ui);color:#D0021B;background:#fff;border:1px solid #E3B3B3;border-radius:6px;padding:4px 10px;cursor:pointer;opacity:0;transition:opacity .15s}
+.lsheet.board:hover .blkdel,.blkdel:focus-visible{opacity:1}
 /* LINE image = the แก้ไข tab at 100%: 20 pt text, 40.5–43.5 pt rows, 30 pt date, 28 pt title, 22 pt band */
 table.lsheet.xl{width:auto;font-size:26.67px}
 .lsheet.xl td{height:53px;padding:0 5px;border-right:1px dotted #8C8C8C;border-bottom:1px dotted #8C8C8C}
@@ -1081,7 +1084,7 @@ function redo(){ if(!REDO.length) return toast('ไม่มีให้ทำ�
 function boardTable(b,bi){
   const tot=LCOLW.reduce((a,x)=>a+x,0);
   let h=`<table class="lsheet board"><colgroup>${LCOLW.map(w=>`<col style="width:${(w/tot*100).toFixed(3)}%">`).join('')}</colgroup>`;
-  h+=`<tr><td class="date" colspan="2"><div class="ce" contenteditable="true" data-b="${bi}" data-hd="1" aria-label="วันที่">${esc(b.label)}</div></td><td class="title" colspan="15">SHIP'S&nbsp;&nbsp; SCHEDULE&nbsp; FOR&nbsp; SONGKHLA&nbsp;&nbsp; PILOT</td></tr>`;
+  h+=`<tr><td class="date" colspan="2"><div class="ce" contenteditable="true" data-b="${bi}" data-hd="1" aria-label="วันที่">${esc(b.label)}</div></td><td class="title" colspan="15">SHIP'S&nbsp;&nbsp; SCHEDULE&nbsp; FOR&nbsp; SONGKHLA&nbsp;&nbsp; PILOT<button type="button" class="blkdel" data-delblk="${bi}" title="เอาตารางของวันนี้ออกทั้งตาราง (ย้อนกลับได้)">✕ เอาตารางวันนี้ออก</button></td></tr>`;
   h+=`<tr><td class="h-in" colspan="9">ENTERING</td><td class="h-out" colspan="8">SAILING &amp; SHIFTING</td></tr>`;
   h+=`<tr>${LHEAD.map(t=>`<td class="hd">${t}</td>`).join('')}</tr>`;
   b.rows.forEach((row,ri)=>{
@@ -1266,6 +1269,7 @@ const MENU=$('cmenu');
 const MENU_ITEMS=[
   ['cut','ตัด','Ctrl+X'],['copy','คัดลอก','Ctrl+C'],['paste','วาง','Ctrl+V'],['clear','ลบข้อมูล','Delete'],['-'],
   ['colors'],['-'],
+  ['delblock','เอาตารางวันนี้ออกทั้งตาราง',''],['-'],
   ['insup','แทรกแถวด้านบน',''],['insdown','แทรกแถวด้านล่าง',''],['delrow','ลบแถว',''],['-'],
   ['rowup','เลื่อนแถวขึ้น',''],['rowdown','เลื่อนแถวลง',''],['selup','เลื่อนช่องที่เลือกขึ้น',''],['seldown','เลื่อนช่องที่เลือกลง','']];
 MENU.innerHTML = MENU_ITEMS.map(x=>x[0]==='-'?'<hr>':x[0]==='colors'?`<div class="mcol"><span>สีตัวอักษร</span><div>${FC.map(k=>`<button type="button" data-col="${k}" style="background:${k}" title="${k}"></button>`).join('')}<button type="button" data-col="" class="auto" title="อัตโนมัติ (ดำ)">A</button></div></div>`:`<button type="button" data-m="${x[0]}" class="${x[3]||''}"><span>${x[1]}</span><kbd>${x[2]}</kbd></button>`).join('');
@@ -1285,7 +1289,7 @@ document.addEventListener('scroll',()=>hideMenu(),true);
 function boardAct(a){
   if(!BD) return;
   ({undo, redo, cut:()=>menuCopy(true), copy:()=>menuCopy(false), paste:menuPaste, clear:clearSel,
-    color:()=>setColor(curColor),
+    color:()=>setColor(curColor), delblock:()=>{ if(SEL) delBlock(SEL.b); },
     insup:()=>insRows('up'), insdown:()=>insRows('down'), delrow:delRows,
     rowup:()=>moveSel(-1,true), rowdown:()=>moveSel(1,true), selup:()=>moveSel(-1,false), seldown:()=>moveSel(1,false)}[a]||(()=>{}))();
 }
@@ -1300,6 +1304,11 @@ $('fcDrop').addEventListener('click',()=>{ $('fcPal').hidden=!$('fcPal').hidden;
 $('fcPal').addEventListener('mousedown',e=>e.preventDefault());
 $('fcPal').addEventListener('click',e=>{ const k=e.target.closest('[data-col]'); if(k) pickColor(k.dataset.col); });
 document.addEventListener('mousedown',e=>{ if(!$('fcPal').hidden && !e.target.closest('.fcolor')) $('fcPal').hidden=true; });
+function delBlock(bi){
+  if(!BD || !BD.blocks[bi]) return; pushUndo(); const lab=BD.blocks[bi].label;
+  BD.blocks.splice(bi,1); SEL=null; boardSave(); renderBoard(); toast(`เอาตาราง ${lab} ออกแล้ว · กด ↶ ย้อนกลับ ถ้าต้องการคืน`);
+}
+BOARD.addEventListener('click',e=>{ const b=e.target.closest('[data-delblk]'); if(b) delBlock(+b.dataset.delblk); });
 let pullArm=false;
 $('linePull').addEventListener('click',()=>{
   if(!pullArm){ pullArm=true; $('linePull').textContent='ยืนยัน: แทนที่ด้วยข้อมูลจัดตาราง'; $('linePull').classList.add('arm'); setTimeout(()=>{ pullArm=false; $('linePull').textContent='ดึงจากจัดตารางใหม่'; $('linePull').classList.remove('arm'); },3500); return; }
@@ -1310,7 +1319,7 @@ $('linePull').addEventListener('click',()=>{
 /* image: drawn from this table, not from the schedule */
 function boardStaticHTML(){
   const tot=LCOLW.reduce((a,x)=>a+x,0);
-  return BD.blocks.map(b=>{
+  return BD.blocks.filter(b=>b.rows.some(r=>!rowEmpty(r))).map(b=>{
     let h=`<table class="lsheet xl"><colgroup>${LCOLW.map(w=>`<col style="width:${Math.round(w*7+5)}px">`).join('')}</colgroup>`;
     h+=`<tr><td class="date" colspan="2">${esc(b.label)}</td><td class="title" colspan="15">SHIP'S&nbsp;&nbsp;&nbsp;SCHEDULE&nbsp;&nbsp;FOR&nbsp;&nbsp;SONGKHLA&nbsp;&nbsp;&nbsp;PILOT</td></tr>`;
     h+=`<tr><td class="h-in" colspan="9">ENTERING</td><td class="h-out" colspan="8">SAILING &amp; SHIFTING</td></tr>`;
