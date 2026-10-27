@@ -610,6 +610,8 @@ function renderGrid(){
   h += `<thead><tr class="ttl"><th class="date" colspan="2">${longDate(D)}</th><th class="title" colspan="15">SHIP'S SCHEDULE FOR SONGKHLA PILOT</th></tr><tr class="band"><th class="b-in" colspan="9">ENTERING</th><th class="b-out" colspan="8">SAILING &amp; SHIFTING</th></tr>`;
   h += `<tr class="cols">${HL.map(t=>`<th>${t}</th>`).join('')}${HR.map((t,i)=>`<th>${t}</th>`).join('')}</tr></thead><tbody>`;
   const body = main.rows.slice(1,-1);
+  // the empty first row of the printed sheet (typing here adds a ship too)
+  h += `<tr>${halfHTML('L',null,{draft:'topL',base:D})}${halfHTML('R',null,{draft:'topR',base:D})}</tr>`;
   body.forEach((r,i)=>{
     if(r.blank){ h+=`<tr class="sep"><td colspan="17" title="เว้นแถว (ห่าง ≥ ${S.settings.gap} ชม.)"></td></tr>`; return; }
     const dt = (r.L||r.R).datetime;
