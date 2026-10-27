@@ -113,8 +113,8 @@ def _sync_script():
             "<script>" + js + "</script>\n")
 
 
-_P_LOG, _P_CLOSE = "📒 บันทึกเรือ", "📑 ปิดการ์ดประจำวัน"
-_PAGES = [_P_LOG, _P_CLOSE]
+_P_LOG, _P_SCHED, _P_CLOSE = "📒 บันทึกเรือ", "🗓 จัดตารางเรือ", "📑 ปิดการ์ดประจำวัน"
+_PAGES = [_P_LOG, _P_SCHED, _P_CLOSE]
 if st.session_state.get("page_choice") not in _PAGES:
     st.session_state["page_choice"] = _PAGES[0]
 
@@ -180,6 +180,29 @@ if _page == _P_LOG:
     st.markdown("""<style>[data-testid="stMainBlockContainer"],[data-testid="block-container"],.block-container,section.main>div{padding-top:.5rem !important;padding-bottom:0 !important;padding-left:.75rem !important;padding-right:.75rem !important;max-width:100% !important}iframe[data-testid="stIFrame"][scrolling="auto"]{height:calc(100vh - 68px) !important;display:block}[data-testid="stAppViewContainer"] [data-testid="stMain"],section.main{overflow:hidden}</style>""",
                 unsafe_allow_html=True)
     components.html(_log_html, height=1100, scrolling=True)
+    st.stop()
+
+if _page == _P_SCHED:
+    # Ship's schedule for printing (replaces the per-day tabs + แก้ไข tab of the schedule workbook).
+    # Data lives in its own Google Sheet (ShipSchedule_DB) via apps_script/Schedule.gs.
+    with open(os.path.join(_HERE, "schedule.html"), encoding="utf-8") as _f:
+        _sched_html = _f.read()
+    _sched_cfg = {}
+    try:
+        _sec = st.secrets.get("schedule", {})
+        if _sec.get("url"):
+            _sched_cfg = {"url": str(_sec.get("url")), "key": str(_sec.get("key", ""))}
+    except Exception:
+        pass
+    _inject = ("window.__SCHED__=" + json.dumps(_sched_cfg, ensure_ascii=False).replace("</", "<\\/") + ";"
+               "window.__CAN_PRINT__=true;")
+    _sched_theme = {_THEME_OPTIONS[0]: "light", _THEME_OPTIONS[1]: "dark"}.get(_theme_choice)
+    if _sched_theme:
+        _inject += "window.__THEME__='" + _sched_theme + "';"
+    _sched_html = _sched_html.replace("<script>", "<script>" + _inject + "</script>\n<script>", 1)
+    st.markdown("""<style>[data-testid="stMainBlockContainer"],[data-testid="block-container"],.block-container,section.main>div{padding-top:.5rem !important;padding-bottom:0 !important;padding-left:.75rem !important;padding-right:.75rem !important;max-width:100% !important}iframe[data-testid="stIFrame"][scrolling="auto"]{height:calc(100vh - 68px) !important;display:block}[data-testid="stAppViewContainer"] [data-testid="stMain"],section.main{overflow:hidden}</style>""",
+                unsafe_allow_html=True)
+    components.html(_sched_html, height=1100, scrolling=True)
     st.stop()
 
 # Bridge to this browser: calculator ship lengths + its Google Sheet connection.
