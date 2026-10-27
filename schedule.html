@@ -7,12 +7,13 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap">
 <style>
-/* Layout: chart-room console — entry panel + time-ordered list on the left, a live paper proof of the printed schedule on the right */
+/* Layout: the schedule workbook as an editable grid — ENTERING on the left, SAILING & SHIFTING on the right, exactly like the Excel tab */
 :root{
-  --bg:#EEF2F5; --surface:#FFFFFF; --ink:#13212E; --muted:#5A6B7B; --line:#D3DDE5;
-  --accent:#0B5C9E; --accent-ink:#FFFFFF; --focus:#3B8FD6;
-  --in:#DDF6FB; --in-ink:#0B6475; --out:#FFE7CF; --out-ink:#8A4B10; --shift:#EDE6FF; --shift-ink:#55399A;
+  --bg:#EEF2F5; --surface:#FFFFFF; --ink:#13212E; --muted:#5A6B7B; --line:#D3DDE5; --grid:#C9D3DC;
+  --accent:#0B5C9E; --accent-ink:#FFFFFF; --accent-soft:#E2EEF8; --focus:#3B8FD6;
+  --in:#D9F6FB; --in-ink:#0B6475; --out:#FFE4C8; --out-ink:#8A4B10; --shift:#EDE6FF; --shift-ink:#55399A;
   --late:#FFD6F5; --late-ink:#9B1C7A; --warn:#FFF1C9; --warn-ink:#7A5600; --pilot:#D0021B; --ok:#E3F5E8; --ok-ink:#1F6B3A;
+  --head:#EAEAEA; --newrow:#F6FAFD; --sep:#F1F4F7;
   --paper:#FFFFFF; --paper-ink:#000000;
   --f-ui:"IBM Plex Sans Thai","Noto Sans Thai","Leelawadee UI",Tahoma,sans-serif;
   --f-num:"IBM Plex Mono",ui-monospace,Consolas,monospace;
@@ -20,16 +21,18 @@
   --r:10px;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --bg:#0D151C; --surface:#15212B; --ink:#E6EEF4; --muted:#93A5B4; --line:#2A3A47;
-  --accent:#5BA8E8; --accent-ink:#06121C; --focus:#7CC0F5;
+  --bg:#0D151C; --surface:#15212B; --ink:#E6EEF4; --muted:#93A5B4; --line:#2A3A47; --grid:#2F404E;
+  --accent:#5BA8E8; --accent-ink:#06121C; --accent-soft:#18324A; --focus:#7CC0F5;
   --in:#123A44; --in-ink:#9FE3F2; --out:#45301A; --out-ink:#FFCB94; --shift:#2E2650; --shift-ink:#CDBDFF;
   --late:#4A1A3E; --late-ink:#FFB0E8; --warn:#3D3210; --warn-ink:#FFDC7A; --pilot:#FF6B6B; --ok:#173726; --ok-ink:#9BE3B4;
+  --head:#22313D; --newrow:#13202A; --sep:#111C24;
   color-scheme:dark }}
 :root[data-theme="dark"]{
-  --bg:#0D151C; --surface:#15212B; --ink:#E6EEF4; --muted:#93A5B4; --line:#2A3A47;
-  --accent:#5BA8E8; --accent-ink:#06121C; --focus:#7CC0F5;
+  --bg:#0D151C; --surface:#15212B; --ink:#E6EEF4; --muted:#93A5B4; --line:#2A3A47; --grid:#2F404E;
+  --accent:#5BA8E8; --accent-ink:#06121C; --accent-soft:#18324A; --focus:#7CC0F5;
   --in:#123A44; --in-ink:#9FE3F2; --out:#45301A; --out-ink:#FFCB94; --shift:#2E2650; --shift-ink:#CDBDFF;
   --late:#4A1A3E; --late-ink:#FFB0E8; --warn:#3D3210; --warn-ink:#FFDC7A; --pilot:#FF6B6B; --ok:#173726; --ok-ink:#9BE3B4;
+  --head:#22313D; --newrow:#13202A; --sep:#111C24;
   color-scheme:dark }
 *{box-sizing:border-box}
 [hidden]{display:none!important}
@@ -54,85 +57,90 @@ button,input,select{font:inherit;color:inherit}
 .tabs button[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgb(0 0 0 / .12)}
 .tabs button:disabled{opacity:.45;cursor:not-allowed}
 .mode{font-size:13px;padding:3px 8px;border-radius:99px;background:var(--warn);color:var(--warn-ink);font-weight:600;border:0;cursor:pointer}
-.setup{max-width:760px;display:grid;gap:12px}.setup p{margin:0}
 .mode.live{background:var(--ok);color:var(--ok-ink)}
 
-main{padding-block:16px 40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
-.work{display:grid;grid-template-columns:minmax(0,620px) minmax(0,1fr);gap:18px;align-items:start}
-@media (max-width:1100px){.work{grid-template-columns:minmax(0,1fr)}.proofside{display:none}}
+main{padding-block:14px 40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;min-width:0}
 .panel h2{margin:0 0 12px;font-size:16px;font-weight:600;color:var(--muted);letter-spacing:.04em}
-.col{display:grid;gap:18px;min-width:0}
-
-/* form */
-form{display:grid;gap:12px}
-.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
-.seg button{border:2px solid var(--line);background:var(--bg);padding:10px 4px;border-radius:9px;font-size:18px;font-weight:600;cursor:pointer}
-.seg button[aria-pressed="true"][data-t="IN"]{background:var(--in);color:var(--in-ink);border-color:currentColor}
-.seg button[aria-pressed="true"][data-t="OUT"]{background:var(--out);color:var(--out-ink);border-color:currentColor}
-.seg button[aria-pressed="true"][data-t="SHIFT"]{background:var(--shift);color:var(--shift-ink);border-color:currentColor}
-.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
-.f{display:grid;gap:4px;min-width:0}
-.f label{font-size:14px;color:var(--muted);font-weight:500}
-.f input,.f select{width:100%;font-size:20px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);text-align:center}
-.f input.left{text-align:left}
-.f .hint{font-size:13px;color:var(--muted);min-height:1.2em}
-.f .hint.bad{color:var(--pilot)}
-.span2{grid-column:span 2}.span4{grid-column:1/-1}.span3{grid-column:span 3}
-@media (max-width:520px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.span3{grid-column:1/-1}}
-.pilots{display:flex;flex-wrap:wrap;gap:6px}
-.pilots button{min-width:62px;padding:8px 10px;border:2px solid var(--line);border-radius:8px;background:var(--bg);font:600 18px var(--f-num);cursor:pointer}
-.pilots button[aria-pressed="true"]{border-color:var(--pilot);color:var(--pilot);background:var(--surface)}
-.pilots input{width:80px;font:600 18px var(--f-num);padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);text-align:center}
-.check{display:flex;align-items:center;gap:8px;font-size:16px;cursor:pointer}
-.check input{width:22px;height:22px}
-.actions{display:flex;gap:8px;flex-wrap:wrap}
 .btn{border:1px solid var(--line);background:var(--bg);padding:10px 18px;border-radius:9px;font-weight:600;cursor:pointer;font-size:17px}
-.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);flex:1}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .btn.danger{color:var(--pilot)}
-.editing{font-size:14px;background:var(--warn);color:var(--warn-ink);padding:6px 10px;border-radius:8px}
-
-/* stats */
-.stats{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
-.chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:99px;font-size:14px;font-weight:600}
-.c-in{background:var(--in);color:var(--in-ink)}.c-out{background:var(--out);color:var(--out-ink)}.c-shift{background:var(--shift);color:var(--shift-ink)}
-.c-late{background:var(--late);color:var(--late-ink)}.c-warn{background:var(--warn);color:var(--warn-ink)}.c-ok{background:var(--ok);color:var(--ok-ink)}
-
-/* list */
-.list{display:grid;gap:4px}
-.row{display:grid;grid-template-columns:34px 78px 54px minmax(0,1fr) 92px auto;gap:8px;align-items:center;padding:8px 8px;border-radius:8px;border:1px solid transparent;cursor:pointer}
-.row:hover{border-color:var(--line)}
-.row.sel{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,transparent)}
-.row .no{font:600 15px var(--f-num);color:var(--muted);text-align:center}
-.row .no.late{color:var(--late-ink)}
-.row .t{font:600 17px var(--f-num)}
-.row .ship{min-width:0}
-.row .ship b{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.row .ship span{font-size:13px;color:var(--muted)}
-.row select{font:600 16px var(--f-num);padding:5px;border-radius:7px;border:1px solid var(--line);background:var(--bg);color:var(--pilot);width:100%;text-align:center}
-.row select.empty{background:var(--warn);color:var(--warn-ink);border-color:var(--warn-ink)}
-.row .ops{display:flex;gap:4px}
-.row .ops button{border:1px solid var(--line);background:var(--bg);border-radius:7px;padding:5px 8px;font-size:14px;cursor:pointer;white-space:nowrap}
-.row .ops button.confirm{background:var(--pilot);color:#fff;border-color:var(--pilot)}
-.tchip{font-size:13px;font-weight:700;text-align:center;border-radius:6px;padding:3px 0}
-.gap{font-size:12px;color:var(--muted);text-align:center;border-top:1px dashed var(--line);margin:6px 0 2px;padding-top:2px}
-.sub{font-size:14px;color:var(--muted);margin:14px 0 6px;font-weight:600}
-.empty-state{padding:24px;text-align:center;color:var(--muted)}
-@media (max-width:560px){.row{grid-template-columns:30px 70px minmax(0,1fr) 78px}.row .tchip{display:none}.row .ops{grid-column:2/-1}}
-
-/* proof */
-.proofwrap{overflow:hidden;border-radius:6px;border:1px solid var(--line);background:#9aa6b0}
-.proofscale{transform-origin:0 0}
-.paper{background:var(--paper);color:var(--paper-ink);width:1123px;padding:16px}
-.printbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
 .note{font-size:14px;color:var(--muted)}
 .scrollx{overflow-x:auto}
+
+/* setup form */
+.setup{max-width:760px;display:grid;gap:12px}.setup p{margin:0}
+.fgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.f{display:grid;gap:4px;min-width:0}
+.f label{font-size:14px;color:var(--muted);font-weight:500}
+.f input{width:100%;font-size:18px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
+.f .hint{font-size:13px;color:var(--muted);min-height:1.2em}
+.f .hint.bad{color:var(--pilot)}
+.span2{grid-column:span 2}.span4{grid-column:1/-1}
+@media (max-width:520px){.fgrid{grid-template-columns:repeat(2,minmax(0,1fr))}.span2{grid-column:1/-1}}
+
+/* summary bar */
+.bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:10px}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:99px;font-size:15px;font-weight:600}
+.c-in{background:var(--in);color:var(--in-ink)}.c-out{background:var(--out);color:var(--out-ink)}.c-shift{background:var(--shift);color:var(--shift-ink)}
+.c-late{background:var(--late);color:var(--late-ink)}.c-warn{background:var(--warn);color:var(--warn-ink)}.c-ok{background:var(--ok);color:var(--ok-ink)}
+.bar .help{margin-left:auto;font-size:14px;color:var(--muted)}
+
+/* ---------- editable grid (same columns as the Excel tab) ---------- */
+.gridwrap{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:var(--r)}
+table.eg{border-collapse:collapse;table-layout:fixed;width:100%;min-width:1180px;font-size:16px}
+.eg th,.eg td{border:1px solid var(--grid);padding:0;height:40px;text-align:center;vertical-align:middle}
+.eg thead th{position:sticky;z-index:2;background:var(--head);font-weight:700;font-size:14px;letter-spacing:.02em}
+.eg thead tr.band th{top:0;height:34px;font-size:15px}
+.eg thead tr.cols th{top:34px;height:32px}
+.eg th.b-in{background:var(--in);color:var(--in-ink)}
+.eg th.b-out{background:var(--out);color:var(--out-ink)}
+.eg td.mid{border-left:3px solid var(--ink)}
+.eg th.mid{border-left:3px solid var(--ink)}
+.eg input{width:100%;height:100%;min-height:39px;border:0;background:transparent;text-align:center;padding:0 4px;font:500 15px var(--f-num);font-variant-numeric:tabular-nums;color:var(--ink);border-radius:0}
+.eg input.ship,.eg input.agent{font-family:var(--f-ui)}
+.eg input.ship{text-align:left;font-weight:600;font-size:16px}
+.eg td.shipc:focus-within input.ship{padding-right:100px}
+.eg input:focus{outline:2px solid var(--focus);outline-offset:-2px;background:var(--accent-soft)}
+.eg input::placeholder{color:var(--muted);opacity:.55;font-weight:400}
+.eg input.pil{color:var(--pilot);font-weight:600}
+.eg td.need{background:var(--warn)}
+.eg input.bad{background:color-mix(in srgb,var(--pilot) 14%,transparent);outline:2px solid var(--pilot);outline-offset:-2px}
+.eg tbody tr:hover td{background:color-mix(in srgb,var(--accent) 5%,transparent)}
+.eg tbody tr:hover td.need{background:var(--warn)}
+.eg td.no{font:600 15px var(--f-num);color:var(--muted)}
+.eg td.no button{width:100%;height:100%;min-height:39px;border:0;background:transparent;font:inherit;color:inherit;cursor:pointer}
+.eg td.no button:hover{background:var(--late);color:var(--late-ink)}
+.eg td.no.lt,.eg td.no.lt button{color:var(--late-ink);background:var(--late);font-weight:700}
+.eg td.shipc{position:relative;text-align:left}
+.eg .ops{position:absolute;right:4px;top:50%;transform:translateY(-50%);display:none;gap:3px}
+.eg td.shipc:hover .ops,.eg td.shipc:focus-within .ops{display:flex}
+.eg .ops button{border:1px solid var(--line);background:var(--surface);border-radius:6px;font-size:12px;padding:3px 6px;cursor:pointer;white-space:nowrap;font-family:var(--f-ui)}
+.eg .ops button.arm{background:var(--pilot);color:#fff;border-color:var(--pilot)}
+.eg tr.sep td{height:12px;background:var(--sep)}
+.eg tr.newrow td{background:var(--newrow)}
+.eg tr.newrow input.ship::placeholder{opacity:.8;color:var(--accent);font-weight:500}
+.eg tr.lateh td{background:var(--late);color:var(--late-ink);font-weight:700;font-size:15px;height:36px}
+.eg tr.foot td{background:var(--head);font-weight:700;font-size:15px;height:36px}
+.eg td.dis{background:var(--sep)}
+.eg .kind{font-size:11px;font-weight:700;border-radius:4px;padding:1px 4px;margin-left:4px;font-family:var(--f-ui)}
+
+/* combo popup (type to filter) */
+.combo-pop{position:fixed;z-index:70;background:var(--surface);border:1px solid var(--line);border-radius:8px;box-shadow:0 8px 24px rgb(0 0 0 / .18);max-height:300px;max-width:min(520px,calc(100vw - 16px));overflow-y:auto;padding:4px}
+.combo-pop .opt{display:flex;justify-content:space-between;align-items:baseline;gap:16px;padding:7px 10px;border-radius:6px;cursor:pointer;font:600 16px var(--f-num);white-space:nowrap}
+.combo-pop .opt small{color:var(--muted);font:400 13px var(--f-ui)}
+.combo-pop .opt.act,.combo-pop .opt:hover{background:var(--accent-soft)}
+.combo-pop .opt mark{background:none;color:var(--accent);font-weight:700}
+
+/* print preview tab */
+.paper{background:var(--paper);color:var(--paper-ink);width:1123px;padding:16px}
+.printbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
 
 /* ---------- the printed sheet (kept identical to the Excel tab) ---------- */
 table.sheet{border-collapse:collapse;table-layout:fixed;width:100%;font-family:var(--f-sheet);font-size:10pt;color:#000;background:#fff}
 .sheet td{border:.5pt solid #555;height:18pt;padding:0 2px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:clip;line-height:1}
 .sheet .l{text-align:left}
-.sheet .b{font-weight:700}
 .sheet .date{font-size:22pt;font-weight:700;background:#FFFF99}
 .sheet .title{font-size:14pt;font-weight:700}
 .sheet .h-in{background:#CCFFFF;font-weight:700}
@@ -142,18 +150,16 @@ table.sheet{border-collapse:collapse;table-layout:fixed;width:100%;font-family:v
 .sheet .r{background:#CCFFCC;font-weight:700;font-size:7pt}
 .sheet .late-h{background:#FFCCFF;font-weight:700;font-size:11pt}
 .sheet .foot{background:#FFFF99;font-weight:700;white-space:pre}
-.sheet .noR{border-right:0}.sheet .noT{border-top:0}
 #printRoot{display:none}
 #measure{position:absolute;left:-99999px;top:0;width:1091px;visibility:hidden}
 @page{size:A4 landscape;margin:4.3mm}
 @media print{
   body{background:#fff}
-  body::before,.top,main,.toast{display:none!important}
+  body::before,.top,main,.toast,.combo-pop{display:none!important}
   #printRoot{display:block}
   #printRoot table.sheet{width:100%}
 }
-.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:10px;font-weight:600;z-index:20}
-@media (prefers-reduced-motion:no-preference){.row{transition:background .15s,border-color .15s}}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:10px;font-weight:600;z-index:80;max-width:calc(100vw - 32px)}
 </style>
 <style>:root{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}body{margin:0}[hidden]{display:none!important}</style>
 </head>
@@ -177,58 +183,18 @@ table.sheet{border-collapse:collapse;table-layout:fixed;width:100%;font-family:v
 </header>
 
 <main>
-  <section id="view-work" class="work">
-    <div class="col">
-      <div class="panel">
-        <h2 id="formTitle">เพิ่มเรือ</h2>
-        <form id="mvForm" autocomplete="off">
-          <div class="seg" id="typeSeg">
-            <button type="button" data-t="IN" aria-pressed="true">เข้า</button>
-            <button type="button" data-t="OUT" aria-pressed="false">ออก</button>
-            <button type="button" data-t="SHIFT" aria-pressed="false">ย้ายท่า</button>
-          </div>
-          <div class="grid">
-            <div class="f span3"><label for="fShip">ชื่อเรือ</label><input id="fShip" class="left" list="dlShips" placeholder="พิมพ์ชื่อเรือ" required><div class="hint" id="hShip"></div></div>
-            <div class="f"><label for="fLoa">LOA</label><input id="fLoa" class="num" inputmode="numeric"></div>
-            <div class="f span2"><label for="fTime" id="lTime">ETA</label><input id="fTime" class="num" placeholder="0630 หรือ 27-0630" required><div class="hint" id="hTime"></div></div>
-            <div class="f"><label for="fPob">POB</label><input id="fPob" class="num" placeholder="= ETA"></div>
-            <div class="f"><label for="fDrf">Drf</label><input id="fDrf" class="num" inputmode="decimal"></div>
-            <div class="f span2" id="wFrom"><label for="fFrom">ท่าที่ออก</label><input id="fFrom" list="dlBerths"></div>
-            <div class="f span2" id="wTo"><label for="fTo">ท่าเข้า</label><input id="fTo" list="dlBerths"></div>
-            <div class="f span2"><label for="fAgent">เอเย่นต์</label><input id="fAgent" list="dlAgents"></div>
-            <div class="f span2" style="align-content:end"><label class="check"><input type="checkbox" id="fLate"> แจ้งเพิ่มหลังจัดจ่าย (พ)</label></div>
-            <div class="f span4"><label>นำร่อง (ผก.)</label><div class="pilots" id="pilotBtns"></div></div>
-          </div>
-          <div id="editBanner" class="editing" hidden></div>
-          <div class="actions">
-            <button type="submit" class="btn primary" id="saveBtn">บันทึก (Enter)</button>
-            <button type="button" class="btn" id="clearBtn">ล้าง</button>
-            <button type="button" class="btn danger" id="delBtn" hidden>ลบ</button>
-          </div>
-        </form>
-      </div>
-      <div class="panel">
-        <h2>รายการในรอบนี้</h2>
-        <div class="stats" id="stats"></div>
-        <div class="list" id="list"></div>
-        <div id="lateList"></div>
-      </div>
-    </div>
-    <div class="col proofside">
-      <div class="panel">
-        <h2>ตัวอย่างหน้าปริ้น</h2>
-        <div class="proofwrap" id="proofSmall"><div class="proofscale"><div class="paper" id="paperSmall"></div></div></div>
-      </div>
-    </div>
+  <section id="view-work">
+    <div class="bar" id="stats"></div>
+    <div class="gridwrap"><table class="eg" id="grid"></table></div>
   </section>
 
   <section id="view-setup" hidden>
     <div class="panel setup">
       <h2>เชื่อมต่อ Google Sheet ตารางเรือ</h2>
       <p class="note">ใช้ชีต <b>ShipSchedule_DB</b> + สคริปต์ <b>apps_script/Schedule.gs</b> (คนละชีตกับบันทึกเรือ) ขั้นตอนติดตั้งอยู่ใน README หัวข้อ เมนู 🗓 จัดตารางเรือ</p>
-      <form id="setupForm" class="grid" autocomplete="off">
-        <div class="f span4"><label for="sUrl">Web app URL (ลงท้าย /exec)</label><input id="sUrl" class="left" placeholder="https://script.google.com/macros/s/…/exec"></div>
-        <div class="f span2"><label for="sKey">รหัส (ตามบรรทัด KEYS ในสคริปต์)</label><input id="sKey" class="left"></div>
+      <form id="setupForm" class="fgrid" autocomplete="off">
+        <div class="f span4"><label for="sUrl">Web app URL (ลงท้าย /exec)</label><input id="sUrl" placeholder="https://script.google.com/macros/s/…/exec"></div>
+        <div class="f span2"><label for="sKey">รหัส (ตามบรรทัด KEYS ในสคริปต์)</label><input id="sKey"></div>
         <div class="f span2" style="align-content:end"><button type="submit" class="btn primary" id="sTest">ทดสอบและเชื่อมต่อ</button></div>
         <div class="f span4"><div class="hint" id="sMsg"></div></div>
       </form>
@@ -238,7 +204,7 @@ table.sheet{border-collapse:collapse;table-layout:fixed;width:100%;font-family:v
 
   <section id="view-print" hidden>
     <div class="printbar">
-      <button class="btn primary" id="printBtn" style="flex:0 0 auto">ปริ้น</button>
+      <button class="btn primary" id="printBtn">ปริ้น</button>
       <span class="note" id="printNote">A4 แนวนอน · หน้าเดียว</span>
     </div>
     <div class="scrollx"><div class="paper" id="paperBig"></div></div>
@@ -246,7 +212,7 @@ table.sheet{border-collapse:collapse;table-layout:fixed;width:100%;font-family:v
 </main>
 
 <div id="printRoot"></div><div id="measure" aria-hidden="true"></div>
-<datalist id="dlShips"></datalist><datalist id="dlBerths"></datalist><datalist id="dlAgents"></datalist>
+<div class="combo-pop" id="pop" role="listbox" hidden></div>
 <div class="toast" id="toast" hidden></div>
 
 <script>
@@ -264,9 +230,7 @@ const COLW = [3.86,20.29,3.86,3.86,8,8,8,3.86,6.71,3.71,21.43,4.14,4.14,8.14,18,
 const EMAIL = 'songkhlapilot@hotmail.com';
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-
-const S = { ships:[], shipIdx:new Map(), berths:[], agents:[], pilots:{}, duty:{}, fixed:[], settings:{cutoff:'17:00', gap:2},
-  mv:[], D:'', type:'IN', pilot:'', editId:null, pobTouched:false, loaded:[null,null] };
+const S = { ships:[], shipIdx:new Map(), berths:[], agents:[], pilots:{}, duty:{}, fixed:[], settings:{cutoff:'17:00', gap:2}, mv:[], D:'' };
 
 /* ---------- dates ---------- */
 const pad = n => String(n).padStart(2,'0');
@@ -390,19 +354,6 @@ function sheetHTML(D){
   return {html:h, main, nRows};
 }
 
-/* ---------- rendering ---------- */
-function renderAll(){
-  const [a,b]=win(S.D);
-  $('windowLabel').innerHTML = `รอบ <span class="num">${shortDate(S.D)} ${S.settings.cutoff}</span> – <span class="num">${shortDate(addDays(S.D,1))} ${addTimeLabel()}</span>`;
-  const sh = sheetHTML(S.D);
-  sh.html = shrinkToFit(sh.html);
-  $('paperSmall').innerHTML = sh.html; $('paperBig').innerHTML = sh.html;
-  // print copy, shrink to one page if long (A4 landscape ≈ 33 rows at 18pt)
-  const fit = Math.min(1, 33/sh.nRows);
-  $('printRoot').innerHTML = `<div style="zoom:${fit.toFixed(3)}">${sh.html}</div>`;
-  $('printNote').textContent = `A4 แนวนอน · หน้าเดียว · ${sh.nRows} แถว${fit<1?` (ย่อ ${Math.round(fit*100)}%)`:''}`;
-  renderList(sh.main); scaleProof();
-}
 // Excel "shrink to fit": measure at print width (A4 landscape ≈ 1091px) and reduce font where text overflows
 function shrinkToFit(html){
   const box=$('measure'); box.innerHTML=html;
@@ -416,167 +367,282 @@ function shrinkToFit(html){
 }
 function addTimeLabel(){ const [h,m]=S.settings.cutoff.split(':').map(Number); const t=h*60+m-1; return `${pad(Math.floor(t/60))}:${pad(t%60)}`; }
 
-function renderList(main){
-  const items = S.mv.filter(m=>inWin(m,S.D)).sort(sortMv);
-  const nIn=items.filter(m=>m.type==='IN').length, nOut=items.filter(m=>m.type==='OUT').length, nSh=items.filter(m=>m.type==='SHIFT').length;
-  const noPilot=items.filter(m=>!m.pilot).length, nLate=items.filter(m=>+m.late).length;
-  $('stats').innerHTML = `<span class="chip c-in">เข้า ${nIn}</span><span class="chip c-out">ออก ${nOut}</span><span class="chip c-shift">ย้ายท่า ${nSh}</span>`+
-    (items.length? (noPilot? `<span class="chip c-warn">ยังไม่มีผก. ${noPilot}</span>` : `<span class="chip c-ok">ใส่ผก.ครบ</span>`) : '') +
-    (nLate? `<span class="chip c-late">พ ${nLate}</span>`:'');
-  if(!items.length){ $('list').innerHTML = `<div class="empty-state">ยังไม่มีเรือในรอบนี้ — กรอกชื่อเรือและเวลาในช่องด้านบน</div>`; }
-  else {
-    let h='', prev=null;
-    for(const m of items){
-      if(prev){ const g=(minutes(m.datetime)-minutes(prev))/60; if(g>=S.settings.gap) h+=`<div class="gap">ห่าง ${g%1?g.toFixed(1):g} ชม. · เว้นแถว</div>`; }
-      prev=m.datetime; h+=rowHTML(m, +m.late? 'พ' : main.no.get(m.id));
-    }
-    $('list').innerHTML=h;
-  }
-  const prevLate = S.mv.filter(m=>inWin(m,addDays(S.D,-1)) && +m.late).sort(sortMv);
-  $('lateList').innerHTML = prevLate.length? `<div class="sub">พ จากรอบ ${shortDate(addDays(S.D,-1))} (แสดงท้ายตารางนี้)</div><div class="list">${prevLate.map(m=>rowHTML(m,'พ')).join('')}</div>` : '';
-}
-function rowHTML(m,no){
-  const t = {IN:['เข้า','c-in'],OUT:['ออก','c-out'],SHIFT:['ย้าย','c-shift']}[m.type];
-  const pil = dutyPilots(S.D); const opts=['',...pil]; if(m.pilot && !opts.includes(m.pilot)) opts.push(m.pilot);
-  return `<div class="row${S.editId===m.id?' sel':''}" data-id="${m.id}">
-    <div class="no${no==='พ'?' late':''}">${no??''}</div>
-    <div class="t">${fmtT(m.datetime)}</div>
-    <div class="tchip ${t[1]}">${t[0]}</div>
-    <div class="ship"><b>${esc(m.ship)}</b><span>${esc([m.loa, berthText(m), m.agent].filter(Boolean).join(' · '))}</span></div>
-    <select class="${m.pilot?'':'empty'}" data-pilot="${m.id}" aria-label="นำร่อง ${esc(m.ship)}">${opts.map(p=>`<option value="${p}"${p===(m.pilot||'')?' selected':''}>${p||'ผก.?'}</option>`).join('')}</select>
-    <div class="ops">${m.type==='IN'?`<button type="button" data-out="${m.id}">+ออก</button>`:''}<button type="button" data-del="${m.id}">ลบ</button></div>
-  </div>`;
-}
-function scaleProof(){
-  const w=$('proofSmall').clientWidth; if(!w) return; const s=w/1123; const el=$('proofSmall').firstElementChild;
-  el.style.transform=`scale(${s})`; $('proofSmall').style.height=($('paperSmall').offsetHeight*s)+'px';
-}
-new ResizeObserver(scaleProof).observe($('proofSmall'));
+function fillDatalists(){ /* options come from the combo popup */ }
+const norm = s => String(s||'').toUpperCase().replace(/\s+/g,' ').trim();
+let toastT; function toast(msg){ const t=$('toast'); t.textContent=msg; t.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>t.hidden=true,2800); }
+const newId = () => Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 
-/* ---------- form ---------- */
-function setType(t){
-  S.type=t; for(const b of $('typeSeg').children) b.setAttribute('aria-pressed', b.dataset.t===t);
-  $('lTime').textContent = t==='IN'?'ETA':'ETD';
-  $('fPob').parentElement.hidden = t!=='IN';
-  $('wFrom').hidden = t==='IN'; $('wTo').hidden = t==='OUT';
-  $('wFrom').querySelector('label').textContent = t==='SHIFT'?'จากท่า':'ท่าที่ออก';
-  $('wTo').querySelector('label').textContent = t==='SHIFT'?'ไปท่า':'ท่าเข้า';
-  autoBerth();
+/* ---------- print tab ---------- */
+function renderPrint(){
+  const sh = sheetHTML(S.D); sh.html = shrinkToFit(sh.html);
+  $('paperBig').innerHTML = sh.html;
+  const fit = Math.min(1, 33/sh.nRows);
+  $('printRoot').innerHTML = `<div style="zoom:${fit.toFixed(3)}">${sh.html}</div>`;
+  $('printNote').textContent = `A4 แนวนอน · หน้าเดียว · ${sh.nRows} แถว${fit<1?` (ย่อ ${Math.round(fit*100)}%)`:''}`;
 }
-function renderPilotBtns(){
-  const pil=dutyPilots(S.D); const other = S.pilot && !pil.includes(S.pilot) ? S.pilot : '';
-  $('pilotBtns').innerHTML = ['',...pil].map(p=>`<button type="button" data-p="${p}" aria-pressed="${p===S.pilot}">${p||'—'}</button>`).join('') +
-    `<input id="fPilotOther" class="num" placeholder="อื่น" value="${esc(other)}" aria-label="เลขผก.อื่น">`;
+
+/* ---------- editable grid ---------- */
+// L = ENTERING (A..I), R = SAILING & SHIFTING (J..Q)
+const FL = ['no','ship','loa','drf','t','pob','berth','pilot','agent'];
+const FR = ['no','ship','loa','drf','t','berth','pilot','agent'];
+const GW = [40,190,52,46,88,88,92,56,84, 40,190,52,46,88,168,56,84]; // relative widths
+const HL = ['NO.',"SHIP'S NAME",'LOA','Drf','ETA','POB','BERTH','Pilot','AGENT'];
+const HR = ['NO.',"SHIP'S NAME",'LOA','Drf','ETD','BERTH','Pilot','AGENT'];
+
+function fieldVal(m,f,side){
+  switch(f){
+    case 'ship': return m.ship; case 'loa': return m.loa; case 'drf': return m.drf; case 'pilot': return m.pilot; case 'agent': return m.agent;
+    case 't': return fmtT(m.datetime); case 'pob': return fmtT(m.pob||m.datetime);
+    case 'berth': return side==='L'? m.to : berthText(m);
+  }
+  return '';
 }
-function setPilot(p){ S.pilot=p; for(const b of $('pilotBtns').querySelectorAll('button')) b.setAttribute('aria-pressed', b.dataset.p===p); const o=$('fPilotOther'); if(o && o.value!==p && p && !dutyPilots(S.D).includes(p)) o.value=p; else if(o && (dutyPilots(S.D).includes(p)||!p)) o.value=''; }
-function lastBerth(ship, dt){
-  const prev=S.mv.filter(m=>m.ship===ship && m.datetime<dt && m.id!==S.editId).sort(sortMv).pop();
+function inputHTML(key,f,side,val,extra=''){
+  const cls = f==='ship'?'ship':f==='agent'?'agent':f==='pilot'?'pil':'';
+  const ph = f==='ship' && extra.includes('data-new') ? 'พิมพ์ชื่อเรือ…' : f==='t' && extra.includes('data-new') ? '0630' : '';
+  return `<input class="${cls}" data-k="${key}:${f}" data-f="${f}" data-side="${side}" ${extra} value="${esc(val)}" placeholder="${ph}" autocomplete="off" spellcheck="false" aria-label="${side==='L'?'เข้า':'ออก'} ${f}">`;
+}
+function halfHTML(side, m, o){
+  const F = side==='L'? FL : FR; let h='';
+  const mid = side==='R' ? ' mid' : '';
+  if(m){
+    const typ = m.type==='SHIFT' ? `<span class="kind c-shift">ย้าย</span>` : '';
+    for(const f of F){
+      if(f==='no'){ const lt=+m.late; h+=`<td class="no${lt?' lt':''}${mid}"><button type="button" data-act="late" data-id="${m.id}" title="${lt?'กดเพื่อยกเลิก พ':'กดเพื่อทำเป็น พ (แจ้งเพิ่มหลังจัดจ่าย)'}">${lt?'พ':(o.no??'')}</button></td>`; continue; }
+      const need = f==='pilot' && !m.pilot ? ' need' : '';
+      const cell = inputHTML(m.id,f,side,fieldVal(m,f,side),`data-base="${o.base}"`);
+      if(f==='ship') h+=`<td class="shipc">${cell}<span class="ops">${side==='L'?`<button type="button" data-act="out" data-id="${m.id}" title="สร้างเที่ยวออกของเรือลำนี้">+ออก</button>`:''}<button type="button" data-act="del" data-id="${m.id}">ลบ</button></span></td>`;
+      else h+=`<td class="${need.trim()}">${cell}</td>`;
+    }
+  } else if(o.draft){
+    for(const f of F){
+      if(f==='no'){ h+=`<td class="no${mid}">${o.isNew?'＋':''}</td>`; continue; }
+      const cell = inputHTML(o.draft,f,side,'',`data-draft="${o.draft}" data-base="${o.base}" data-def="${o.def||''}" data-late="${o.late?1:0}"${o.isNew?' data-new="1"':''}`);
+      h+= f==='ship' ? `<td class="shipc">${cell}</td>` : `<td>${cell}</td>`;
+    }
+  } else {
+    h += `<td class="dis${mid}" colspan="${F.length}"></td>`;
+  }
+  return h;
+}
+
+function renderGrid(){
+  const D=S.D, P=addDays(D,-1);
+  const main = buildMain(S.mv.filter(m=>inWin(m,D) && !+m.late));
+  const late = S.mv.filter(m=>inWin(m,P) && +m.late);
+  const lateRows = buildLate(late).filter(r=>!r.blank);
+  const gw=GW.reduce((a,b)=>a+b,0); let h = `<colgroup>${GW.map(w=>`<col style="width:${(w/gw*100).toFixed(3)}%">`).join('')}</colgroup>`;
+  h += `<thead><tr class="band"><th class="b-in" colspan="9">ENTERING</th><th class="b-out mid" colspan="8">SAILING &amp; SHIFTING</th></tr>`;
+  h += `<tr class="cols">${HL.map(t=>`<th>${t}</th>`).join('')}${HR.map((t,i)=>`<th class="${i===0?'mid':''}">${t}</th>`).join('')}</tr></thead><tbody>`;
+  const body = main.rows.slice(1,-1);
+  body.forEach((r,i)=>{
+    if(r.blank){ h+=`<tr class="sep"><td colspan="17" title="เว้นแถว (ห่าง ≥ ${S.settings.gap} ชม.)"></td></tr>`; return; }
+    const dt = (r.L||r.R).datetime;
+    h += `<tr>${r.L? halfHTML('L',r.L,{no:main.no.get(r.L.id),base:D}) : halfHTML('L',null,{draft:'e'+i+'L',base:D,def:dt})}`+
+         `${r.R? halfHTML('R',r.R,{no:main.no.get(r.R.id),base:D}) : halfHTML('R',null,{draft:'e'+i+'R',base:D,def:dt})}</tr>`;
+  });
+  h += `<tr class="newrow">${halfHTML('L',null,{draft:'newL',base:D,isNew:true})}${halfHTML('R',null,{draft:'newR',base:D,isNew:true})}</tr>`;
+  h += `<tr class="lateh"><td colspan="17">เรือที่แจ้งเข้า - ออกและเลื่อน เพิ่มเติม หลังจากจัดจ่ายงาน วันที่ ${longDate(P)}</td></tr>`;
+  lateRows.forEach((r,i)=>{
+    const dt=(r.L||r.R).datetime;
+    h += `<tr>${r.L? halfHTML('L',r.L,{base:P}) : halfHTML('L',null,{draft:'p'+i+'L',base:P,def:dt,late:true})}`+
+         `${r.R? halfHTML('R',r.R,{base:P}) : halfHTML('R',null,{draft:'p'+i+'R',base:P,def:dt,late:true})}</tr>`;
+  });
+  h += `<tr class="newrow">${halfHTML('L',null,{draft:'lateL',base:P,isNew:true,late:true})}${halfHTML('R',null,{draft:'lateR',base:P,isNew:true,late:true})}</tr>`;
+  h += `<tr class="foot"><td colspan="17">SHIP'S ENTERING ${main.nIn} VESSEL · SAILING &amp; SHIFTING ${main.nOut} VESSEL</td></tr></tbody>`;
+  $('grid').innerHTML = h;
+
+  const inWinD = S.mv.filter(m=>inWin(m,D));
+  const nIn=main.nIn, nOut=main.nOut, noPilot=S.mv.filter(m=>(inWin(m,D)&&!+m.late)||(inWin(m,P)&&+m.late)).filter(m=>!m.pilot).length;
+  const lateHere = inWinD.filter(m=>+m.late).length;
+  $('stats').innerHTML = `<span class="chip c-in">เข้า ${nIn}</span><span class="chip c-out">ออก/ย้าย ${nOut}</span>`+
+    (nIn+nOut+late.length ? (noPilot? `<span class="chip c-warn">ยังไม่มีผก. ${noPilot}</span>` : `<span class="chip c-ok">ใส่ผก.ครบ</span>`) : '')+
+    (lateHere? `<span class="chip c-late" title="อยู่ท้ายตารางวันที่ ${shortDate(addDays(D,1))}">พ รอบนี้ ${lateHere} → ท้ายตาราง ${shortDate(addDays(D,1))}</span>`:'')+
+    `<span class="help">พิมพ์แถว ＋ เพื่อเพิ่ม · Enter = บันทึก/ลงแถวถัดไป · ท่า A&lt;&gt;B = ย้ายท่า · กดเลข NO. = สลับ พ</span>`;
+}
+function renderAll(){
+  $('windowLabel').innerHTML = `รอบ <span class="num">${shortDate(S.D)} ${S.settings.cutoff}</span> – <span class="num">${shortDate(addDays(S.D,1))} ${addTimeLabel()}</span>`;
+  renderGrid(); renderPrint();
+}
+// re-render after an edit but keep the cursor where the user is typing
+let rrT=null, focusWant=null;
+function rerender(want){
+  if(want) focusWant=want;
+  clearTimeout(rrT);
+  rrT=setTimeout(()=>{
+    const a=document.activeElement; const k = focusWant || (a && a.dataset && a.dataset.k) || null;
+    const sel = a && a.dataset && a.dataset.k===k && typeof a.selectionStart==='number' ? [a.selectionStart,a.selectionEnd] : null;
+    focusWant=null; hidePop();
+    renderAll();
+    if(k){ const el=document.querySelector(`#grid [data-k="${CSS.escape(k)}"]`); if(el){ el.focus({preventScroll:false}); if(sel) try{ el.setSelectionRange(...sel); }catch(e){} } }
+  },0);
+}
+
+/* ---------- edits ---------- */
+function parseBerthR(txt){
+  const v=norm(txt).replace(/\s*(<>|<->|->|>|→)\s*/g,'<>');
+  if(v.includes('<>')){ const [a,...b]=v.split('<>'); return {type:'SHIFT', from:a.trim(), to:b.join('<>').trim()}; }
+  return {type:'OUT', from:v, to:''};
+}
+function lastBerth(ship, dt, exceptId){
+  const prev=S.mv.filter(m=>m.ship===ship && m.datetime<dt && m.id!==exceptId).sort(sortMv).pop();
   if(prev) return prev.type==='OUT'? '' : prev.to;
   return S.shipIdx.get(ship)?.berth || '';
 }
-function autoBerth(){
-  const ship=$('fShip').value.trim().toUpperCase(); if(!ship || S.editId) return;
-  const s=S.shipIdx.get(ship); const dt=parseTime($('fTime').value,S.D) || `${S.D} 23:59`;
-  if(S.type==='IN' && !$('fTo').value) $('fTo').value = s?.berth || '';
-  if(S.type!=='IN' && !$('fFrom').value) $('fFrom').value = lastBerth(ship, dt) || s?.berth || '';
+async function persist(m){
+  try{ await api('saveMovement',{},{m}); }catch(err){ toast('บันทึกไม่สำเร็จ: '+err.message); }
 }
-function onShip(){
-  const name=$('fShip').value.trim().toUpperCase(); const s=S.shipIdx.get(name);
-  $('hShip').textContent = !name? '' : s? [s.loa&&`LOA ${s.loa}`, s.berth, s.agent, s.note].filter(Boolean).join(' · ') : 'เรือใหม่ — จะเพิ่มเข้าฐานเรือเมื่อบันทึก';
-  if(s && !S.editId){ $('fLoa').value = s.loa||''; $('fAgent').value = s.agent||''; $('fFrom').value=''; $('fTo').value=''; autoBerth(); }
+async function ensureShip(m){
+  if(!m.ship || S.shipIdx.has(m.ship)) return;
+  const s={name:m.ship, loa:m.loa, berth:m.type==='IN'?m.to:(m.from||m.to), agent:m.agent, note:''};
+  S.ships.push(s); S.shipIdx.set(m.ship,s);
+  try{ await api('saveShip',{},{ship:s}); toast(`เพิ่ม ${m.ship} เข้าทะเบียนเรือแล้ว`); }catch(err){ toast('เพิ่มเรือใหม่ไม่สำเร็จ: '+err.message); }
 }
-function onTime(){
-  const v=$('fTime').value; const dt=parseTime(v,S.D); const h=$('hTime');
-  if(!v){ h.textContent=''; h.className='hint'; return; }
-  if(!dt){ h.textContent='อ่านเวลาไม่ได้ เช่น 0630 หรือ 27-0630'; h.className='hint bad'; return; }
-  const sd=schedOf(dt);
-  h.textContent = `${fmtT(dt)} · ${shortDate(dt.slice(0,10))}`+(sd!==S.D?` · อยู่รอบ ${shortDate(sd)}`:'');
-  h.className = 'hint'+(sd!==S.D?' bad':'');
-  if(S.type==='IN' && !S.pobTouched) $('fPob').value='';
+function onCellChange(inp){
+  if(inp.dataset.draft) return draftFill(inp);
+  const [id,f]=inp.dataset.k.split(':'); const m=S.mv.find(x=>x.id===id); if(!m) return;
+  const v=inp.value.trim(), side=inp.dataset.side, base=inp.dataset.base;
+  inp.classList.remove('bad');
+  if(f==='ship'){ if(!v){ inp.value=m.ship; return toast('ลบเรือ ใช้ปุ่ม ลบ ในช่องชื่อเรือ'); }
+    m.ship=norm(v); const s=S.shipIdx.get(m.ship); if(s){ if(s.loa) m.loa=s.loa; if(s.agent) m.agent=s.agent; } ensureShip(m); }
+  else if(f==='t'){ const dt=parseTime(v,base); if(!dt){ inp.classList.add('bad'); return toast('อ่านเวลาไม่ได้ พิมพ์ 0630 หรือ 27-0630'); }
+    if(m.type==='IN' && (!m.pob || m.pob===m.datetime)) m.pob=dt; m.datetime=dt;
+    const sd=schedOf(dt); if(sd!==base) toast(`เวลา ${fmtT(dt)} อยู่รอบ ${shortDate(sd)} — ย้ายไปตารางนั้นแล้ว`); }
+  else if(f==='pob'){ if(!v){ m.pob=m.datetime; } else { const dt=parseTime(v,base); if(!dt){ inp.classList.add('bad'); return toast('อ่านเวลา POB ไม่ได้'); } m.pob=dt; } }
+  else if(f==='berth'){ if(side==='L') m.to=norm(v); else { const b=parseBerthR(v); m.type=b.type; m.from=b.from; m.to=b.to; } }
+  else if(f==='agent') m.agent=norm(v);
+  else if(f==='pilot') m.pilot=v.replace(/^P\.?/i,'').trim();
+  else m[f]=v;
+  persist(m); rerender();
 }
-function clearForm(keepType=true){
-  S.editId=null; S.pobTouched=false;
-  for(const id of ['fShip','fLoa','fTime','fPob','fDrf','fFrom','fTo','fAgent']) $(id).value='';
-  $('fLate').checked=false; $('hShip').textContent=''; $('hTime').textContent='';
-  $('formTitle').textContent='เพิ่มเรือ'; $('editBanner').hidden=true; $('delBtn').hidden=true;
-  renderPilotBtns(); setPilot(''); if(!keepType) setType('IN'); else setType(S.type);
-  document.querySelectorAll('.row.sel').forEach(r=>r.classList.remove('sel'));
+// draft rows: picking a known ship fills the rest of the row
+function draftFill(inp){
+  if(inp.dataset.f!=='ship') return;
+  const name=norm(inp.value); const s=S.shipIdx.get(name); if(!s) return;
+  inp.value=name;
+  const p=inp.dataset.draft, side=inp.dataset.side, q=f=>document.querySelector(`#grid [data-k="${p}:${f}"]`);
+  if(!q('loa').value) q('loa').value=s.loa||'';
+  if(!q('agent').value) q('agent').value=s.agent||'';
+  if(!q('berth').value){ q('berth').value = side==='L' ? (s.berth||'') : (lastBerth(name, inp.dataset.def || `${S.D} 23:59`) || s.berth || ''); }
 }
-function loadIntoForm(m){
-  clearForm(); S.editId=m.id; setType(m.type);
-  $('fShip').value=m.ship; $('fLoa').value=m.loa||''; $('fTime').value=fmtT(m.datetime); $('fDrf').value=m.drf||'';
-  $('fPob').value = m.pob && m.pob!==m.datetime ? fmtT(m.pob) : ''; S.pobTouched=!!$('fPob').value;
-  $('fFrom').value=m.from||''; $('fTo').value=m.to||''; $('fAgent').value=m.agent||''; $('fLate').checked=!!+m.late;
-  renderPilotBtns(); setPilot(m.pilot||''); onTime(); onShip();
-  $('formTitle').textContent='แก้ไขเรือ'; $('editBanner').hidden=false; $('editBanner').textContent=`กำลังแก้ไข ${m.ship} ${fmtT(m.datetime)}`; $('delBtn').hidden=false;
-  document.querySelectorAll('.row').forEach(r=>r.classList.toggle('sel', r.dataset.id===m.id));
-  $('fShip').scrollIntoView({block:'nearest'}); $('fTime').focus();
+async function commitDraft(p, fromBlur){
+  const q=f=>document.querySelector(`#grid [data-k="${p}:${f}"]`); const sh=q('ship'); if(!sh) return false;
+  const ship=norm(sh.value); if(!ship) return false;
+  const side=sh.dataset.side, base=sh.dataset.base, def=sh.dataset.def, late=sh.dataset.late==='1';
+  const tv=q('t').value.trim(); const dt = tv ? parseTime(tv,base) : def;
+  if(!dt){ q('t').classList.add('bad'); if(!fromBlur) q('t').focus(); toast(tv?'อ่านเวลาไม่ได้ พิมพ์ 0630 หรือ 27-0630':'ใส่เวลา เช่น 0630'); return false; }
+  const s=S.shipIdx.get(ship)||{};
+  const m={ id:newId(), datetime:dt, ship, loa:q('loa').value.trim()||s.loa||'', drf:q('drf').value.trim(),
+    pilot:q('pilot').value.replace(/^P\.?/i,'').trim(), agent:norm(q('agent').value)||s.agent||'', late:late?1:0, note:'' };
+  if(side==='L'){ m.type='IN'; m.to=norm(q('berth').value)||s.berth||''; m.from='';
+    const pv=q('pob').value.trim(); m.pob = pv ? (parseTime(pv,base)||dt) : dt; }
+  else { const b=parseBerthR(q('berth').value||lastBerth(ship,dt)||s.berth||''); m.type=b.type; m.from=b.from; m.to=b.to; m.pob=''; }
+  S.mv.push(m); ensureShip(m); persist(m);
+  const sd=schedOf(dt); if(!late && sd!==S.D) toast(`บันทึกแล้ว · เวลา ${fmtT(dt)} อยู่ตารางวันที่ ${shortDate(sd)}`);
+  const wantNew = late ? (side==='L'?'lateL':'lateR') : (side==='L'?'newL':'newR');
+  rerender(`${wantNew}:ship`);
+  return true;
 }
-const newId = () => Date.now().toString(36)+Math.random().toString(36).slice(2,7);
-
-async function saveForm(e){
-  e.preventDefault();
-  const ship=$('fShip').value.trim().toUpperCase().replace(/\s+/g,' ');
-  const dt=parseTime($('fTime').value,S.D);
-  if(!ship){ $('fShip').focus(); return toast('ใส่ชื่อเรือ'); }
-  if(!dt){ $('fTime').focus(); return toast('ใส่เวลา เช่น 0630'); }
-  const pobDt = S.type==='IN' && $('fPob').value ? parseTime($('fPob').value,S.D) : null;
-  const old = S.editId ? S.mv.find(x=>x.id===S.editId) : null;
-  const m = { id:S.editId||newId(), type:S.type, datetime:dt, ship, loa:$('fLoa').value.trim(), drf:$('fDrf').value.trim(),
-    pob: S.type==='IN' ? (pobDt||dt) : '', from: S.type==='IN'?'':$('fFrom').value.trim().toUpperCase(),
-    to: S.type==='OUT'?'':$('fTo').value.trim().toUpperCase(), pilot:S.pilot, agent:$('fAgent').value.trim().toUpperCase(),
-    late: $('fLate').checked?1:0, note: old?.note||'' };
-  try{
-    if(!S.shipIdx.has(ship)){
-      const s={name:ship, loa:m.loa, berth:m.to||m.from, agent:m.agent, note:''};
-      await api('saveShip',{},{ship:s}); S.ships.push(s); S.shipIdx.set(ship,s); fillDatalists();
-    }
-    await api('saveMovement',{},{m});
-    const i=S.mv.findIndex(x=>x.id===m.id); if(i>=0) S.mv[i]=m; else S.mv.push(m);
-    toast(old?'บันทึกการแก้ไขแล้ว':`เพิ่ม ${ship} แล้ว`);
-    clearForm(); renderAll(); $('fShip').focus();
-    if(schedOf(dt)!==S.D && !old) toast(`บันทึกแล้ว · อยู่รอบ ${shortDate(schedOf(dt))}`);
-  }catch(err){ toast('บันทึกไม่สำเร็จ: '+err.message); }
+async function delMv(id){
+  const m=S.mv.find(x=>x.id===id); if(!m) return;
+  S.mv=S.mv.filter(x=>x.id!==id); rerender();
+  try{ await api('deleteMovement',{},{id}); toast(`ลบ ${m.ship} ${fmtT(m.datetime)} แล้ว`); }catch(err){ toast('ลบไม่สำเร็จ: '+err.message); }
 }
-async function quickPilot(id, p){
-  const m=S.mv.find(x=>x.id===id); if(!m) return; const m2={...m, pilot:p};
-  try{ await api('saveMovement',{},{m:m2}); Object.assign(m,m2); renderAll(); }catch(err){ toast('บันทึกไม่สำเร็จ: '+err.message); renderAll(); }
-}
-async function del(id){
-  try{ await api('deleteMovement',{},{id}); S.mv=S.mv.filter(x=>x.id!==id); if(S.editId===id) clearForm(); renderAll(); toast('ลบแล้ว'); }
-  catch(err){ toast('ลบไม่สำเร็จ: '+err.message); }
+function toggleLate(id){
+  const m=S.mv.find(x=>x.id===id); if(!m) return; m.late=+m.late?0:1; persist(m); rerender();
+  const sd=schedOf(m.datetime);
+  toast(+m.late? `${m.ship} เป็น พ → อยู่ท้ายตารางวันที่ ${shortDate(addDays(sd,1))}` : `${m.ship} กลับเข้าตารางวันที่ ${shortDate(sd)}`);
 }
 function makeOut(id){
-  const m=S.mv.find(x=>x.id===id); clearForm(); setType('OUT');
-  $('fShip').value=m.ship; onShip();
-  $('fLoa').value=m.loa||''; $('fAgent').value=m.agent||''; $('fFrom').value=m.to||''; $('fTime').focus(); toast(`สร้างเที่ยวออก ${m.ship} · ใส่เวลา`);
+  const m=S.mv.find(x=>x.id===id); if(!m) return; const p='newR', q=f=>document.querySelector(`#grid [data-k="${p}:${f}"]`);
+  q('ship').value=m.ship; q('loa').value=m.loa||''; q('agent').value=m.agent||''; q('berth').value=m.to||''; q('drf').value=''; q('t').value=''; q('pilot').value='';
+  q('t').focus(); toast(`เที่ยวออก ${m.ship} · ใส่เวลา ETD แล้วกด Enter`);
 }
-let toastT; function toast(msg){ const t=$('toast'); t.textContent=msg; t.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>t.hidden=true,2600); }
 
-/* ---------- events ---------- */
-$('typeSeg').addEventListener('click',e=>{ const b=e.target.closest('button'); if(b){ if(!S.editId){ $('fFrom').value=''; $('fTo').value=''; } setType(b.dataset.t); } });
-$('pilotBtns').addEventListener('click',e=>{ const b=e.target.closest('button'); if(b) setPilot(b.dataset.p); });
-$('pilotBtns').addEventListener('input',e=>{ if(e.target.id==='fPilotOther'){ S.pilot=e.target.value.trim(); for(const b of $('pilotBtns').querySelectorAll('button')) b.setAttribute('aria-pressed', b.dataset.p===S.pilot && !!S.pilot); } });
-$('fShip').addEventListener('change',onShip); $('fShip').addEventListener('input',()=>{ if(S.shipIdx.has($('fShip').value.trim().toUpperCase())) onShip(); else $('hShip').textContent=''; });
-$('fTime').addEventListener('input',onTime);
-$('fPob').addEventListener('input',()=>S.pobTouched=!!$('fPob').value);
-$('mvForm').addEventListener('submit',saveForm);
-$('clearBtn').addEventListener('click',()=>clearForm());
-let delArm=null;
-$('delBtn').addEventListener('click',()=>{ if(delArm!==S.editId){ delArm=S.editId; $('delBtn').textContent='กดอีกครั้งเพื่อลบ'; setTimeout(()=>{delArm=null;$('delBtn').textContent='ลบ';},3000); } else { delArm=null; $('delBtn').textContent='ลบ'; del(S.editId); } });
-function listClick(e){
-  const out=e.target.closest('[data-out]'); if(out){ makeOut(out.dataset.out); return; }
-  const d=e.target.closest('[data-del]'); if(d){ if(d.classList.contains('confirm')) del(d.dataset.del); else { d.classList.add('confirm'); d.textContent='ยืนยัน'; setTimeout(()=>{ if(d.isConnected){ d.classList.remove('confirm'); d.textContent='ลบ'; } },3000); } return; }
-  if(e.target.closest('select')) return;
-  const r=e.target.closest('.row'); if(r) loadIntoForm(S.mv.find(x=>x.id===r.dataset.id));
+/* ---------- combo popup (type to filter, like ทะเบียนเรือ in บันทึกเรือ) ---------- */
+const pop=$('pop'); const cb={inp:null,items:[],act:-1};
+function optsFor(inp){
+  const f=inp.dataset.f;
+  if(f==='ship') return S.ships.map(s=>({v:s.name, meta:[s.loa&&`LOA ${s.loa}`, s.berth, s.agent].filter(Boolean).join(' · ')}));
+  if(f==='berth') return S.berths.map(v=>({v}));
+  if(f==='agent') return S.agents.map(v=>({v}));
+  if(f==='pilot'){ const d=dutyPilots(S.D); const all=[...d, ...Object.keys(S.pilots).filter(p=>!d.includes(p))];
+    return all.map(p=>({v:p, meta:(d.includes(p)?'เวรเดือนนี้ · ':'')+(S.pilots[p]||'')})); }
+  return null;
 }
-$('list').addEventListener('click',listClick); $('lateList').addEventListener('click',listClick);
-document.addEventListener('change',e=>{ const s=e.target.closest('select[data-pilot]'); if(s) quickPilot(s.dataset.pilot, s.value); });
-async function goDate(D){ S.D=D; $('schedDate').value=D; clearForm(); try{ await loadMovements(); }catch(err){ toast('โหลดข้อมูลไม่สำเร็จ: '+err.message); } renderAll(); }
+function hidePop(){ pop.hidden=true; cb.inp=null; }
+function buildPop(inp){
+  const all=optsFor(inp); if(!all){ hidePop(); return; }
+  cb.inp=inp;
+  let q=norm(inp.value); const f=inp.dataset.f;
+  if(f==='berth' && inp.dataset.side==='R' && q.includes('<>')) q=q.split('<>').pop().trim();
+  let list=all;
+  if(q){ const a=[],b=[]; for(const x of all){ const k=norm(x.v); if(k.startsWith(q)) a.push(x); else if(k.includes(q)) b.push(x); } list=a.concat(b); }
+  cb.items=list.slice(0,80); cb.act=q&&cb.items.length?0:-1;
+  if(!cb.items.length || (cb.items.length===1 && norm(cb.items[0].v)===q)){ pop.hidden=true; return; }
+  pop.innerHTML = cb.items.map((x,i)=>{ const k=norm(x.v), at=q?k.indexOf(q):-1;
+    const lab = at>=0 ? esc(x.v.slice(0,at))+'<mark>'+esc(x.v.slice(at,at+q.length))+'</mark>'+esc(x.v.slice(at+q.length)) : esc(x.v);
+    return `<div class="opt${i===cb.act?' act':''}" role="option" data-i="${i}"><span>${lab}</span>${x.meta?`<small>${esc(x.meta)}</small>`:''}</div>`; }).join('');
+  const r=inp.getBoundingClientRect(), W=window.innerWidth, H=window.innerHeight;
+  pop.style.minWidth=Math.min(Math.max(r.width,f==='ship'?380:120),W-16)+'px';
+  pop.style.left=Math.max(8,Math.min(r.left,W-Math.min(520,W-16)-8))+'px';
+  const below=H-r.bottom;
+  if(below<200 && r.top>below){ pop.style.top=''; pop.style.bottom=(H-r.top+2)+'px'; } else { pop.style.bottom=''; pop.style.top=(r.bottom+2)+'px'; }
+  pop.hidden=false;
+}
+function pick(i){
+  const x=cb.items[i], inp=cb.inp; if(!x||!inp) return;
+  if(inp.dataset.f==='berth' && inp.dataset.side==='R' && inp.value.includes('<>')) inp.value = inp.value.split('<>')[0].trim()+'<>'+x.v;
+  else inp.value=x.v;
+  hidePop(); inp.dispatchEvent(new Event('change',{bubbles:true}));
+}
+pop.addEventListener('mousedown',e=>{ const o=e.target.closest('.opt'); if(o){ e.preventDefault(); pick(+o.dataset.i); } });
+document.addEventListener('scroll',e=>{ if(e.target!==pop && !pop.hidden) hidePop(); },true);
+window.addEventListener('resize',hidePop);
+
+/* ---------- grid events ---------- */
+const G=$('grid');
+G.addEventListener('focusin',e=>{ const i=e.target.closest('input'); if(i){ i.select(); buildPop(i); } });
+G.addEventListener('input',e=>{ const i=e.target.closest('input'); if(i){ i.classList.remove('bad'); buildPop(i); } });
+G.addEventListener('change',e=>{ const i=e.target.closest('input'); if(i) onCellChange(i); });
+G.addEventListener('focusout',e=>{
+  const i=e.target.closest('input'); if(!i) return;
+  setTimeout(()=>{ if(cb.inp===i && document.activeElement!==i) hidePop(); },120);
+  const p=i.dataset.draft; if(!p) return;
+  const to=e.relatedTarget; if(to && to.dataset && to.dataset.draft===p) return;   // still inside the same new row
+  if(to && to.closest && to.closest('#pop')) return;
+  setTimeout(()=>{ const a=document.activeElement; if(a && a.dataset && a.dataset.draft===p) return; commitDraft(p, true); },0);
+});
+function moveV(inp,d){
+  const list=[...G.querySelectorAll(`input[data-f="${inp.dataset.f}"][data-side="${inp.dataset.side}"]`)];
+  const n=list[list.indexOf(inp)+d]; if(n){ n.focus(); }
+}
+G.addEventListener('keydown',e=>{
+  const i=e.target.closest('input'); if(!i) return;
+  const open=!pop.hidden && cb.inp===i;
+  if(open && (e.key==='ArrowDown'||e.key==='ArrowUp')){ e.preventDefault(); const n=cb.items.length; cb.act=(cb.act+(e.key==='ArrowDown'?1:-1)+n)%n;
+    [...pop.children].forEach((c,k)=>c.classList.toggle('act',k===cb.act)); pop.children[cb.act]?.scrollIntoView({block:'nearest'}); return; }
+  if(open && (e.key==='Enter'||e.key==='Tab') && cb.act>=0 && i.value.trim()){ if(e.key==='Enter') e.preventDefault(); pick(cb.act); if(e.key==='Enter' && i.dataset.draft) return; if(e.key==='Enter') return; }
+  if(e.key==='Escape'){ hidePop(); return; }
+  if(e.key==='Enter'){ e.preventDefault();
+    if(i.dataset.draft){ i.dispatchEvent(new Event('change',{bubbles:true})); commitDraft(i.dataset.draft); return; }
+    i.blur(); setTimeout(()=>{ const el=G.querySelector(`[data-k="${CSS.escape(i.dataset.k)}"]`); if(el) moveV(el,1); },20); return; }
+  if(e.key==='ArrowDown'||e.key==='ArrowUp'){ e.preventDefault(); moveV(i, e.key==='ArrowDown'?1:-1); }
+});
+G.addEventListener('click',e=>{
+  const b=e.target.closest('button[data-act]'); if(!b) return; const id=b.dataset.id;
+  if(b.dataset.act==='late') toggleLate(id);
+  else if(b.dataset.act==='out') makeOut(id);
+  else if(b.dataset.act==='del'){ if(b.classList.contains('arm')) delMv(id); else { b.classList.add('arm'); b.textContent='ยืนยันลบ'; setTimeout(()=>{ if(b.isConnected){ b.classList.remove('arm'); b.textContent='ลบ'; } },3000); } }
+});
+
+/* ---------- navigation / tabs / setup ---------- */
+async function goDate(D){ S.D=D; $('schedDate').value=D; hidePop(); try{ await loadMovements(); }catch(err){ toast('โหลดข้อมูลไม่สำเร็จ: '+err.message); } renderAll(); }
 $('schedDate').addEventListener('change',e=>{ if(e.target.value) goDate(e.target.value); });
 $('prevDay').addEventListener('click',()=>goDate(addDays(S.D,-1)));
 $('nextDay').addEventListener('click',()=>goDate(addDays(S.D,1)));
-function showTab(t){ for(const x of ['work','print']){ $('tab-'+x).setAttribute('aria-selected', x===t); $('view-'+x).hidden = x!==t; } $('view-setup').hidden = t!=='setup'; if(t==='work') scaleProof(); }
+function showTab(t){ for(const x of ['work','print']){ $('tab-'+x).setAttribute('aria-selected', x===t); $('view-'+x).hidden = x!==t; } $('view-setup').hidden = t!=='setup'; hidePop(); }
+$('tab-work').addEventListener('click',()=>showTab('work')); $('tab-print').addEventListener('click',()=>showTab('print'));
 $('modeBadge').addEventListener('click',()=>{ if(!SEED || CFG.API_URL){ $('sUrl').value=CFG.API_URL; $('sKey').value=CFG.TOKEN; showTab('setup'); } });
 $('sBack').addEventListener('click',()=>showTab('work'));
 $('setupForm').addEventListener('submit',async e=>{ e.preventDefault();
@@ -588,7 +654,6 @@ $('setupForm').addEventListener('submit',async e=>{ e.preventDefault();
     msg.textContent=`เชื่อมต่อแล้ว · เรือ ${d.ships.length} ลำ`; location.reload(); }
   catch(err){ Object.assign(CFG,old); msg.textContent='เชื่อมต่อไม่ได้: '+err.message; msg.className='hint bad'; } });
 $('sOff').addEventListener('click',()=>{ try{ localStorage.setItem(CFG_KEY, JSON.stringify({})); }catch(e){} location.reload(); });
-$('tab-work').addEventListener('click',()=>showTab('work')); $('tab-print').addEventListener('click',()=>showTab('print'));
 const framed = (()=>{ try{ return window.self!==window.top; }catch(e){ return true; } })();
 if(framed && !window.__CAN_PRINT__){ $('printBtn').hidden=true; $('printNote').textContent='ตัวอย่าง: ปุ่มปริ้นใช้ได้เมื่อเปิดจากเว็บของคุณ'; }
 $('printBtn').addEventListener('click',()=>window.print());
@@ -599,7 +664,8 @@ $('printBtn').addEventListener('click',()=>window.print());
   if(!CFG.API_URL && !SEED){ $('modeBadge').textContent='ยังไม่เชื่อมต่อ'; $('tab-work').disabled=true; $('tab-print').disabled=true; $('sBack').hidden=true; $('sOff').hidden=true; showTab('setup'); return; }
   try{ await loadInit(); }catch(err){ toast('โหลดฐานข้อมูลไม่สำเร็จ: '+err.message); $('sUrl').value=CFG.API_URL; $('sKey').value=CFG.TOKEN; $('sMsg').textContent='โหลดไม่สำเร็จ: '+err.message; $('sMsg').className='hint bad'; showTab('setup'); return; }
   const D = (!CFG.API_URL && SEED && SEED.startDate) ? SEED.startDate : todayYmd();
-  setType('IN'); try{ await document.fonts.ready; }catch(e){} await goDate(D);
+  try{ await document.fonts.ready; }catch(e){}
+  await goDate(D);
 })();
 </script>
 
