@@ -511,10 +511,13 @@ function sheetHTML(D){
                                : '<td></td>'.repeat(8);
   const rcell = () => `<td class="r">${esc(R[ri++]||'')}</td>`;
   for(const row of main.rows) h += `<tr>${cellsL(row.L)}${cellsR(row.R)}${rcell()}</tr>`;
+  const hasLate = late.some(r=>!r.blank);   // no extra ships after dispatch → the พ section is left off the print
+  if(hasLate){
   h += `<tr><td class="late-h" colspan="17">เรือที่แจ้งเข้า - ออกและเลื่อน เพิ่มเติม หลังจากจัดจ่ายงาน วันที่&nbsp; ${longDate(addDays(D,-1))}</td>${rcell()}</tr>`;
   for(const row of late) h += `<tr>${cellsL(row.L,true)}${cellsR(row.R,true)}${rcell()}</tr>`;
+  }
   h += `<tr><td class="foot" colspan="18"> SHIP'S  ENTERING   ${main.nIn}  VESSEL SAILING &amp; SHIFTING  ${main.nOut}  VESSEL   E.mail  ${EMAIL} </td></tr></table>`;
-  const nRows = 4 + main.rows.length + 1 + late.length + 1;
+  const nRows = 4 + main.rows.length + (hasLate ? 1 + late.length : 0) + 1;
   return {html:h, main, nRows};
 }
 
