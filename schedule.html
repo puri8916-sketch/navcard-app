@@ -142,6 +142,12 @@ table.eg{border-collapse:collapse;table-layout:fixed;width:100%;min-width:1180px
 .eg td.no button:hover{background:#FFCCFF}
 .eg td.no.lt,.eg td.no.lt button{color:#FF0000;font-weight:700}
 .eg td.shipc{position:relative;text-align:left}
+.eg td.gsel,.eg tbody tr:hover td.gsel{background:#D6E6FA}
+.eg td.ganc{box-shadow:inset 0 0 0 2px #1F6FD1}
+#grid.multi input:focus{outline:0;background:transparent;caret-color:transparent}
+#grid.multi input::selection{background:transparent}
+#grid.gdrag,#grid.gdrag input{user-select:none;cursor:cell}
+.eg input{cursor:cell}.eg input:focus{cursor:text}
 .eg .ops{position:absolute;right:4px;top:50%;transform:translateY(-50%);display:none;gap:3px}
 .eg td.shipc:hover .ops,.eg td.shipc:focus-within .ops{display:flex}
 .eg .ops button{border:1px solid #b5bec6;background:#fff;color:#13212E;border-radius:6px;font-size:12px;padding:3px 6px;cursor:pointer;white-space:nowrap;font-family:var(--f-ui)}
@@ -364,6 +370,7 @@ table.lsheet.board{width:100%;font-size:17px}
 <div id="printRoot"></div><div id="measure" aria-hidden="true"></div>
 <div class="combo-pop" id="pop" role="listbox" hidden></div>
 <div class="cmenu" id="cmenu" role="menu" hidden></div>
+<div class="cmenu" id="gmenu" role="menu" hidden></div>
 <div class="toast" id="toast" hidden></div>
 
 <script>
@@ -619,6 +626,7 @@ function renderGrid(){
   h += `<tr class="newrow">${halfHTML('L',null,{draft:'lateL',base:P,isNew:true,late:true})}${halfHTML('R',null,{draft:'lateR',base:P,isNew:true,late:true})}</tr>`;
   h += `<tr class="foot"><td colspan="17"> SHIP'S  ENTERING   ${main.nIn}  VESSEL SAILING &amp; SHIFTING  ${main.nOut}  VESSEL   E.mail  ${EMAIL} </td></tr></tbody>`;
   $('grid').innerHTML = h;
+  indexGrid();
   fitAll();
 
 
@@ -676,14 +684,17 @@ async function ensureShip(m){
 /* จัดตาราง: ย้อนกลับ / ทำซ้ำ (each step = one ship before/after, also written back to the sheet) */
 let GU=[], GR=[];
 const cl=o=>o?JSON.parse(JSON.stringify(o)):null;
-function gRecord(before, after){ GU.push({before:cl(before), after:cl(after)}); if(GU.length>200) GU.shift(); GR=[]; }
+let gBatch=null;   // several changes made at once (paste, delete a range) undo as one step
+function gRecord(before, after){ const op={before:cl(before), after:cl(after)}; if(gBatch){ gBatch.push(op); return; } GU.push([op]); if(GU.length>200) GU.shift(); GR=[]; }
+function gBatchStart(){ gBatch=[]; }
+function gBatchEnd(){ const b=gBatch; gBatch=null; if(b && b.length){ GU.push(b); if(GU.length>200) GU.shift(); GR=[]; } }
 async function gApply(target, current){
   const id=(target||current).id;
   if(target){ const i=S.mv.findIndex(x=>x.id===id); if(i>=0) S.mv[i]=cl(target); else S.mv.push(cl(target)); rerender(); persist(cl(target)); }
   else { S.mv=S.mv.filter(x=>x.id!==id); rerender(); try{ await api('deleteMovement',{},{id}); }catch(err){ toast('ย้อนกลับไม่สำเร็จ: '+err.message); } }
 }
-function gUndo(){ const op=GU.pop(); if(!op) return toast('ย้อนกลับไม่ได้แล้ว'); GR.push(op); gApply(op.before, op.after); }
-function gRedo(){ const op=GR.pop(); if(!op) return toast('ไม่มีให้ทำซ้ำ'); GU.push(op); gApply(op.after, op.before); }
+function gUndo(){ const ops=GU.pop(); if(!ops) return toast('ย้อนกลับไม่ได้แล้ว'); GR.push(ops); [...ops].reverse().forEach(op=>gApply(op.before, op.after)); }
+function gRedo(){ const ops=GR.pop(); if(!ops) return toast('ไม่มีให้ทำซ้ำ'); GU.push(ops); ops.forEach(op=>gApply(op.after, op.before)); }
 function onCellChange(inp){
   if(inp.dataset.draft) return draftFill(inp);
   const [id,f]=inp.dataset.k.split(':'); const m=S.mv.find(x=>x.id===id); if(!m) return;
@@ -791,7 +802,9 @@ window.addEventListener('resize',hidePop);
 
 /* ---------- grid events ---------- */
 const G=$('grid');
-G.addEventListener('focusin',e=>{ const i=e.target.closest('input'); if(i){ i.select(); buildPop(i); } });
+G.addEventListener('focusin',e=>{ const i=e.target.closest('input'); if(!i) return; i.select(); hidePop();   // the list opens when typing
+  if(i.dataset.gr!==undefined && !gDrag && !gQuiet){ const r=+i.dataset.gr, c=+i.dataset.gc, R=grect();
+    const inside=R && r>=R.r0 && r<=R.r1 && c>=R.c0 && c<=R.c1; if(!GSEL || !(inside && (gmulti()||gRight))) { if(!(GSEL && GSEL.r1===r && GSEL.c1===c)) gSet(r,c,false); } } });
 G.addEventListener('input',e=>{ const i=e.target.closest('input'); if(i){ i.classList.remove('bad'); fitInput(i); buildPop(i); } });
 G.addEventListener('change',e=>{ const i=e.target.closest('input'); if(i) onCellChange(i); });
 G.addEventListener('focusout',e=>{
@@ -814,11 +827,151 @@ G.addEventListener('keydown',e=>{
   if(open && (e.key==='ArrowDown'||e.key==='ArrowUp')){ e.preventDefault(); const n=cb.items.length; cb.act=(cb.act+(e.key==='ArrowDown'?1:-1)+n)%n;
     [...pop.children].forEach((c,k)=>c.classList.toggle('act',k===cb.act)); pop.children[cb.act]?.scrollIntoView({block:'nearest'}); return; }
   if(open && (e.key==='Enter'||e.key==='Tab') && cb.act>=0 && i.value.trim()){ if(e.key==='Enter') e.preventDefault(); pick(cb.act); if(e.key==='Enter' && i.dataset.draft) return; if(e.key==='Enter') return; }
-  if(e.key==='Escape'){ hidePop(); return; }
+  if(e.key==='Escape'){ hidePop(); hideGMenu(); if(gmulti()){ GSEL={r1:GSEL.r1,c1:GSEL.c1,r2:GSEL.r1,c2:GSEL.c1}; paintGSel(); } return; }
+  if((k==='Delete'||k==='Backspace') && gmulti()){ e.preventDefault(); gClear(); return; }
   if(e.key==='Enter'){ e.preventDefault();
     if(i.dataset.draft){ i.dispatchEvent(new Event('change',{bubbles:true})); commitDraft(i.dataset.draft); return; }
-    i.blur(); setTimeout(()=>{ const el=G.querySelector(`[data-k="${CSS.escape(i.dataset.k)}"]`); if(el) moveV(el,1); },20); return; }
-  if(e.key==='ArrowDown'||e.key==='ArrowUp'){ e.preventDefault(); moveV(i, e.key==='ArrowDown'?1:-1); }
+    const c=+i.dataset.gc, r=+i.dataset.gr; i.blur(); setTimeout(()=>gFocus(r+1,c),20); return; }
+  if(i.dataset.gr===undefined) return;
+  const r=+i.dataset.gr, c=+i.dataset.gc, whole=i.selectionStart===0 && i.selectionEnd===i.value.length;
+  const go=(dr,dc)=>{ e.preventDefault(); hidePop();
+    if(e.shiftKey && GSEL){ GSEL.r2=Math.max(0,Math.min(+G.dataset.rows-1,GSEL.r2+dr)); GSEL.c2=Math.max(0,Math.min(16,GSEL.c2+dc)); paintGSel(); return; }
+    gFocus(r+dr,c+dc,dr,dc); };
+  if(k==='ArrowDown') go(1,0); else if(k==='ArrowUp') go(-1,0);
+  else if(k==='ArrowLeft' && (e.shiftKey||whole||i.selectionStart===0)) go(0,-1);
+  else if(k==='ArrowRight' && (e.shiftKey||whole||i.selectionEnd===i.value.length)) go(0,1);
+});
+
+/* ---------- จัดตาราง แบบ Excel: เลือกหลายช่อง, ลบ, คัดลอก/วาง, คลิกขวา ---------- */
+let GSEL=null, gDrag=false, gQuiet=false, gRight=false, GCLIP=null;
+function indexGrid(){
+  let gr=0;
+  for(const tr of G.querySelectorAll('tbody tr')){
+    const ins=tr.querySelectorAll('input[data-k]'); if(!ins.length) continue;
+    ins.forEach(i=>{ const c=i.dataset.side==='L'?FL.indexOf(i.dataset.f):9+FR.indexOf(i.dataset.f); i.dataset.gr=gr; i.dataset.gc=c; const td=i.closest('td'); td.dataset.gr=gr; td.dataset.gc=c; });
+    gr++;
+  }
+  G.dataset.rows=gr; if(GSEL){ const n=gr-1; GSEL.r1=Math.min(GSEL.r1,n); GSEL.r2=Math.min(GSEL.r2,n); paintGSel(); }
+}
+const gcell=(r,c)=>G.querySelector(`input[data-gr="${r}"][data-gc="${c}"]`);
+function grect(){ return GSEL ? {r0:Math.min(GSEL.r1,GSEL.r2), r1:Math.max(GSEL.r1,GSEL.r2), c0:Math.min(GSEL.c1,GSEL.c2), c1:Math.max(GSEL.c1,GSEL.c2)} : null; }
+const gmulti=()=>{ const R=grect(); return !!R && (R.r0!==R.r1 || R.c0!==R.c1); };
+function paintGSel(){
+  G.querySelectorAll('td.gsel,td.ganc').forEach(t=>t.classList.remove('gsel','ganc'));
+  const R=grect(); if(!R) return;
+  for(let r=R.r0;r<=R.r1;r++) for(let c=R.c0;c<=R.c1;c++){ const td=G.querySelector(`td[data-gr="${r}"][data-gc="${c}"]`); if(td) td.classList.add('gsel'); }
+  const a=G.querySelector(`td[data-gr="${GSEL.r1}"][data-gc="${GSEL.c1}"]`); if(a) a.classList.add('ganc');
+  G.classList.toggle('multi', gmulti());
+}
+function gSet(r,c,extend){ if(extend && GSEL){ GSEL.r2=r; GSEL.c2=c; } else GSEL={r1:r,c1:c,r2:r,c2:c}; paintGSel(); }
+function gFocus(r,c,dr=0,dc=0){
+  const rows=+G.dataset.rows; r=Math.max(0,Math.min(rows-1,r)); c=Math.max(0,Math.min(16,c));
+  let el=gcell(r,c);
+  for(let k=0;!el && k<17;k++){ c+= dc||1; if(c>16||c<0) break; el=gcell(r,c); }   // skip the NO. column / empty halves
+  if(!el && dr){ for(let k=1;k<rows && !el;k++){ r+=dr; if(r<0||r>=rows) break; el=gcell(r,c); } }
+  if(el){ gSet(+el.dataset.gr,+el.dataset.gc,false); el.focus(); }
+}
+G.addEventListener('mousedown',e=>{
+  gRight = e.button===2; if(e.button!==0) return; hideGMenu();
+  const td=e.target.closest('td[data-gr]'); if(!td || e.target.closest('button')) return;
+  const r=+td.dataset.gr, c=+td.dataset.gc;
+  if(e.shiftKey && GSEL){ e.preventDefault(); gSet(r,c,true); return; }
+  gSet(r,c,false); gDrag=true;
+});
+G.addEventListener('mouseover',e=>{ if(!gDrag) return; const td=e.target.closest('td[data-gr]'); if(!td) return;
+  const r=+td.dataset.gr, c=+td.dataset.gc; if(r!==GSEL.r2 || c!==GSEL.c2){ GSEL.r2=r; GSEL.c2=c; paintGSel();
+    if(gmulti()){ G.classList.add('gdrag'); try{ window.getSelection().removeAllRanges(); }catch(x){} hidePop(); } } });
+document.addEventListener('mouseup',()=>{ if(gDrag){ gDrag=false; G.classList.remove('gdrag'); } });
+G.addEventListener('dragstart',e=>e.preventDefault()); G.addEventListener('drop',e=>e.preventDefault());
+
+function gTargets(){ const R=grect(), out=[]; if(!R) return out; for(let r=R.r0;r<=R.r1;r++) for(let c=R.c0;c<=R.c1;c++){ const i=gcell(r,c); if(i) out.push(i); } return out; }
+const mvOf=i=>i.dataset.draft?null:S.mv.find(x=>x.id===i.dataset.k.split(':')[0]);
+function applyField(m,f,v,side,base){
+  v=String(v??'').trim();
+  if(f==='ship'){ if(!v) return false; m.ship=norm(v); const s=S.shipIdx.get(m.ship); if(s){ if(s.loa) m.loa=s.loa; if(s.agent) m.agent=s.agent; } ensureShip(m); }
+  else if(f==='t'){ const dt=parseTime(v,base); if(!dt) return false; if(m.type==='IN' && (!m.pob || m.pob===m.datetime)) m.pob=dt; m.datetime=dt; }
+  else if(f==='pob'){ if(!v) m.pob=m.datetime; else { const dt=parseTime(v,base); if(!dt) return false; m.pob=dt; } }
+  else if(f==='berth'){ if(side==='L') m.to=norm(v); else { const b=parseBerthR(v); m.type=b.type; m.from=b.from; m.to=b.to; } }
+  else if(f==='agent') m.agent=norm(v);
+  else if(f==='pilot') m.pilot=v.replace(/^P\.?/i,'').trim();
+  else m[f]=v;
+  return true;
+}
+function gClear(){
+  const del=new Map(), edit=new Map();
+  for(const i of gTargets()){
+    if(i.dataset.draft){ i.value=''; continue; }
+    const m=mvOf(i); if(!m) continue; const f=i.dataset.f;
+    if(f==='ship'){ del.set(m.id,m); continue; }
+    if(f==='t') continue;   // a ship always keeps its time
+    if(!edit.has(m.id)) edit.set(m.id,{m, before:cl(m)});
+    applyField(m,f,'',i.dataset.side,i.dataset.base);
+  }
+  gBatchStart();
+  for(const {m,before} of edit.values()) if(!del.has(m.id)){ gRecord(before,m); persist(m); }
+  for(const m of del.values()){ gRecord(m,null); S.mv=S.mv.filter(x=>x.id!==m.id); api('deleteMovement',{},{id:m.id}).catch(err=>toast('ลบไม่สำเร็จ: '+err.message)); }
+  gBatchEnd(); rerender();
+  if(del.size) toast(`ลบเรือ ${del.size} ลำ · กด ↶ ย้อนกลับ ถ้าลบผิด`);
+}
+function gTSV(){ const R=grect(), out=[]; for(let r=R.r0;r<=R.r1;r++){ const line=[]; for(let c=R.c0;c<=R.c1;c++){ const i=gcell(r,c); line.push(i?i.value:''); } out.push(line); } return {cells:out, text:out.map(x=>x.join('\t')).join('\n')}; }
+function gPaste(cells){
+  const R=grect(); if(!R) return; const single=cells.length===1 && cells[0].length===1;
+  const h=single?R.r1-R.r0+1:cells.length, w=single?R.c1-R.c0+1:Math.max(...cells.map(x=>x.length));
+  const edit=new Map(), drafts=new Set();
+  for(let a=0;a<h;a++) for(let b=0;b<w;b++){
+    const i=gcell(R.r0+a,R.c0+b); if(!i) continue; const v=single?cells[0][0]:(cells[a]?.[b]??'');
+    if(i.dataset.draft){ i.value=v; drafts.add(i.dataset.draft); continue; }
+    const m=mvOf(i); if(!m) continue; if(!edit.has(m.id)) edit.set(m.id,{m,before:cl(m)});
+    applyField(m,i.dataset.f,v,i.dataset.side,i.dataset.base);
+  }
+  gBatchStart();
+  for(const {m,before} of edit.values()) if(JSON.stringify(before)!==JSON.stringify(m)){ gRecord(before,m); persist(m); }
+  for(const p of drafts) commitDraft(p,true);
+  gBatchEnd(); rerender();
+}
+const inGrid=e=>e.target && e.target.closest && e.target.closest('#grid') && e.target.dataset && e.target.dataset.gr!==undefined;
+document.addEventListener('copy',e=>{ if(!inGrid(e)||!GSEL) return; const i=e.target;
+  if(!gmulti() && i.selectionStart!==i.selectionEnd && !(i.selectionStart===0 && i.selectionEnd===i.value.length)) return;
+  const t=gTSV(); GCLIP=t; e.clipboardData.setData('text/plain',t.text); e.preventDefault(); });
+document.addEventListener('cut',e=>{ if(!inGrid(e)||!GSEL) return; const i=e.target;
+  if(!gmulti() && i.selectionStart!==i.selectionEnd && !(i.selectionStart===0 && i.selectionEnd===i.value.length)) return;
+  const t=gTSV(); GCLIP=t; e.clipboardData.setData('text/plain',t.text); e.preventDefault(); gClear(); });
+document.addEventListener('paste',e=>{ if(!inGrid(e)||!GSEL) return; const t=(e.clipboardData.getData('text/plain')||'').replace(/\r/g,'').replace(/\n$/,'');
+  if(!gmulti() && !/[\t\n]/.test(t)) return;   // one value into one cell: normal paste
+  e.preventDefault(); gPaste(t.split('\n').map(l=>l.split('\t'))); });
+
+// Ctrl+Z / Ctrl+Y also when no cell has the cursor (e.g. right after deleting a ship)
+document.addEventListener('keydown',e=>{
+  const mod=e.ctrlKey||e.metaKey, k=(e.key||'').toLowerCase(); if(!mod || (k!=='z' && k!=='y')) return;
+  const t=e.target; if(t && (t.closest?.('#grid') || t.closest?.('#board') || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable)) return;
+  const redoKey = k==='y' || e.shiftKey;
+  if(!$('view-work').hidden){ e.preventDefault(); redoKey?gRedo():gUndo(); }
+  else if(!$('view-line').hidden){ e.preventDefault(); redoKey?redo():undo(); }
+});
+/* right-click menu for จัดตาราง */
+const GM=$('gmenu');
+GM.innerHTML=[['cut','ตัด','Ctrl+X'],['copy','คัดลอก','Ctrl+C'],['paste','วาง','Ctrl+V'],['clear','ลบข้อมูล','Delete'],['-'],['late','สลับ พ (แจ้งเพิ่มหลังจัดจ่าย)',''],['out','สร้างเที่ยวออก',''],['delship','ลบเรือทั้งลำ','']]
+  .map(x=>x[0]==='-'?'<hr>':`<button type="button" data-gm="${x[0]}"><span>${x[1]}</span><kbd>${x[2]}</kbd></button>`).join('');
+function hideGMenu(){ GM.hidden=true; }
+G.addEventListener('contextmenu',e=>{
+  const td=e.target.closest('td[data-gr]'); if(!td) return; e.preventDefault(); hidePop();
+  const r=+td.dataset.gr, c=+td.dataset.gc, R=grect();
+  if(!R || r<R.r0 || r>R.r1 || c<R.c0 || c>R.c1){ gSet(r,c,false); gQuiet=true; gcell(r,c)?.focus({preventScroll:true}); gQuiet=false; }
+  GM.hidden=false; const W=window.innerWidth, H=window.innerHeight;
+  GM.style.left=Math.min(e.clientX, W-GM.offsetWidth-8)+'px'; GM.style.top=Math.max(8,Math.min(e.clientY, H-GM.offsetHeight-8))+'px';
+});
+GM.addEventListener('mousedown',e=>e.preventDefault());
+document.addEventListener('mousedown',e=>{ if(!GM.hidden && !e.target.closest('#gmenu')) hideGMenu(); });
+document.addEventListener('scroll',()=>hideGMenu(),true);
+GM.addEventListener('click',async e=>{
+  const b=e.target.closest('[data-gm]'); if(!b) return; hideGMenu(); const a=b.dataset.gm;
+  const mvs=[...new Map(gTargets().map(mvOf).filter(Boolean).map(m=>[m.id,m])).values()];
+  if(a==='copy'||a==='cut'){ const t=gTSV(); GCLIP=t; try{ await navigator.clipboard.writeText(t.text); }catch(x){} if(a==='cut') gClear(); else toast('คัดลอกแล้ว'); }
+  else if(a==='paste'){ try{ const t=(await navigator.clipboard.readText()).replace(/\r/g,'').replace(/\n$/,''); gPaste(t.split('\n').map(l=>l.split('\t'))); }catch(x){ if(GCLIP) gPaste(GCLIP.cells); else toast('ใช้ Ctrl+V เพื่อวาง'); } }
+  else if(a==='clear') gClear();
+  else if(a==='late'){ gBatchStart(); mvs.forEach(m=>{ const before=cl(m); m.late=+m.late?0:1; gRecord(before,m); persist(m); }); gBatchEnd(); rerender(); }
+  else if(a==='out'){ const m=mvs.find(x=>x.type==='IN'); if(m) makeOut(m.id); else toast('เลือกเรือขาเข้าก่อน'); }
+  else if(a==='delship'){ if(!mvs.length) return; gBatchStart(); mvs.forEach(m=>{ gRecord(m,null); S.mv=S.mv.filter(x=>x.id!==m.id); api('deleteMovement',{},{id:m.id}).catch(err=>toast('ลบไม่สำเร็จ: '+err.message)); }); gBatchEnd(); rerender(); toast(`ลบเรือ ${mvs.length} ลำ · กด ↶ ย้อนกลับ ถ้าลบผิด`); }
 });
 G.addEventListener('click',e=>{
   const b=e.target.closest('button[data-act]'); if(!b) return; const id=b.dataset.id;
