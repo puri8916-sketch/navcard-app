@@ -56,15 +56,15 @@ http://localhost:8501) ใช้งานได้เลย:
 
 ### ติดตั้งครั้งเดียว
 1. อัปโหลด `ShipSchedule_DB.xlsx` (ไฟล์ฐานข้อมูลตั้งต้น — ไม่เก็บใน GitHub เพราะมีเบอร์โทร) ขึ้น Google Drive › เปิดด้วย Google ชีต › ไฟล์ › บันทึกเป็น Google ชีต
-2. ในชีตนั้น ส่วนขยาย › Apps Script › วางโค้ดจาก `apps_script/Schedule.gs`
-3. ตั้งค่าโปรเจกต์ (ไอคอนเฟือง): Time zone = **Asia/Bangkok** · Script properties › เพิ่ม `TOKEN` = รหัสที่ตั้งเอง
+2. ในชีตนั้น ส่วนขยาย › Apps Script › ลบโค้ดเดิมทั้งหมด แล้ววางโค้ดจาก `apps_script/Schedule.gs`
+3. แก้บรรทัด `const KEYS = ['เปลี่ยนเป็นรหัสของคุณ'];` เป็นรหัสที่ตั้งเอง เช่น `['schedule-2569']` แล้วกดบันทึก
 4. Deploy › New deployment › Web app · Execute as: **Me** · Who has access: **Anyone** › คัดลอก URL (/exec)
 5. เปิดแอป › 🗓 จัดตารางเรือ › วาง URL + รหัส › ทดสอบและเชื่อมต่อ (ทำครั้งเดียวต่อเครื่อง)
    หรือใส่ใน Streamlit **Settings › Secrets** ให้ทุกเครื่องเชื่อมเอง:
 ```
 [schedule]
 url = "https://script.google.com/macros/s/……/exec"
-key = "รหัสเดียวกับ TOKEN"
+key = "รหัสเดียวกับใน KEYS"
 ```
 
 ## เมนู 📑 ปิดการ์ดประจำวัน (รายงานการปิดการ์ด + รวมการ์ด)

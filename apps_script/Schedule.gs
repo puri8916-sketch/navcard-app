@@ -2,10 +2,11 @@
  * Ship Schedule API (เมนู 🗓 จัดตารางเรือ) — Apps Script ผูกกับ Google Sheet "ShipSchedule_DB"
  * แยกจาก apps_script/Code.gs (ชีตบันทึกเรือ) — ข้อมูลเรือ/ท่า/ผก./เบอร์ แก้ในแท็บของชีตได้ตรงๆ
  * แท็บที่ใช้: Ships, Berths, Agents, Pilots, Duty, FixedContacts, Settings, Movements
- * ตั้งค่า: Project Settings > Time zone = Asia/Bangkok
- *          Project Settings > Script properties > TOKEN = รหัสเดียวกับ CFG.TOKEN ในหน้าเว็บ
+ * ตั้งค่า: แก้บรรทัด KEYS ด้านล่างเป็นรหัสที่ตั้งเอง (ใช้รหัสนี้ตอนเชื่อมต่อในแอป)
  * Deploy:  Deploy > New deployment > Web app > Execute as: Me, Who has access: Anyone
  */
+const KEYS = ['เปลี่ยนเป็นรหัสของคุณ'];
+
 const TZ = 'Asia/Bangkok';
 
 function doGet(e) {
@@ -43,9 +44,9 @@ function respond_(fn) {
   return ContentService.createTextOutput(JSON.stringify(out)).setMimeType(ContentService.MimeType.JSON);
 }
 function auth_(t) {
-  const tok = PropertiesService.getScriptProperties().getProperty('TOKEN');
-  if (!tok) throw new Error('ยังไม่ได้ตั้ง TOKEN ใน Script properties');
-  if (t !== tok) throw new Error('รหัส TOKEN ไม่ถูกต้อง');
+  t = String(t || '');
+  if (KEYS.indexOf('เปลี่ยนเป็นรหัสของคุณ') >= 0 && KEYS.length === 1) throw new Error('ยังไม่ได้แก้รหัสในบรรทัด KEYS ของสคริปต์');
+  if (!t || t === 'เปลี่ยนเป็นรหัสของคุณ' || KEYS.indexOf(t) < 0) throw new Error('รหัสไม่ถูกต้อง');
 }
 function sh_(name) {
   const s = SpreadsheetApp.getActive().getSheetByName(name);
