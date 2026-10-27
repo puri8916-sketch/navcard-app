@@ -107,41 +107,39 @@ table.st{border-collapse:collapse;table-layout:fixed;width:100%;font-size:17px}
 
 /* ---------- editable grid (same columns as the Excel tab) ---------- */
 .gridwrap{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:var(--r)}
-table.eg{border-collapse:collapse;table-layout:fixed;width:100%;min-width:1180px;font-size:16px}
-.eg th,.eg td{border:1px solid var(--grid);padding:0;height:40px;text-align:center;vertical-align:middle}
-.eg thead th{position:sticky;z-index:2;background:var(--head);font-weight:700;font-size:14px;letter-spacing:.02em}
-.eg thead tr.band th{top:0;height:34px;font-size:15px}
-.eg thead tr.cols th{top:34px;height:32px}
-.eg th.b-in{background:var(--in);color:var(--in-ink)}
-.eg th.b-out{background:var(--out);color:var(--out-ink)}
-.eg td.mid{border-left:3px solid var(--ink)}
-.eg th.mid{border-left:3px solid var(--ink)}
-.eg input{width:100%;height:100%;min-height:39px;border:0;background:transparent;text-align:center;padding:0 4px;font:500 15px var(--f-num);font-variant-numeric:tabular-nums;color:var(--ink);border-radius:0}
-.eg input.ship,.eg input.agent{font-family:var(--f-ui)}
-.eg input.ship{text-align:left;font-weight:600;font-size:16px}
+/* the work grid is drawn as the printed sheet: white paper, Book Antiqua, the sheet's own fills */
+.sheetwrap{overflow-x:auto;background:#fff;border:1px solid #9aa4ad;box-shadow:0 1px 3px rgb(0 0 0 / .12)}
+table.eg{border-collapse:collapse;table-layout:fixed;width:100%;min-width:1180px;font-family:var(--f-sheet);font-size:16px;color:#000;background:#fff}
+.eg th,.eg td{border:1px solid #8a8a8a;padding:0;height:34px;text-align:center;vertical-align:middle;color:#000}
+.eg thead th{background:#EAEAEA;font-weight:700;font-size:14px}
+.eg thead tr.ttl th{height:46px;background:#fff}
+.eg thead tr.ttl th.date{background:#FFFF99;font-size:24px}
+.eg thead tr.ttl th.title{font-size:19px;letter-spacing:.06em;word-spacing:.3em}
+.eg thead tr.band th{height:28px;font-size:14px}
+.eg thead tr.cols th{height:28px;font-size:13px}
+.eg th.b-in{background:#CCFFFF}
+.eg th.b-out{background:#FFCC99}
+.eg input{width:100%;height:100%;min-height:33px;border:0;background:transparent;text-align:center;padding:0 4px;font:400 16px var(--f-sheet);color:#000;border-radius:0}
+.eg input.ship{text-align:left}
 .eg td.shipc:focus-within input.ship{padding-right:100px}
-.eg input:focus{outline:2px solid var(--focus);outline-offset:-2px;background:var(--accent-soft)}
-.eg input::placeholder{color:var(--muted);opacity:.55;font-weight:400}
-.eg input.pil{color:var(--pilot);font-weight:600}
-.eg td.need{background:var(--warn)}
-.eg input.bad{background:color-mix(in srgb,var(--pilot) 14%,transparent);outline:2px solid var(--pilot);outline-offset:-2px}
-.eg tbody tr:hover td{background:color-mix(in srgb,var(--accent) 5%,transparent)}
-.eg tbody tr:hover td.need{background:var(--warn)}
-.eg td.no{font:600 15px var(--f-num);color:var(--muted)}
-.eg td.no button{width:100%;height:100%;min-height:39px;border:0;background:transparent;font:inherit;color:inherit;cursor:pointer}
-.eg td.no button:hover{background:var(--late);color:var(--late-ink)}
-.eg td.no.lt,.eg td.no.lt button{color:var(--late-ink);background:var(--late);font-weight:700}
+.eg input:focus{outline:2px solid #3B8FD6;outline-offset:-2px;background:#E8F2FB}
+.eg input.pil{color:#FF0000;font-weight:700}
+.eg td.need{background:#FFF7D6}
+.eg input.bad{background:#FFE1E1;outline:2px solid #D0021B;outline-offset:-2px}
+.eg tbody tr:hover td{background:#F4F8FB}
+.eg tbody tr:hover td.need{background:#FFF7D6}
+.eg td.no{font-size:15px}
+.eg td.no button{width:100%;height:100%;min-height:33px;border:0;background:transparent;font:inherit;color:inherit;cursor:pointer}
+.eg td.no button:hover{background:#FFCCFF}
+.eg td.no.lt,.eg td.no.lt button{color:#FF0000;font-weight:700}
 .eg td.shipc{position:relative;text-align:left}
 .eg .ops{position:absolute;right:4px;top:50%;transform:translateY(-50%);display:none;gap:3px}
 .eg td.shipc:hover .ops,.eg td.shipc:focus-within .ops{display:flex}
-.eg .ops button{border:1px solid var(--line);background:var(--surface);border-radius:6px;font-size:12px;padding:3px 6px;cursor:pointer;white-space:nowrap;font-family:var(--f-ui)}
-.eg .ops button.arm{background:var(--pilot);color:#fff;border-color:var(--pilot)}
-.eg tr.sep td{height:12px;background:var(--sep)}
-.eg tr.newrow td{background:var(--newrow)}
-.eg tr.newrow input.ship::placeholder{opacity:.8;color:var(--accent);font-weight:500}
-.eg tr.lateh td{background:var(--late);color:var(--late-ink);font-weight:700;font-size:15px;height:36px}
-.eg tr.foot td{background:var(--head);font-weight:700;font-size:15px;height:36px}
-.eg td.dis{background:var(--sep)}
+.eg .ops button{border:1px solid #b5bec6;background:#fff;color:#13212E;border-radius:6px;font-size:12px;padding:3px 6px;cursor:pointer;white-space:nowrap;font-family:var(--f-ui)}
+.eg .ops button.arm{background:#D0021B;color:#fff;border-color:#D0021B}
+.eg tr.sep td{height:34px}
+.eg tr.lateh td{background:#FFCCFF;font-weight:700;font-size:16px;height:32px}
+.eg tr.foot td{background:#FFFF99;font-weight:700;font-size:15px;height:32px;white-space:pre}
 .eg .kind{font-size:11px;font-weight:700;border-radius:4px;padding:1px 4px;margin-left:4px;font-family:var(--f-ui)}
 
 /* combo popup (type to filter) */
@@ -203,8 +201,7 @@ table.sheet{border-collapse:collapse;table-layout:fixed;width:100%;font-family:v
 
 <main>
   <section id="view-work">
-    <div class="bar" id="stats"></div>
-    <div class="gridwrap"><table class="eg" id="grid"></table></div>
+    <div class="sheetwrap"><table class="eg" id="grid"></table></div>
   </section>
 
   <section id="view-setup" hidden>
@@ -471,8 +468,8 @@ function renderGrid(){
   const late = S.mv.filter(m=>inWin(m,P) && +m.late);
   const lateRows = buildLate(late).filter(r=>!r.blank);
   const gw=GW.reduce((a,b)=>a+b,0); let h = `<colgroup>${GW.map(w=>`<col style="width:${(w/gw*100).toFixed(3)}%">`).join('')}</colgroup>`;
-  h += `<thead><tr class="band"><th class="b-in" colspan="9">ENTERING</th><th class="b-out mid" colspan="8">SAILING &amp; SHIFTING</th></tr>`;
-  h += `<tr class="cols">${HL.map(t=>`<th>${t}</th>`).join('')}${HR.map((t,i)=>`<th class="${i===0?'mid':''}">${t}</th>`).join('')}</tr></thead><tbody>`;
+  h += `<thead><tr class="ttl"><th class="date" colspan="2">${longDate(D)}</th><th class="title" colspan="15">SHIP'S SCHEDULE FOR SONGKHLA PILOT</th></tr><tr class="band"><th class="b-in" colspan="9">ENTERING</th><th class="b-out" colspan="8">SAILING &amp; SHIFTING</th></tr>`;
+  h += `<tr class="cols">${HL.map(t=>`<th>${t}</th>`).join('')}${HR.map((t,i)=>`<th>${t}</th>`).join('')}</tr></thead><tbody>`;
   const body = main.rows.slice(1,-1);
   body.forEach((r,i)=>{
     if(r.blank){ h+=`<tr class="sep"><td colspan="17" title="เว้นแถว (ห่าง ≥ ${S.settings.gap} ชม.)"></td></tr>`; return; }
@@ -488,16 +485,15 @@ function renderGrid(){
          `${r.R? halfHTML('R',r.R,{base:P}) : halfHTML('R',null,{draft:'p'+i+'R',base:P,def:dt,late:true})}</tr>`;
   });
   h += `<tr class="newrow">${halfHTML('L',null,{draft:'lateL',base:P,isNew:true,late:true})}${halfHTML('R',null,{draft:'lateR',base:P,isNew:true,late:true})}</tr>`;
-  h += `<tr class="foot"><td colspan="17">SHIP'S ENTERING ${main.nIn} VESSEL · SAILING &amp; SHIFTING ${main.nOut} VESSEL</td></tr></tbody>`;
+  h += `<tr class="foot"><td colspan="17"> SHIP'S  ENTERING   ${main.nIn}  VESSEL SAILING &amp; SHIFTING  ${main.nOut}  VESSEL   E.mail  ${EMAIL} </td></tr></tbody>`;
   $('grid').innerHTML = h;
+  $('grid').querySelectorAll('input').forEach(fitInput);
 
-  const inWinD = S.mv.filter(m=>inWin(m,D));
-  const nIn=main.nIn, nOut=main.nOut, noPilot=S.mv.filter(m=>(inWin(m,D)&&!+m.late)||(inWin(m,P)&&+m.late)).filter(m=>!m.pilot).length;
-  const lateHere = inWinD.filter(m=>+m.late).length;
-  $('stats').innerHTML = `<span class="chip c-in">เข้า ${nIn}</span><span class="chip c-out">ออก/ย้าย ${nOut}</span>`+
-    (nIn+nOut+late.length ? (noPilot? `<span class="chip c-warn">ยังไม่มีผก. ${noPilot}</span>` : `<span class="chip c-ok">ใส่ผก.ครบ</span>`) : '')+
-    (lateHere? `<span class="chip c-late" title="อยู่ท้ายตารางวันที่ ${shortDate(addDays(D,1))}">พ รอบนี้ ${lateHere} → ท้ายตาราง ${shortDate(addDays(D,1))}</span>`:'');
+
 }
+// shrink long text to fit its cell, like Excel's shrink-to-fit
+function fitInput(i){ i.style.fontSize=''; if(!i.value || i.offsetParent===null) return; const base=parseFloat(getComputedStyle(i).fontSize);
+  if(i.scrollWidth>i.clientWidth+1){ const k=(i.clientWidth-2)/i.scrollWidth; i.style.fontSize=Math.max(10,base*k).toFixed(1)+'px'; } }
 function renderAll(){
   $('windowLabel').innerHTML = `รอบ <span class="num">${shortDate(S.D)} ${S.settings.cutoff}</span> – <span class="num">${shortDate(addDays(S.D,1))} ${addTimeLabel()}</span>`;
   renderGrid(); renderPrint();
@@ -641,7 +637,7 @@ window.addEventListener('resize',hidePop);
 /* ---------- grid events ---------- */
 const G=$('grid');
 G.addEventListener('focusin',e=>{ const i=e.target.closest('input'); if(i){ i.select(); buildPop(i); } });
-G.addEventListener('input',e=>{ const i=e.target.closest('input'); if(i){ i.classList.remove('bad'); buildPop(i); } });
+G.addEventListener('input',e=>{ const i=e.target.closest('input'); if(i){ i.classList.remove('bad'); fitInput(i); buildPop(i); } });
 G.addEventListener('change',e=>{ const i=e.target.closest('input'); if(i) onCellChange(i); });
 G.addEventListener('focusout',e=>{
   const i=e.target.closest('input'); if(!i) return;
@@ -679,7 +675,7 @@ async function goDate(D){ S.D=D; $('schedDate').value=D; hidePop(); try{ await l
 $('schedDate').addEventListener('change',e=>{ if(e.target.value) goDate(e.target.value); });
 $('prevDay').addEventListener('click',()=>goDate(addDays(S.D,-1)));
 $('nextDay').addEventListener('click',()=>goDate(addDays(S.D,1)));
-function showTab(t){ for(const x of ['work','print','ships']){ $('tab-'+x).setAttribute('aria-selected', x===t); $('view-'+x).hidden = x!==t; } $('view-setup').hidden = t!=='setup'; hidePop(); }
+function showTab(t){ for(const x of ['work','print','ships']){ $('tab-'+x).setAttribute('aria-selected', x===t); $('view-'+x).hidden = x!==t; } if(t==='work') $('grid').querySelectorAll('input').forEach(fitInput); $('view-setup').hidden = t!=='setup'; hidePop(); }
 $('tab-work').addEventListener('click',()=>showTab('work')); $('tab-print').addEventListener('click',()=>showTab('print'));
 $('tab-ships').addEventListener('click',()=>{ renderShips(); showTab('ships'); });
 
