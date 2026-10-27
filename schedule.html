@@ -198,7 +198,7 @@ table.lsheet{border-collapse:collapse;table-layout:fixed;width:1600px;font-famil
 .btn.tb{padding:7px 12px;font-size:15px}
 .btn.tb.red{color:#D0021B}
 #linePull.arm{background:var(--pilot);color:#fff;border-color:var(--pilot)}
-.bgap{height:14px;background:#fff}
+.lsheet+.lsheet{margin-top:-1px}
 #board.linepaper{width:100%;min-width:1180px}
 table.lsheet.board{width:100%;font-size:17px}
 .lsheet.board td{padding:0;height:34px}
@@ -954,6 +954,10 @@ const LHEAD=['NO.',"SHIP'S&nbsp; NAME",'LOA','Drf','ETA','POB','BERTH','Pilot','
 const LF={1:['ship','L'],6:['berth','L'],7:['pilot','L'],8:['agent','L'],10:['ship','R'],14:['berth','R'],15:['pilot','R'],16:['agent','R']};
 const PILOT_COLS=[7,15];
 const blankRow=()=>({c:Array(17).fill(''), r:Array(17).fill(false)});
+const rowEmpty=row=>row.c.every(v=>!String(v).trim());
+// every block ends with exactly one empty row after its last ship
+function oneTrailing(rows){ const out=rows.slice(); while(out.length && rowEmpty(out[out.length-1])) out.pop(); out.push(blankRow()); return out; }
+function ensureTrailing(b){ if(!b.rows.length || !rowEmpty(b.rows[b.rows.length-1])) b.rows.push(blankRow()); }
 let BD=null, bSaveT=null;
 let SEL=null;            // {b, r1,c1 (anchor), r2,c2 (active end)}
 let UNDO=[], REDO=[], typingKey=null, CLIP=null;
@@ -978,7 +982,7 @@ function blockFromSchedule(D, items, snap){
     if(pr.R){ const m=pr.R; put(m,9,[+m.late?'พ':(nos.get(m.id)||''), m.ship, m.loa, m.drf, fmtT(m.datetime), berthText(m), m.pilot, m.agent]); }
     return row;
   });
-  return {date:D, label:longDate(D), rows};
+  return {date:D, label:longDate(D), rows:oneTrailing(rows)};
 }
 function boardFromSchedule(D){
   const P=addDays(D,-1);
@@ -1032,7 +1036,8 @@ function boardTable(b,bi){
 function renderBoard(){
   if(!BD) return;
   const keep=SEL;
-  $('board').innerHTML = BD.blocks.map((b,bi)=>boardTable(b,bi)).join('<div class="bgap"></div>');
+  BD.blocks.forEach(ensureTrailing);
+  $('board').innerHTML = BD.blocks.map((b,bi)=>boardTable(b,bi)).join('');
   $('boardInfo').textContent = `บันทึก ${new Date(BD.updated).toTimeString().slice(0,5)}`;
   fitBoard();
   if(keep && BD.blocks[keep.b]){ const n=BD.blocks[keep.b].rows.length-1;
@@ -1228,9 +1233,9 @@ function boardStaticHTML(){
     h+=`<tr><td class="date" colspan="2">${esc(b.label)}</td><td class="title" colspan="15">SHIP'S&nbsp;&nbsp; SCHEDULE&nbsp; FOR&nbsp; SONGKHLA&nbsp;&nbsp; PILOT</td></tr>`;
     h+=`<tr><td class="h-in" colspan="9">ENTERING</td><td class="h-out" colspan="8">SAILING &amp; SHIFTING</td></tr>`;
     h+=`<tr>${LHEAD.map(t=>`<td class="hd">${t}</td>`).join('')}</tr>`;
-    for(const row of b.rows) h+=`<tr>${row.c.map((v,c)=>`<td class="${[c===1||c===10?'l':'', PILOT_COLS.includes(c)?'pc':'', row.r[c]?'red':''].filter(Boolean).join(' ')}">${esc(v)}</td>`).join('')}</tr>`;
+    for(const row of oneTrailing(b.rows)) h+=`<tr>${row.c.map((v,c)=>`<td class="${[c===1||c===10?'l':'', PILOT_COLS.includes(c)?'pc':'', row.r[c]?'red':''].filter(Boolean).join(' ')}">${esc(v)}</td>`).join('')}</tr>`;
     return h+'</table>';
-  }).join('<div style="height:14px;background:#fff"></div>');
+  }).join('');
 }
 function shrinkLine(html){
   const box=$('measure'); box.style.width='1600px'; box.innerHTML=html;
