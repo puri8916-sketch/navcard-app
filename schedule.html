@@ -689,7 +689,7 @@ function halfHTML(side, m, o){
       if(f==='no'){ const lt=+m.late; h+=`<td class="no${lt?' lt':''}${mid}"><button type="button" data-act="late" data-id="${m.id}" title="${lt?'กดเพื่อยกเลิก พ':'กดเพื่อทำเป็น พ (แจ้งเพิ่มหลังจัดจ่าย)'}">${lt?'พ':(o.no??'')}</button></td>`; continue; }
       const need = f==='pilot' && !m.pilot ? ' need' : '';
       const cell = inputHTML(m.id,f,side,fieldVal(m,f,side),`data-base="${o.base}"`);
-      if(f==='ship') h+=`<td class="shipc">${cell}<span class="ops"><button type="button" data-act="del" data-id="${m.id}">ลบ</button></span></td>`;
+      if(f==='ship') h+=`<td class="shipc">${cell}</td>`;
       else h+=`<td class="${need.trim()}">${cell}</td>`;
     }
   } else if(o.draft){
@@ -810,7 +810,7 @@ function onCellChange(inp){
   const before=cl(m);
   const v=inp.value.trim(), side=inp.dataset.side, base=inp.dataset.base;
   inp.classList.remove('bad');
-  if(f==='ship'){ if(!v){ inp.value=m.ship; return toast('ลบเรือ ใช้ปุ่ม ลบ ในช่องชื่อเรือ'); }
+  if(f==='ship'){ if(!v){ return delMv(m.id); }   // ลบชื่อเรือ = ลบเรือลำนั้น (Ctrl+Z คืนได้)
     m.ship=norm(v); const s=S.shipIdx.get(m.ship); if(s){ if(s.loa) m.loa=s.loa; if(s.agent) m.agent=s.agent; } ensureShip(m); }
   else if(f==='t'){ const dt=parseTime(v,base); if(!dt){ inp.classList.add('bad'); return toast('อ่านเวลาไม่ได้ พิมพ์ 0630 หรือ 27-0630'); }
     if(m.type==='IN' && (!m.pob || m.pob===m.datetime)) m.pob=dt; m.datetime=dt;
@@ -857,7 +857,7 @@ async function commitDraft(p, fromBlur){
 async function delMv(id){
   const m=S.mv.find(x=>x.id===id); if(!m) return; gRecord(m,null);
   S.mv=S.mv.filter(x=>x.id!==id); rerender();
-  try{ await api('deleteMovement',{},{id}); toast(`ลบ ${m.ship} ${fmtT(m.datetime)} แล้ว`); }catch(err){ toast('ลบไม่สำเร็จ: '+err.message); }
+  try{ await api('deleteMovement',{},{id}); toast(`ลบ ${m.ship} ${fmtT(m.datetime)} แล้ว · Ctrl+Z คืนได้`); }catch(err){ toast('ลบไม่สำเร็จ: '+err.message); }
 }
 function toggleLate(id){
   const m=S.mv.find(x=>x.id===id); if(!m) return; const before=cl(m); m.late=+m.late?0:1; gRecord(before,m); persist(m); rerender();
