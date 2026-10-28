@@ -296,34 +296,19 @@ def _fill_sheet(ws, tpl, tab, sig_png, rank, name, dx=0, dy=0):
     _paginate(ws, spans, L)
 
 
+PRINT_SCALE = 87
+
+
 def _paginate(ws, spans, last_row):
-    """Print setup: never shrink the page height — all columns fit the page width (same size as a one-page day),
-    longer days run on to page 2, 3 … with the column header repeated; breaks fall between cards and the
-    signature block stays with the last card."""
-    ps = ws.page_setup
-    ws.sheet_properties.pageSetUpPr.fitToPage = True
-    ps.fitToWidth, ps.fitToHeight = 1, 0
+    """Print setup: a fixed size instead of "fit to one page" — nothing is shrunk to squeeze a long day in,
+    it simply runs on to page 2 (no repeated header, no forced breaks); centred across the page.
+    Fixed at 87 % (the office template's own value): at 100 % the last columns (Pilot No, ผู้ปิดงาน) would
+    print on a separate page because the columns are wider than A4 landscape."""
+    ws.sheet_properties.pageSetUpPr.fitToPage = False
+    ws.page_setup.scale = PRINT_SCALE
     ws.print_options.horizontalCentered = True
-    ws.print_title_rows = "3:3"
+    ws.print_title_rows = None
     ws.row_breaks = RowBreak()
-    # page size in points (A4), landscape unless the template says otherwise
-    w_pt, h_pt = (842, 595) if (ps.orientation or "landscape") == "landscape" else (595, 842)
-    m = ws.page_margins
-    avail_w = w_pt - 72 * ((m.left or 0) + (m.right or 0))
-    avail_h = h_pt - 72 * ((m.top or 0) + (m.bottom or 0))
-    cols_pt = sum((ws.column_dimensions[get_column_letter(c)].width or 8.43) * 7 * 0.75 for c in range(1, 15))
-    scale = min(1.0, int(avail_w / cols_pt * 100) / 100)
-    cap = avail_h / scale * 0.97                      # row height (pt) that fits on one printed page
-    hgt = lambda r: ws.row_dimensions[r].height or 15
-    head = hgt(3)
-    used = sum(hgt(r) for r in range(1, 4))
-    sig = sum(hgt(r) for r in range(last_row + 1, last_row + 1 + _SIG_N))
-    for i, (a, b) in enumerate(spans):
-        h = sum(hgt(r) for r in range(a, b + 1)) + (sig if i == len(spans) - 1 else 0)
-        if used + h > cap and used > head + 1:
-            ws.row_breaks.append(Break(id=a - 1))
-            used = head
-        used += h
 
 
 def build_month(tabs, sig_png=None, signer=None, pngs=None):
