@@ -255,7 +255,7 @@ table.lsheet.board{width:100%;font-size:17px}
 #measure{position:absolute;left:-99999px;top:0;width:1091px;visibility:hidden}
 #pdfStage{position:fixed;left:-99999px;top:0;width:1091px;background:#fff}
 #pdfStage table.sheet{border-collapse:separate;border-spacing:0;border-top:.4px solid #555;border-left:.4px solid #555}
-#pdfStage .sheet td{border:0;border-right:.4px solid #555;border-bottom:.4px solid #555}
+#pdfStage .sheet td{height:var(--rh,24px);border:0;border-right:.4px solid #555;border-bottom:.4px solid #555}
 @page{size:A4 landscape;margin:4.3mm}
 @media print{
   *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
@@ -1134,7 +1134,10 @@ function loadScript(src){ return new Promise((ok,no)=>{ const s=document.createE
 async function buildPdf(){
   if(!window.html2canvas) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
   if(!window.jspdf) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
-  if(printDirty) renderPrint(); autoDispatch(); const stage=document.createElement('div'); stage.id='pdfStage'; stage.innerHTML=shrinkToFit(sheetHTML(S.D).html); document.body.append(stage);
+  if(printDirty) renderPrint(); autoDispatch();
+  // like Excel: the table always uses the full page width; when there are many rows the rows get lower instead of the whole table shrinking
+  const sh=sheetHTML(S.D); const rowH=Math.max(15, Math.min(24, Math.floor(758/sh.nRows)));
+  const stage=document.createElement('div'); stage.id='pdfStage'; stage.style.setProperty('--rh',rowH+'px'); stage.innerHTML=shrinkToFit(sh.html); document.body.append(stage);
   let canvas; try{ canvas=await html2canvas(stage,{scale:4,backgroundColor:'#ffffff',logging:false}); } finally{ stage.remove(); }
   const pdf=new jspdf.jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
   const M=4.3, W=297-2*M, H=210-2*M; let w=W, h=canvas.height*W/canvas.width; if(h>H){ h=H; w=canvas.width*H/canvas.height; }   // always one A4 page
