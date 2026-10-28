@@ -1848,8 +1848,8 @@ function calRender(){
   let h=`<div class="ch"><button type="button" data-n="-1" aria-label="เดือนก่อน">‹</button><b>${CAL_MON[m-1]} ${y+543}</b><button type="button" data-n="1" aria-label="เดือนถัดไป">›</button></div><div class="cg">`;
   h+=["อา","จ","อ","พ","พฤ","ศ","ส"].map((w,i)=>`<div class="wd${i===0?" su":""}">${w}</div>`).join("");
   for(let k=0;k<42;k++){const t=new Date(start.getTime()+k*864e5),v=iso(t);
-    h+=`<button type="button" class="d${t.getUTCMonth()+1!==m?" out":""}${v===today?" today":""}${v===sel?" sel":""}${has.has(v)?" has":""}" data-v="${v}">${t.getUTCDate()}</button>`}
-  h+=`</div><div class="cf"><span>• = มีเรือบันทึกไว้</span><button type="button" class="btn" data-today="1">วันนี้</button></div>`;
+    h+=`<button type="button" class="d${t.getUTCMonth()+1!==m?" out":""}${v===today?" today":""}${v===sel?" sel":""}" data-v="${v}">${t.getUTCDate()}</button>`}
+  h+=`</div><div class="cf"><span></span><button type="button" class="btn" data-today="1">วันนี้</button></div>`;
   $("calPop").innerHTML=h;
 }
 function calOpen(){const v=$("datePick").value||isoToday();calYM=v.slice(0,7).split("-").map(Number);calRender();$("calPop").hidden=false}
