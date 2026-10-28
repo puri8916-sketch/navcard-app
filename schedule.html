@@ -1127,25 +1127,43 @@ ${sheetCSS()}
   const go=()=>{ try{ w.focus(); w.print(); }catch(e){} setTimeout(()=>{ try{ w.close(); }catch(e){} },800); };
   if(w.document.readyState==='complete') setTimeout(go,150); else w.addEventListener('load',()=>setTimeout(go,150));
 }
-$('printBtn').addEventListener('click',printSheet);
+$('printBtn').addEventListener('click',printPdf);
 window.addEventListener('beforeprint',()=>{ if(printDirty) renderPrint(); });
 /* PDF: draw the same sheet at print width and place it on one A4 landscape page */
 function loadScript(src){ return new Promise((ok,no)=>{ const s=document.createElement('script'); s.src=src; s.onload=ok; s.onerror=()=>no(new Error('โหลดตัวสร้าง PDF ไม่ได้ (ต้องต่อเน็ต)')); document.head.append(s); }); }
+async function buildPdf(){
+  if(!window.html2canvas) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+  if(!window.jspdf) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+  if(printDirty) renderPrint(); autoDispatch(); const stage=document.createElement('div'); stage.id='pdfStage'; stage.innerHTML=shrinkToFit(sheetHTML(S.D).html); document.body.append(stage);
+  let canvas; try{ canvas=await html2canvas(stage,{scale:4,backgroundColor:'#ffffff',logging:false}); } finally{ stage.remove(); }
+  const pdf=new jspdf.jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
+  const M=4.3, W=297-2*M, H=210-2*M; let w=W, h=canvas.height*W/canvas.width; if(h>H){ h=H; w=canvas.width*H/canvas.height; }   // always one A4 page
+  pdf.addImage(canvas.toDataURL('image/jpeg',0.95),'JPEG',M+(W-w)/2,M,w,h);
+  const [y,m,d]=S.D.split('-').map(Number);
+  return {pdf, name:`SHIP'S SCHEDULE ${d}-${m}-${String((y+543)%100).padStart(2,'0')}.pdf`};
+}
 async function downloadPdf(){
   const btn=$('pdfBtn'); btn.disabled=true; const label=btn.textContent; btn.textContent='กำลังสร้าง PDF…';
   try{
-    if(!window.html2canvas) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
-    if(!window.jspdf) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
-    if(printDirty) renderPrint(); autoDispatch(); const stage=document.createElement('div'); stage.id='pdfStage'; stage.innerHTML=shrinkToFit(sheetHTML(S.D).html); document.body.append(stage);
-    const canvas=await html2canvas(stage,{scale:4,backgroundColor:'#ffffff',logging:false}); stage.remove();
-    const pdf=new jspdf.jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
-    const M=4.3, W=297-2*M, H=210-2*M; let w=W, h=canvas.height*W/canvas.width; if(h>H){ h=H; w=canvas.width*H/canvas.height; }
-    pdf.addImage(canvas.toDataURL('image/jpeg',0.95),'JPEG',M+(W-w)/2,M,w,h);
-    const [y,m,d]=S.D.split('-').map(Number);
-    const name=`SHIP'S SCHEDULE ${d}-${m}-${String((y+543)%100).padStart(2,'0')}.pdf`;
+    const {pdf,name}=await buildPdf();
     const a=document.createElement('a'); a.href=URL.createObjectURL(pdf.output('blob')); a.download=name; document.body.append(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),5000);
     toast('ดาวน์โหลด '+name);
   }catch(err){ toast('สร้าง PDF ไม่สำเร็จ: '+err.message); }
+  finally{ btn.disabled=false; btn.textContent=label; }
+}
+/* ปริ้น = the same one-page A4 PDF, opened in its own tab with the print box up.
+   A fixed PDF page prints the same on every browser and printer (no shrinking, colours kept). */
+async function printPdf(){
+  const btn=$('printBtn'); btn.disabled=true; const label=btn.textContent; btn.textContent='กำลังเตรียมพิมพ์…';
+  let w=null; try{ w=window.open('','_blank'); }catch(e){}
+  if(w){ try{ w.document.write('<p style="font:18px sans-serif;padding:24px">กำลังเตรียมตารางสำหรับพิมพ์…</p>'); }catch(e){} }
+  try{
+    const {pdf,name}=await buildPdf(); pdf.setProperties({title:name.replace(/\.pdf$/,'')}); pdf.autoPrint();
+    const url=URL.createObjectURL(pdf.output('blob'));
+    if(w && !w.closed){ w.location.href=url; }
+    else { const a=document.createElement('a'); a.href=url; a.download=name; document.body.append(a); a.click(); a.remove(); toast('เบราว์เซอร์บล็อกหน้าต่างใหม่ · ดาวน์โหลด PDF ให้แล้ว เปิดแล้วสั่งพิมพ์ได้เลย'); }
+    setTimeout(()=>URL.revokeObjectURL(url),60000);
+  }catch(err){ if(w) try{ w.close(); }catch(e){} toast('เตรียมพิมพ์ไม่สำเร็จ: '+err.message); }
   finally{ btn.disabled=false; btn.textContent=label; }
 }
 $('pdfBtn').addEventListener('click',downloadPdf);
