@@ -4,6 +4,8 @@ Each day ("tab") is stored as plain data: {date, sent, cards:[{no, agent, ship, 
 and the whole month is rebuilt from those days with the look of the office's own workbook
 (report_template.xlsx = the 13-10 tab of ต.ค.69 with its data cleared).
 """
+from openpyxl.worksheet.pagebreak import Break, RowBreak
+from openpyxl.utils import get_column_letter
 import copy
 import io
 import os
@@ -232,6 +234,7 @@ def _fill_sheet(ws, tpl, tab, sig_png, rank, name, dx=0, dy=0):
     ws["D2"].value = counts_text(tab["cards"])
 
     r = 4
+    spans = []   # (first row, last row) of every card, for the page breaks
     for card in tab["cards"]:
         ev = card["ev"] or [["", "", "", "", ""]]
         n = len(ev)
@@ -264,6 +267,7 @@ def _fill_sheet(ws, tpl, tab, sig_png, rank, name, dx=0, dy=0):
         if n > 1:
             for c in (1, 2, 5, 6, 7):
                 ws.merge_cells(start_row=r, start_column=c, end_row=last, end_column=c)
+        spans.append((r, last))
         r = last + 1
         del top
     L = r - 1
@@ -289,6 +293,37 @@ def _fill_sheet(ws, tpl, tab, sig_png, rank, name, dx=0, dy=0):
         ws.add_image(img)
 
     ws.sheet_properties.tabColor = Color(rgb=SENT_RGB) if tab.get("sent") else Color(theme=0)
+    _paginate(ws, spans, L)
+
+
+def _paginate(ws, spans, last_row):
+    """Print setup: never shrink the page height — all columns fit the page width (same size as a one-page day),
+    longer days run on to page 2, 3 … with the column header repeated; breaks fall between cards and the
+    signature block stays with the last card."""
+    ps = ws.page_setup
+    ws.sheet_properties.pageSetUpPr.fitToPage = True
+    ps.fitToWidth, ps.fitToHeight = 1, 0
+    ws.print_options.horizontalCentered = True
+    ws.print_title_rows = "3:3"
+    ws.row_breaks = RowBreak()
+    # page size in points (A4), landscape unless the template says otherwise
+    w_pt, h_pt = (842, 595) if (ps.orientation or "landscape") == "landscape" else (595, 842)
+    m = ws.page_margins
+    avail_w = w_pt - 72 * ((m.left or 0) + (m.right or 0))
+    avail_h = h_pt - 72 * ((m.top or 0) + (m.bottom or 0))
+    cols_pt = sum((ws.column_dimensions[get_column_letter(c)].width or 8.43) * 7 * 0.75 for c in range(1, 15))
+    scale = min(1.0, int(avail_w / cols_pt * 100) / 100)
+    cap = avail_h / scale * 0.97                      # row height (pt) that fits on one printed page
+    hgt = lambda r: ws.row_dimensions[r].height or 15
+    head = hgt(3)
+    used = sum(hgt(r) for r in range(1, 4))
+    sig = sum(hgt(r) for r in range(last_row + 1, last_row + 1 + _SIG_N))
+    for i, (a, b) in enumerate(spans):
+        h = sum(hgt(r) for r in range(a, b + 1)) + (sig if i == len(spans) - 1 else 0)
+        if used + h > cap and used > head + 1:
+            ws.row_breaks.append(Break(id=a - 1))
+            used = head
+        used += h
 
 
 def build_month(tabs, sig_png=None, signer=None, pngs=None):
