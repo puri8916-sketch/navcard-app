@@ -1,7 +1,7 @@
 /**
  * Ship Schedule API (เมนู 🗓 จัดตารางเรือ) — Apps Script ผูกกับ Google Sheet "ShipSchedule_DB"
  * แยกจาก apps_script/Code.gs (ชีตบันทึกเรือ) — ข้อมูลเรือ/ท่า/ผก./เบอร์ แก้ในแท็บของชีตได้ตรงๆ
- * แท็บที่ใช้: Ships, Berths, Agents, Pilots, Duty, FixedContacts, Settings, Movements
+ * แท็บที่ใช้: Ships, Berths, Agents, Pilots, Duty, FixedContacts, Settings, Movements (+ Snapshots, LineBoards, Layouts สร้างเอง)
  * ตั้งค่า: แก้บรรทัด KEYS ด้านล่างเป็นรหัสที่ตั้งเอง (ใช้รหัสนี้ตอนเชื่อมต่อในแอป)
  * Deploy:  Deploy > New deployment > Web app > Execute as: Me, Who has access: Anyone
  */
@@ -39,6 +39,7 @@ function doPost(e) {
         case 'saveFixed': return saveFixed_(req.fixed);
         case 'saveSnapshot': return saveSnapshot_(req.snap);
         case 'saveBoard': return saveBoard_(req.board);
+        case 'saveLayout': return saveLayout_(req.layout);
       }
       throw new Error('ไม่รู้จักคำสั่ง ' + req.action);
     } finally { lock.releaseLock(); }
@@ -101,7 +102,8 @@ function init_() {
     fixed: rows_('FixedContacts').map(r => ({ text: str_(r['ข้อความในตาราง']), group: Number(r['กลุ่ม']) || 1 })).filter(f => f.text),
     settings,
     snapshots: snapshots_(),
-    boards: boards_()
+    boards: boards_(),
+    layouts: layouts_()
   };
 }
 function listMovements_(from, to) {
@@ -262,5 +264,28 @@ function saveBoard_(board) {
   const old = r > 0 ? Number(s.getRange(r, 2).getValue()) || 0 : 0;
   if (old > Number(board.updated)) return false;   // a newer version from another device is already there
   s.getRange(r > 0 ? r : s.getLastRow() + 1, 1, 1, 3).setNumberFormat('@').setValues([[board.date, String(board.updated), json]]);
+  return true;
+}
+
+/* ---------- ลำดับแถวที่จัดเองในหน้าจัดตาราง (ต่อวัน) ---------- */
+function layouts_() {
+  const s = SpreadsheetApp.getActive().getSheetByName('Layouts'); if (!s) return {};
+  const since = Utilities.formatDate(new Date(Date.now() - 40 * 864e5), TZ, 'yyyy-MM-dd');
+  const out = {};
+  s.getDataRange().getValues().slice(1).forEach(r => {
+    const d = str_(cell_(r[0])).slice(0, 10);
+    if (d && d >= since) { try { out[d] = { date: d, updated: Number(r[1]) || 0, rows: JSON.parse(r[2] || 'null') }; } catch (e) {} }
+  });
+  return out;
+}
+function saveLayout_(lay) {
+  const ss = SpreadsheetApp.getActive(); let s = ss.getSheetByName('Layouts');
+  if (!s) { s = ss.insertSheet('Layouts'); s.getRange(1, 1, 1, 3).setValues([['date', 'updated', 'rows']]); s.getRange('A:C').setNumberFormat('@'); }
+  const json = JSON.stringify(lay.rows === undefined ? null : lay.rows);
+  if (json.length > 49000) throw new Error('ลำดับแถวยาวเกินไป');
+  const r = findRow_(s, 'date', lay.date);
+  const old = r > 0 ? Number(s.getRange(r, 2).getValue()) || 0 : 0;
+  if (old > Number(lay.updated)) return false;
+  s.getRange(r > 0 ? r : s.getLastRow() + 1, 1, 1, 3).setNumberFormat('@').setValues([[lay.date, String(lay.updated), json]]);
   return true;
 }
