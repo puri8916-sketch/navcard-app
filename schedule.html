@@ -294,15 +294,13 @@ table.lsheet.board{width:100%;font-size:17px}
 
 
 <header class="top">
-  <div class="brand">ตารางเรือ <small>SONGKHLA PILOT</small></div>
   <div class="datenav">
     <button class="iconbtn" id="prevDay" aria-label="สัปดาห์ก่อน" title="สัปดาห์ก่อน">‹</button>
     <div class="dstrip" id="dstrip" role="listbox" aria-label="เลือกวันที่ตาราง"></div>
     <button class="iconbtn" id="nextDay" aria-label="สัปดาห์ถัดไป" title="สัปดาห์ถัดไป">›</button>
     <input type="date" id="schedDate" hidden aria-hidden="true">
   </div>
-  <div class="window" id="windowLabel"></div>
-  <button type="button" class="mode" id="modeBadge" title="ตั้งค่าการเชื่อมต่อ"></button>
+  <div class="window" id="windowLabel" hidden></div>
   <nav class="tabs" role="tablist">
     <button role="tab" id="tab-line" aria-selected="true">แก้ไข</button>
     <button role="tab" id="tab-work" aria-selected="false">จัดตาราง</button>
@@ -368,6 +366,7 @@ table.lsheet.board{width:100%;font-size:17px}
     <div class="shipbar">
       <input id="shipQ" type="search" placeholder="ค้นหา ชื่อเรือ / ท่า / เอเย่นต์" autocomplete="off" aria-label="ค้นหาเรือ">
       <span class="chip c-in" id="shipCount"></span>
+      <button type="button" class="mode" id="modeBadge" title="ตั้งค่าการเชื่อมต่อ"></button>
     </div>
     <form id="shipAdd" class="shipadd" autocomplete="off">
       <input id="nsName" placeholder="ชื่อเรือใหม่" aria-label="ชื่อเรือ">
