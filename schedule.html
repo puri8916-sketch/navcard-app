@@ -50,7 +50,7 @@ button,input,select{font:inherit;color:inherit}
 .brand{font-weight:700;font-size:21px;letter-spacing:.01em;display:flex;align-items:baseline;gap:8px}
 .brand small{font-weight:500;color:var(--muted);font-size:16px}
 .datenav{display:flex;align-items:center;gap:8px;order:10;flex-basis:100%;min-width:0}
-.datenav .iconbtn{width:48px;height:62px;font-size:26px;font-weight:700;flex:none}
+.datenav .iconbtn{width:48px;height:auto;align-self:stretch;font-size:26px;font-weight:700;flex:none}
 .dstrip{display:flex;gap:6px;overflow-x:auto;flex:1;min-width:0;scrollbar-width:thin;padding-bottom:2px}
 .dchip{flex:1 0 74px;max-width:110px;padding:5px 2px;border-radius:11px;border:2px solid var(--line);background:var(--bg);display:grid;justify-items:center;line-height:1.15;cursor:pointer}
 .dchip .w{font-size:14px;font-weight:700;color:var(--muted)}
@@ -1049,7 +1049,7 @@ function renderStrip(){
   stripD=S.D;
   const T=todayYmd(); let h='';
   for(let i=0;i<14;i++){ const d=addDays(stripBase,i), [,m,dd]=d.split('-').map(Number);
-    h+=`<button type="button" class="dchip${d===S.D?' on':''}${d===T?' today':''}" data-sd="${d}" role="option" aria-selected="${d===S.D}"><span class="w">${TH_DS[dowOf(d)]}</span><span class="d">${dd}</span><span class="m">${TH_MS[m-1]}</span></button>`; }
+    h+=`<button type="button" class="dchip${d===S.D?' on':''}${d===T?' today':''}" data-sd="${d}" role="option" aria-selected="${d===S.D}"><span class="d">${dd}</span><span class="m">${TH_MS[m-1]}</span></button>`; }
   $('dstrip').innerHTML=h;
 }
 $('dstrip').addEventListener('click',e=>{ const b=e.target.closest('[data-sd]'); if(b && b.dataset.sd!==S.D) goDate(b.dataset.sd); });
