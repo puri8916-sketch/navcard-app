@@ -1760,7 +1760,7 @@ listeners.add(bkInfo);
 /* ---------- boot ---------- */
 (function init(){
   if(window.__THEME__)document.documentElement.setAttribute("data-theme",window.__THEME__);
-  let t="log";try{t=localStorage.getItem("pl.tab")||"log"}catch(e){}
+  const t="log"; // always open on บันทึกประจำวัน
   setTab(t);setDate(curDate);renderCfg();renderVessels();bkInfo();calcInfo();
   $("remarkList").append(el("option",{value:"ทำเที่ยวครบ"}));
   SS.onStatus(renderSync);
