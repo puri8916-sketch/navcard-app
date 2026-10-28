@@ -28,6 +28,7 @@ function doPost(e) {
     try {
       switch (req.action) {
         case 'saveMovement': return saveMovement_(req.m);
+        case 'saveMovements': return saveMovements_(req.list);
         case 'deleteMovement': return deleteById_('Movements', req.id);
         case 'saveShip': return saveShip_(req.ship);
         case 'updateShip': return updateShip_(req.oldName, req.ship);
@@ -127,6 +128,16 @@ function saveMovement_(m) {
   const r = findRow_(s, 'id', m.id);
   writeRow_(s, r > 0 ? r : s.getLastRow() + 1, header, obj);
   return m;
+}
+// many new movements at once (นำเข้าไฟล์ตาราง): append in one write
+function saveMovements_(list) {
+  const s = sh_('Movements');
+  if (!list || !list.length) return 0;
+  const header = s.getRange(1, 1, 1, s.getLastColumn()).getValues()[0].map(String);
+  const now = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd HH:mm:ss');
+  const rows = list.map(m => { const o = Object.assign({}, m, { updated: now }); return header.map(h => o[h] === undefined ? '' : String(o[h])); });
+  s.getRange(s.getLastRow() + 1, 1, rows.length, header.length).setNumberFormat('@').setValues(rows);
+  return rows.length;
 }
 function deleteById_(name, id) {
   const s = sh_(name); const r = findRow_(s, 'id', id);
