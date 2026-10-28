@@ -261,7 +261,7 @@ table.lsheet.board{width:100%;font-size:17px}
 .lsheet.board td.date .ce{font-weight:700;min-height:45px;line-height:45px}
 .lsheet.board td.pc .ce{color:#FF0000;font-weight:700}
 .lsheet.board .ce:focus{box-shadow:inset 0 0 0 2px #1F6FD1;background:#fff;cursor:text}
-.lsheet.board td.sel{background:#D6E6FA}
+.lsheet.board td.sel{background:#D6E6FA!important}
 .lsheet.board td.sel .ce{background:transparent}
 .lsheet.board td.anc{box-shadow:inset 0 0 0 2px #1F6FD1}
 #board.multi .ce:focus{box-shadow:none;background:transparent;caret-color:transparent}
@@ -276,6 +276,7 @@ table.lsheet.board{width:100%;font-size:17px}
 .fc-main{display:inline-flex;flex-direction:column;align-items:center;gap:1px;padding:4px 12px 5px;border-top-right-radius:0;border-bottom-right-radius:0}
 .fcA{font:700 18px/1 var(--f-sheet);text-decoration:underline;text-decoration-color:transparent}
 .fcBar{display:block;width:20px;height:5px;background:#FF0000;border-radius:1px}
+.fillbtn{display:inline-flex;align-items:center;gap:8px}.fillsw{width:20px;height:20px;border-radius:4px;background:#E0E0E0;border:1px solid #9AA4AD}
 .fc-drop{padding:7px 7px;border-left:0;border-top-left-radius:0;border-bottom-left-radius:0}
 .fc-pal{position:absolute;top:calc(100% + 4px);left:0;z-index:60;background:var(--surface);border:1px solid var(--line);border-radius:8px;box-shadow:0 8px 22px rgb(0 0 0 / .2);padding:8px;display:grid;grid-template-columns:repeat(4,28px);gap:6px}
 .fc-pal button,.mcol button{width:28px;height:28px;border:1px solid rgb(0 0 0 / .2);border-radius:4px;cursor:pointer;padding:0}
@@ -327,7 +328,7 @@ table.lsheet.board{width:100%;font-size:17px}
     <div class="ltool">
       <div class="grp"><button class="btn primary" id="lineCopy">คัดลอกส่งLINE</button></div>
       <div class="grp"><button class="btn tb" data-bact="undo" title="Ctrl+Z">↶ ย้อนกลับ</button><button class="btn tb" data-bact="redo" title="Ctrl+Y">↷ ทำซ้ำ</button></div>
-      <div class="grp fcolor"><button class="btn tb fc-main" data-bact="color" title="สีตัวอักษร"><span class="fcA">A</span><span class="fcBar" id="fcBar"></span></button><button class="btn tb fc-drop" id="fcDrop" title="เลือกสี" aria-label="เลือกสีตัวอักษร">▾</button><div class="fc-pal" id="fcPal" hidden></div></div>
+      <div class="grp fcolor"><button class="btn tb fc-main" data-bact="color" title="สีตัวอักษร"><span class="fcA">A</span><span class="fcBar" id="fcBar"></span></button><button class="btn tb fc-drop" id="fcDrop" title="เลือกสี" aria-label="เลือกสีตัวอักษร">▾</button><div class="fc-pal" id="fcPal" hidden></div></div><div class="grp"><button class="btn tb fillbtn" data-bact="togglefill" title="พื้นหลังเทาอ่อน (กดซ้ำเพื่อล้าง)"><span class="fillsw"></span>พื้นเทา</button></div>
       <div class="grp" id="addBlk"></div>
       <div class="grp"><label class="since" for="lineSince">ตั้งแต่</label><input id="lineSince" class="since num" autocomplete="off" aria-label="ดึงเรือตั้งแต่เวลา"><button class="btn" id="linePull">⟳ ดึงจากจัดตารางใหม่</button><span class="note" id="boardInfo" hidden></span></div>
     </div>
@@ -1410,7 +1411,9 @@ const blankRow=()=>({c:Array(17).fill(''), r:Array(17).fill(false), h:Array(17).
 const FC=['#000000','#FF0000','#C00000','#FFC000','#00B050','#0070C0','#002060','#7030A0','#808080'];   // font colours (Excel standard)
 let curColor='#FF0000';
 const colOf=(row,c)=>{ const v=row.r[c]; return v===true?'#FF0000':(v||''); };   // old data stored red as true
-const tdStyle=(row,c)=>{ const k=colOf(row,c); return k?` style="color:${k}"`:''; };
+const FILL='#E0E0E0';   // พื้นหลังเทาอ่อน
+const bgOf=(row,c)=>(row.g&&row.g[c])||'';
+const tdStyle=(row,c)=>{ const k=colOf(row,c), g=bgOf(row,c); const st=(k?`color:${k};`:'')+(g?`background:${g};`:''); return st?` style="${st}"`:''; };
 const hOf=(row,c)=>(row.h&&row.h[c])||'';
 function setH(row,c,v){ if(!row.h) row.h=Array(17).fill(''); row.h[c]=v; }
 const cellHTML=(row,c)=>hOf(row,c)||esc(row.c[c]);
@@ -1629,7 +1632,7 @@ function relayout(bi, r0, c0){
   rows.forEach((row,ri)=>{
     for(const [side,a,z,tc] of [['L',0,9,4],['R',9,17,13]]){
       const c=row.c.slice(a,z); if(!c.some(v=>String(v).trim())) continue;
-      const hf={side, c, r:row.r.slice(a,z), h:Array.from({length:z-a},(x,k)=>hOf(row,a+k)), dt:parseTime(row.c[tc],base)||'', ord:halves.length};
+      const hf={side, c, r:row.r.slice(a,z), h:Array.from({length:z-a},(x,k)=>hOf(row,a+k)), g:Array.from({length:z-a},(x,k)=>bgOf(row,a+k)), dt:parseTime(row.c[tc],base)||'', ord:halves.length};
       if(ri===r0 && c0>=a && c0<z) moved=hf;
       halves.push(hf);
     }
@@ -1637,7 +1640,7 @@ function relayout(bi, r0, c0){
   const timed=halves.filter(x=>x.dt).sort((x,y)=>x.dt<y.dt?-1:x.dt>y.dt?1:(berthRank(x.c[x.side==='L'?6:5])-berthRank(y.c[y.side==='L'?6:5]))||x.ord-y.ord), untimed=halves.filter(x=>!x.dt);
   const out=[blankRow()]; let prev=null; const slots=[];
   for(const x of timed){ const s=slots[slots.length-1]; if(s && s.dt===x.dt) s.items.push(x); else slots.push({dt:x.dt, items:[x]}); }
-  const place=(L,R)=>{ const row=blankRow(); for(const [hf,a] of [[L,0],[R,9]]) if(hf){ hf.c.forEach((v,k)=>{ row.c[a+k]=v; row.r[a+k]=hf.r[k]; row.h[a+k]=hf.h[k]; }); hf.at=out.length; } out.push(row); };
+  const place=(L,R)=>{ const row=blankRow(); for(const [hf,a] of [[L,0],[R,9]]) if(hf){ hf.c.forEach((v,k)=>{ row.c[a+k]=v; row.r[a+k]=hf.r[k]; row.h[a+k]=hf.h[k]; if(hf.g[k]){ if(!row.g) row.g=Array(17).fill(''); row.g[a+k]=hf.g[k]; } }); hf.at=out.length; } out.push(row); };
   for(const s of slots){
     if(needGap(prev, s.dt)) out.push(blankRow());
     const ins=s.items.filter(x=>x.side==='L'), outs=s.items.filter(x=>x.side==='R');
@@ -1668,6 +1671,8 @@ function setColor(col){
   }
   pushUndo(); eachSel((row,r,c)=>{ row.r[c]=col; setH(row,c,''); }); boardSave(); renderBoard();
 }
+function setFill(on){ if(!needSel()) return; pushUndo(); eachSel((row,r,c)=>{ if(!row.g) row.g=Array(17).fill(''); row.g[c]=on?FILL:''; }); boardSave(); renderBoard(); }
+function toggleFill(){ if(!needSel()) return; let all=true; eachSel((row,r,c)=>{ if(!bgOf(row,c)) all=false; }); setFill(!all); }
 function pickColor(col){ if(col) { curColor=col; $('fcBar').style.background=col; } setColor(col); $('fcPal').hidden=true; }
 function insRows(where){ if(!needSel()) return; const R=rect(); const n=R.r1-R.r0+1; pushUndo(); const rows=BD.blocks[R.b].rows;
   const at = where==='up'? R.r0 : R.r1+1; rows.splice(at,0,...Array.from({length:n},blankRow));
@@ -1678,8 +1683,8 @@ function delRows(){ if(!needSel()) return; const R=rect(); pushUndo(); const row
 function moveSel(d, whole){ if(!needSel()) return; const R=rect(); const rows=BD.blocks[R.b].rows;
   if(R.r0+d<0 || R.r1+d>=rows.length) return; pushUndo();
   const c0=whole?0:R.c0, c1=whole?16:R.c1;
-  const take=r=>({c:rows[r].c.slice(c0,c1+1), r:rows[r].r.slice(c0,c1+1), h:Array.from({length:c1-c0+1},(x,k)=>hOf(rows[r],c0+k))});
-  const put=(r,v)=>{ for(let k=0;k<=c1-c0;k++){ rows[r].c[c0+k]=v.c[k]; rows[r].r[c0+k]=v.r[k]; setH(rows[r],c0+k,v.h[k]); } };
+  const take=r=>({c:rows[r].c.slice(c0,c1+1), r:rows[r].r.slice(c0,c1+1), h:Array.from({length:c1-c0+1},(x,k)=>hOf(rows[r],c0+k)), g:Array.from({length:c1-c0+1},(x,k)=>bgOf(rows[r],c0+k))});
+  const put=(r,v)=>{ for(let k=0;k<=c1-c0;k++){ rows[r].c[c0+k]=v.c[k]; rows[r].r[c0+k]=v.r[k]; setH(rows[r],c0+k,v.h[k]); if(v.g[k]||rows[r].g){ if(!rows[r].g) rows[r].g=Array(17).fill(''); rows[r].g[c0+k]=v.g[k]; } } };
   const block=[]; for(let r=R.r0;r<=R.r1;r++) block.push(take(r));
   const other = take(d<0? R.r0-1 : R.r1+1);
   if(d<0){ block.forEach((v,k)=>put(R.r0-1+k,v)); put(R.r1,other); } else { block.forEach((v,k)=>put(R.r0+1+k,v)); put(R.r0,other); }
@@ -1745,7 +1750,7 @@ BOARD.addEventListener('focusout',e=>{ const i=e.target.closest('.ce'); if(i && 
 const MENU=$('cmenu');
 const MENU_ITEMS=[
   ['undo','↶ ย้อนกลับ','Ctrl+Z'],['redo','↷ ทำซ้ำ','Ctrl+Y'],['-'],
-  ['colors'],['-'],
+  ['colors'],['fill','▦ พื้นหลังเทาอ่อน',''],['nofill','ล้างพื้นหลัง',''],['-'],
   ['cut','ตัด','Ctrl+X'],['copy','คัดลอก','Ctrl+C'],['paste','วาง','Ctrl+V'],['clear','ลบข้อมูล','Delete'],['delblock','เอาตารางวันนี้ออกทั้งตาราง',''],['-'],
   ['insup','แทรกแถวด้านบน',''],['insdown','แทรกแถวด้านล่าง',''],['delrow','ลบแถว','']];
 MENU.innerHTML = MENU_ITEMS.map(x=>x[0]==='-'?'<hr>':x[0]==='colors'?`<div class="mcol"><span>สีตัวอักษร</span><div>${FC.map(k=>`<button type="button" data-col="${k}" style="background:${k}" title="${k}"></button>`).join('')}<button type="button" data-col="" class="auto" title="อัตโนมัติ (ดำ)">A</button></div></div>`:`<button type="button" data-m="${x[0]}" class="${x[3]||''}"><span>${x[1]}</span><kbd>${x[2]}</kbd></button>`).join('');
@@ -1765,7 +1770,7 @@ document.addEventListener('scroll',()=>hideMenu(),true);
 function boardAct(a){
   if(!BD) return;
   ({undo, redo, cut:()=>menuCopy(true), copy:()=>menuCopy(false), paste:menuPaste, clear:clearSel,
-    color:()=>setColor(curColor), delblock:()=>{ if(SEL) delBlock(SEL.b); },
+    color:()=>setColor(curColor), fill:()=>setFill(true), nofill:()=>setFill(false), togglefill:toggleFill, delblock:()=>{ if(SEL) delBlock(SEL.b); },
     insup:()=>insRows('up'), insdown:()=>insRows('down'), delrow:delRows,
     rowup:()=>moveSel(-1,true), rowdown:()=>moveSel(1,true), selup:()=>moveSel(-1,false), seldown:()=>moveSel(1,false)}[a]||(()=>{}))();
 }
