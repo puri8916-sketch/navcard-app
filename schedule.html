@@ -113,6 +113,17 @@ table.st{border-collapse:collapse;table-layout:fixed;width:100%;font-size:17px}
 .st input.saved{background:var(--ok)}
 .st button.del{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:16px;color:var(--pilot)}
 .st button.del.arm{background:var(--pilot);color:#fff;border-color:var(--pilot)}
+.mpick{position:relative;display:flex;gap:8px;align-items:stretch}
+.mnav{width:52px;border:1.5px solid var(--line);background:var(--bg);border-radius:10px;font-size:26px;font-weight:700;cursor:pointer;flex:none}
+.mlabel{flex:1;min-width:0;border:2px solid var(--line);background:var(--surface);border-radius:10px;font-size:22px;font-weight:800;padding:8px 12px;cursor:pointer}
+.mnav:hover,.mlabel:hover{background:var(--accent-soft)}
+.mpop{position:absolute;z-index:40;top:calc(100% + 6px);left:0;right:0;max-width:440px;margin:auto;background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:0 12px 30px rgb(0 0 0 / .22);padding:12px;display:grid;gap:10px}
+.mpop .yr{display:flex;align-items:center;gap:8px}.mpop .yr b{flex:1;text-align:center;font-size:22px}
+.mpop .ms{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.mpop .ms button{padding:14px 4px;border-radius:10px;border:2px solid transparent;background:var(--bg);font-size:19px;font-weight:700;cursor:pointer}
+.mpop .ms button.now{border-color:#D93025}
+.mpop .ms button.on{background:#06C755;border-color:#06C755;color:#fff}
+.mpop .ms button:hover:not(.on){background:var(--accent-soft)}
 .pgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;align-items:start}
 .pgrid .panel{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;min-width:0}
 .pgrid .panel h2{margin:0}
@@ -352,7 +363,13 @@ table.lsheet.board{width:100%;font-size:17px}
       </div>
       <div class="panel">
         <h2>เวรประจำเดือน</h2>
-        <div class="padd"><input type="month" id="dutyMonth" aria-label="เดือน"></div>
+        <div class="mpick">
+          <button type="button" class="mnav" id="dmPrev" aria-label="เดือนก่อน">‹</button>
+          <button type="button" class="mlabel" id="dmLabel" aria-haspopup="dialog" aria-expanded="false"></button>
+          <button type="button" class="mnav" id="dmNext" aria-label="เดือนถัดไป">›</button>
+          <input type="hidden" id="dutyMonth">
+          <div class="mpop" id="dmPop" hidden></div>
+        </div>
         <table class="st"><colgroup><col style="width:45%"><col style="width:55%"></colgroup><tbody id="dutyBody"></tbody></table>
       </div>
       <div class="panel">
@@ -1190,7 +1207,7 @@ function pilotList(){ return Object.keys(S.pilots).sort((a,b)=>(+a)-(+b)||a.loca
 function renderPilots(){
   $('pilotBody').innerHTML = pilotList().map(p=>`<tr><td class="num" style="padding:8px;font-weight:700;color:var(--pilot)">${esc(p)}</td><td><input class="num" data-pphone="${esc(p)}" value="${esc(S.pilots[p])}" inputmode="tel" aria-label="เบอร์ ${esc(p)}"></td><td><button type="button" class="del" data-delpilot="${esc(p)}">ลบ</button></td></tr>`).join('')
     || `<tr><td colspan="3" class="empty">ยังไม่มีเลขผก.</td></tr>`;
-  if(!$('dutyMonth').value) $('dutyMonth').value=S.D.slice(0,7);
+  if(!$('dutyMonth').value) $('dutyMonth').value=S.D.slice(0,7); dmLabel();
   const k=$('dutyMonth').value, cur=S.duty[k]||[];
   const opts=v=>['',...pilotList(),...(v&&!S.pilots[v]?[v]:[])].map(p=>`<option value="${esc(p)}"${p===v?' selected':''}>${p||'—'}</option>`).join('');
   $('dutyBody').innerHTML = DUTY_LBL.map((l,i)=>`<tr><th class="lbl">${l}</th><td><select data-duty="${i}" aria-label="${l}">${opts(cur[i]||'')}</select></td></tr>`).join('')
@@ -1210,6 +1227,23 @@ $('pilotAdd').addEventListener('submit',async e=>{ e.preventDefault(); const no=
   if(!no){ $('npNo').focus(); return; } if(S.pilots[no]!==undefined){ toast(`ผก. ${no} มีอยู่แล้ว`); return; }
   S.pilots[no]=ph; try{ await savePilots(); $('npNo').value=''; $('npPhone').value=''; renderPilots(); toast(`เพิ่มผก. ${no} แล้ว`); }catch(err){ delete S.pilots[no]; toast('เพิ่มไม่สำเร็จ: '+scriptOld(err)); } });
 $('dutyMonth').addEventListener('change',renderPilots);
+// ตัวเลือกเดือนตัวใหญ่
+const TH_MF=['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+const addMon=(k,n)=>{ let [y,m]=k.split('-').map(Number); m+=n; while(m>12){m-=12;y++;} while(m<1){m+=12;y--;} return `${y}-${pad(m)}`; };
+let dmYear=null;
+function dmLabel(){ const k=$('dutyMonth').value||S.D.slice(0,7); const [y,m]=k.split('-').map(Number); $('dmLabel').textContent=`${TH_MF[m-1]} ${y+543}`; }
+function dmSet(k){ $('dutyMonth').value=k; dmLabel(); $('dutyMonth').dispatchEvent(new Event('change')); }
+function dmDraw(){ const k=$('dutyMonth').value||S.D.slice(0,7), now=todayYmd().slice(0,7);
+  $('dmPop').innerHTML=`<div class="yr"><button type="button" class="mnav" data-y="-1" aria-label="ปีก่อน">‹</button><b>${dmYear+543}</b><button type="button" class="mnav" data-y="1" aria-label="ปีถัดไป">›</button></div><div class="ms">${
+    TH_MF.map((n,i)=>{ const v=`${dmYear}-${pad(i+1)}`; return `<button type="button" data-m="${v}" class="${v===k?'on':''}${v===now?' now':''}">${n}</button>`; }).join('')}</div>`; }
+function dmClose(){ $('dmPop').hidden=true; $('dmLabel').setAttribute('aria-expanded','false'); }
+$('dmLabel').addEventListener('click',e=>{ e.stopPropagation(); if(!$('dmPop').hidden) return dmClose(); dmYear=+($('dutyMonth').value||S.D).slice(0,4); dmDraw(); $('dmPop').hidden=false; $('dmLabel').setAttribute('aria-expanded','true'); });
+$('dmPop').addEventListener('click',e=>{ e.stopPropagation(); const y=e.target.closest('[data-y]'); if(y){ dmYear+=+y.dataset.y; dmDraw(); return; }
+  const m=e.target.closest('[data-m]'); if(m){ dmSet(m.dataset.m); dmClose(); } });
+document.addEventListener('click',()=>{ if(!$('dmPop').hidden) dmClose(); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape' && !$('dmPop').hidden){ dmClose(); $('dmLabel').focus(); } });
+$('dmPrev').addEventListener('click',()=>dmSet(addMon($('dutyMonth').value||S.D.slice(0,7),-1)));
+$('dmNext').addEventListener('click',()=>dmSet(addMon($('dutyMonth').value||S.D.slice(0,7),1)));
 $('dutyBody').addEventListener('change',async e=>{ const sel=e.target.closest('[data-duty]'); if(!sel) return; const k=$('dutyMonth').value; if(!k) return;
   const list=[...$('dutyBody').querySelectorAll('[data-duty]')].map(x=>x.value); const old=S.duty[k];
   const clean=list.filter(Boolean); S.duty[k]=clean;
