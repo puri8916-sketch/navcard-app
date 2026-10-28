@@ -49,8 +49,18 @@ button,input,select{font:inherit;color:inherit}
   display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px}
 .brand{font-weight:700;font-size:21px;letter-spacing:.01em;display:flex;align-items:baseline;gap:8px}
 .brand small{font-weight:500;color:var(--muted);font-size:16px}
-.datenav{display:flex;align-items:center;gap:6px}
-.datenav input{font-size:18px;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
+.datenav{display:flex;align-items:center;gap:8px;order:10;flex-basis:100%;min-width:0}
+.datenav .iconbtn{width:48px;height:62px;font-size:26px;font-weight:700;flex:none}
+.dstrip{display:flex;gap:6px;overflow-x:auto;flex:1;min-width:0;scrollbar-width:thin;padding-bottom:2px}
+.dchip{flex:1 0 74px;max-width:110px;padding:5px 2px;border-radius:11px;border:2px solid var(--line);background:var(--bg);display:grid;justify-items:center;line-height:1.15;cursor:pointer}
+.dchip .w{font-size:14px;font-weight:700;color:var(--muted)}
+.dchip .d{font-size:26px;font-weight:800;font-variant-numeric:tabular-nums}
+.dchip .m{font-size:13px;color:var(--muted)}
+.dchip.today{border-color:#D93025}
+.dchip.today .w::after{content:" • วันนี้";color:#D93025}
+.dchip.on{background:#06C755;border-color:#06C755;color:#fff}
+.dchip.on .w,.dchip.on .m,.dchip.on.today .w::after{color:#fff}
+.dchip:hover:not(.on){background:var(--accent-soft)}
 .iconbtn{border:1px solid var(--line);background:var(--bg);border-radius:8px;width:40px;height:40px;cursor:pointer;font-size:18px}
 .window{color:var(--muted);font-size:17px}
 .tabs{display:flex;gap:4px;margin-left:auto;background:var(--bg);padding:4px;border-radius:10px;border:1px solid var(--line)}
@@ -287,9 +297,10 @@ table.lsheet.board{width:100%;font-size:17px}
 <header class="top">
   <div class="brand">ตารางเรือ <small>SONGKHLA PILOT</small></div>
   <div class="datenav">
-    <button class="iconbtn" id="prevDay" aria-label="วันก่อนหน้า">‹</button>
-    <input type="date" id="schedDate" aria-label="ตารางวันที่">
-    <button class="iconbtn" id="nextDay" aria-label="วันถัดไป">›</button>
+    <button class="iconbtn" id="prevDay" aria-label="สัปดาห์ก่อน" title="สัปดาห์ก่อน">‹</button>
+    <div class="dstrip" id="dstrip" role="listbox" aria-label="เลือกวันที่ตาราง"></div>
+    <button class="iconbtn" id="nextDay" aria-label="สัปดาห์ถัดไป" title="สัปดาห์ถัดไป">›</button>
+    <input type="date" id="schedDate" hidden aria-hidden="true">
   </div>
   <div class="window" id="windowLabel"></div>
   <button type="button" class="mode" id="modeBadge" title="ตั้งค่าการเชื่อมต่อ"></button>
@@ -664,6 +675,7 @@ function fitAll(){   // read all widths first, then write — one layout pass in
 function fitInput(i){ i.style.fontSize=''; if(!i.value || i.offsetParent===null) return; const base=parseFloat(getComputedStyle(i).fontSize);
   if(i.scrollWidth>i.clientWidth+1){ const k=(i.clientWidth-2)/i.scrollWidth; i.style.fontSize=Math.max(10,base*k).toFixed(1)+'px'; } }
 function renderAll(){
+  renderStrip();
   $('windowLabel').innerHTML = `รอบ <span class="num">${shortDate(S.D)} ${S.settings.cutoff}</span> – <span class="num">${shortDate(addDays(S.D,1))} ${addTimeLabel()}</span>`;
   renderGrid(); printDirty=true; if(!$('view-print').hidden) renderPrint();
 }
@@ -1022,14 +1034,28 @@ const TD={line:null, work:null};
 const tabGrp=t=> t==='line'?'line' : (t==='work'||t==='print')?'work' : null;
 const curGrp=()=> !$('view-line').hidden?'line' : (!$('view-work').hidden||!$('view-print').hidden)?'work' : null;
 async function goDate(D){
-  S.D=D; $('schedDate').value=D; const g=curGrp(); if(g) TD[g]=D; hidePop(); if(!$('view-line').hidden) openBoard(D);
+  S.D=D; $('schedDate').value=D; renderStrip(); const g=curGrp(); if(g) TD[g]=D; hidePop(); if(!$('view-line').hidden) openBoard(D);
   if(covered(D)){ renderAll(); refresh(false); return; }
   try{ await loadMovements(D); cacheSet(); }catch(err){ toast('โหลดข้อมูลไม่สำเร็จ: '+err.message); }
   renderAll();
 }
 $('schedDate').addEventListener('change',e=>{ if(e.target.value) goDate(e.target.value); });
-$('prevDay').addEventListener('click',()=>goDate(addDays(S.D,-1)));
-$('nextDay').addEventListener('click',()=>goDate(addDays(S.D,1)));
+// แถบวัน: 2 สัปดาห์ (เริ่มวันจันทร์) กดวันไหนไปวันนั้น ‹ › เลื่อนแถบทีละสัปดาห์
+const TH_DS=['อา.','จ.','อ.','พ.','พฤ.','ศ.','ส.'], TH_MS=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+const dowOf=d=>new Date(d+'T00:00:00').getDay(), monOf=d=>addDays(d,-((dowOf(d)+6)%7));
+let stripBase=null, stripD=null;
+function renderStrip(){
+  if(!S.D) return;
+  if(!stripBase || (S.D!==stripD && (S.D<stripBase || S.D>addDays(stripBase,13)))) stripBase=monOf(S.D);
+  stripD=S.D;
+  const T=todayYmd(); let h='';
+  for(let i=0;i<14;i++){ const d=addDays(stripBase,i), [,m,dd]=d.split('-').map(Number);
+    h+=`<button type="button" class="dchip${d===S.D?' on':''}${d===T?' today':''}" data-sd="${d}" role="option" aria-selected="${d===S.D}"><span class="w">${TH_DS[dowOf(d)]}</span><span class="d">${dd}</span><span class="m">${TH_MS[m-1]}</span></button>`; }
+  $('dstrip').innerHTML=h;
+}
+$('dstrip').addEventListener('click',e=>{ const b=e.target.closest('[data-sd]'); if(b && b.dataset.sd!==S.D) goDate(b.dataset.sd); });
+$('prevDay').addEventListener('click',()=>{ stripBase=addDays(stripBase||monOf(S.D),-7); renderStrip(); });
+$('nextDay').addEventListener('click',()=>{ stripBase=addDays(stripBase||monOf(S.D),7); renderStrip(); });
 function showTab(t){ const g=tabGrp(t); if(!TD.line && !TD.work && S.D){ TD.line=TD.work=S.D; }
   if(g){ if(!TD[g]) TD[g]=S.D;
     else if(TD[g]!==S.D){ const D=TD[g]; S.D=D; $('schedDate').value=D; renderAll();
