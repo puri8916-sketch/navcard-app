@@ -258,6 +258,7 @@ table.lsheet.board{width:100%;font-size:17px}
 #pdfStage .sheet td{border:0;border-right:.4px solid #555;border-bottom:.4px solid #555}
 @page{size:A4 landscape;margin:4.3mm}
 @media print{
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   body{background:#fff}
   body::before,.top,main,.toast,.combo-pop{display:none!important}
   #printRoot{display:block}
@@ -1104,7 +1105,29 @@ $('setupForm').addEventListener('submit',async e=>{ e.preventDefault();
 $('sOff').addEventListener('click',()=>{ try{ localStorage.setItem(CFG_KEY, JSON.stringify({})); }catch(e){} location.reload(); });
 const framed = (()=>{ try{ return window.self!==window.top; }catch(e){ return true; } })();
 if(framed && !window.__CAN_PRINT__){ $('printBtn').hidden=true; $('pdfBtn').hidden=true; $('printNote').textContent='ตัวอย่าง: ปุ่มปริ้นใช้ได้เมื่อเปิดจากเว็บของคุณ'; }
-$('printBtn').addEventListener('click',()=>{ if(printDirty) renderPrint(); autoDispatch(); window.print(); });
+/* Print from a separate page of its own: printing from inside the app's frame lets the browser
+   shrink the table and drop the cell colours. The new page holds only the sheet, A4 landscape, colours kept. */
+function sheetCSS(){
+  const out=[]; for(const ss of document.styleSheets){ let rules; try{ rules=ss.cssRules; }catch(e){ continue; }
+    for(const r of rules){ const t=r.selectorText||''; if(/(^|[\s,])(table)?\.sheet\b/.test(t) && !/#pdfStage|#printRoot/.test(t)) out.push(r.cssText); } }
+  return out.join('\n');
+}
+function printSheet(){
+  if(printDirty) renderPrint(); autoDispatch();
+  const [y,m,d]=S.D.split('-').map(Number);
+  const doc=`<!doctype html><html><head><meta charset="utf-8"><title>SHIP'S SCHEDULE ${d}-${m}-${String((y+543)%100).padStart(2,'0')}</title>
+<style>:root{--f-sheet:${getComputedStyle(document.documentElement).getPropertyValue('--f-sheet')}}
+@page{size:A4 landscape;margin:4.3mm} html,body{margin:0;background:#fff}
+*{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+${sheetCSS()}
+</style></head><body>${$('printRoot').innerHTML}</body></html>`;
+  let w=null; try{ w=window.open('','_blank','width=1200,height=850'); }catch(e){}
+  if(!w){ window.print(); return; }   // pop-ups blocked: print from here
+  w.document.open(); w.document.write(doc); w.document.close();
+  const go=()=>{ try{ w.focus(); w.print(); }catch(e){} setTimeout(()=>{ try{ w.close(); }catch(e){} },800); };
+  if(w.document.readyState==='complete') setTimeout(go,150); else w.addEventListener('load',()=>setTimeout(go,150));
+}
+$('printBtn').addEventListener('click',printSheet);
 window.addEventListener('beforeprint',()=>{ if(printDirty) renderPrint(); });
 /* PDF: draw the same sheet at print width and place it on one A4 landscape page */
 function loadScript(src){ return new Promise((ok,no)=>{ const s=document.createElement('script'); s.src=src; s.onload=ok; s.onerror=()=>no(new Error('โหลดตัวสร้าง PDF ไม่ได้ (ต้องต่อเน็ต)')); document.head.append(s); }); }
