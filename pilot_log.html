@@ -279,6 +279,26 @@ table.reg{border-collapse:collapse;width:100%;min-width:520px}
 .log tbody tr:not(.dgroup) td:nth-child(n+4):nth-child(-n+8){background-image:linear-gradient(var(--in-b),var(--in-b))}
 .log tbody tr:not(.dgroup) td:nth-child(n+12):nth-child(-n+15){background-image:linear-gradient(var(--out-b),var(--out-b))}
 .stbtn{cursor:pointer;border:1px solid transparent;font:inherit;font-size:12px;line-height:1.4}.stbtn.off{background:transparent;border:1px dashed var(--line);color:var(--muted)}.stbtn.off:hover{border-color:var(--ok-ink,#16612a);color:var(--ok-ink,#16612a)}.stbtn.ok:hover{filter:brightness(.95)}
+
+/* big calendar (replaces the small browser date picker) */
+.datebox{position:relative}
+.calbtn{font-size:17px;font-weight:600;padding:7px 14px}
+.calpop{position:absolute;top:calc(100% + 6px);right:0;z-index:80;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 32px rgb(0 0 0 / .22);padding:14px;width:min(400px,calc(100vw - 24px))}
+.calpop .ch{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+.calpop .ch b{font-size:20px}
+.calpop .ch button{font-size:22px;width:44px;height:40px;border:1px solid var(--line);background:var(--bg);border-radius:8px;cursor:pointer;color:var(--ink)}
+.calpop .cg{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.calpop .wd{text-align:center;font-size:14px;color:var(--muted);font-weight:600;padding:4px 0}
+.calpop .wd.su{color:var(--pen-red)}
+.calpop .d{position:relative;height:46px;font-size:18px;border:1px solid transparent;border-radius:8px;background:transparent;cursor:pointer;color:var(--ink);font-family:inherit}
+.calpop .d:hover{background:var(--head)}
+.calpop .d.out{color:var(--muted);opacity:.45}
+.calpop .d.today{border-color:var(--accent);font-weight:700}
+.calpop .d.sel{background:var(--accent);color:#fff;font-weight:700}
+.calpop .d.has::after{content:"";position:absolute;left:50%;bottom:5px;width:6px;height:6px;margin-left:-3px;border-radius:50%;background:var(--accent)}
+.calpop .d.sel.has::after{background:#fff}
+.calpop .cf{display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-size:14px;color:var(--muted)}
+.calpop .cf button{font-size:16px;padding:6px 14px}
 </style>
 </head>
 <body>
@@ -302,7 +322,8 @@ table.reg{border-collapse:collapse;width:100%;min-width:520px}
       <button class="ibtn" id="prevDay" aria-label="วันก่อนหน้า">‹</button>
       <span class="tab" id="sheetTab">--</span>
       <button class="ibtn" id="nextDay" aria-label="วันถัดไป">›</button>
-      <input type="date" id="datePick" aria-label="เลือกวันที่">
+      <input type="date" id="datePick" aria-label="เลือกวันที่" hidden><button class="btn calbtn" id="calBtn" type="button" aria-haspopup="dialog" aria-label="เลือกวันที่">📅 <span id="calLbl"></span></button>
+      <div class="calpop" id="calPop" hidden role="dialog" aria-label="ปฏิทิน"></div>
       <button class="btn" id="todayBtn">วันนี้</button>
     </div>
   </header>
@@ -600,7 +621,7 @@ $("prevDay").onclick=()=>{toDay();setDate(shiftDate(curDate,-1))};
 $("nextDay").onclick=()=>{toDay();setDate(shiftDate(curDate,1))};
 $("todayBtn").onclick=()=>{toDay();setDate(isoToday())};
 $("datePick").onchange=e=>{if(e.target.value){toDay();setDate(e.target.value)}};
-function setDate(iso){curDate=iso;$("datePick").value=iso;$("sheetTab").textContent=beTab(iso);renderLog()}
+function setDate(iso){curDate=iso;$("datePick").value=iso;calLabel();$("sheetTab").textContent=beTab(iso);renderLog()}
 
 /* ---------- daily log ---------- */
 const isOpen=c=>c.status!=="ปิดการเงิน"&&!String(c.closeNo||"").trim();
@@ -1815,6 +1836,30 @@ document.addEventListener("change",e=>{const t=e.target;if(!t||!t.dataset||!t.da
 document.addEventListener("input",e=>{const t=e.target;if(!t||!t.dataset||!t.dataset.tmask)return;
   if(e.inputType&&!e.inputType.startsWith("insert"))return; // deleting: leave as typed
   const v=t.value,m=tMask(v);if(m==null||m===v)return;const atEnd=t.selectionStart===v.length;t.value=m;if(atEnd)t.setSelectionRange(m.length,m.length)},true);
+
+/* ---------- big calendar for บันทึกประจำวัน ---------- */
+var CAL_MON=["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน","กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
+var CAL_MS=["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
+var calYM=null;
+function calLabel(){if(!CAL_MS)return;const v=$("datePick").value;if(!v){$("calLbl").textContent="เลือกวันที่";return}const [y,m,d]=v.split("-").map(Number);$("calLbl").textContent=`${d} ${CAL_MS[m-1]} ${y+543}`}
+function calRender(){
+  const [y,m]=calYM,first=new Date(Date.UTC(y,m-1,1)),start=new Date(first.getTime()-first.getUTCDay()*864e5),iso=t=>t.toISOString().slice(0,10);
+  const sel=$("datePick").value,today=isoToday(),has=new Set(allCalls.map(c=>c.date));
+  let h=`<div class="ch"><button type="button" data-n="-1" aria-label="เดือนก่อน">‹</button><b>${CAL_MON[m-1]} ${y+543}</b><button type="button" data-n="1" aria-label="เดือนถัดไป">›</button></div><div class="cg">`;
+  h+=["อา","จ","อ","พ","พฤ","ศ","ส"].map((w,i)=>`<div class="wd${i===0?" su":""}">${w}</div>`).join("");
+  for(let k=0;k<42;k++){const t=new Date(start.getTime()+k*864e5),v=iso(t);
+    h+=`<button type="button" class="d${t.getUTCMonth()+1!==m?" out":""}${v===today?" today":""}${v===sel?" sel":""}${has.has(v)?" has":""}" data-v="${v}">${t.getUTCDate()}</button>`}
+  h+=`</div><div class="cf"><span>• = มีเรือบันทึกไว้</span><button type="button" class="btn" data-today="1">วันนี้</button></div>`;
+  $("calPop").innerHTML=h;
+}
+function calOpen(){const v=$("datePick").value||isoToday();calYM=v.slice(0,7).split("-").map(Number);calRender();$("calPop").hidden=false}
+$("calBtn").onclick=e=>{e.stopPropagation();if($("calPop").hidden)calOpen();else $("calPop").hidden=true};
+$("calPop").addEventListener("click",e=>{e.stopPropagation();const b=e.target.closest("button");if(!b)return;
+  if(b.dataset.n){let [y,m]=calYM;m+=+b.dataset.n;if(m<1){m=12;y--}if(m>12){m=1;y++}calYM=[y,m];calRender();return}
+  const v=b.dataset.today?isoToday():b.dataset.v;if(!v)return;$("calPop").hidden=true;const i=$("datePick");i.value=v;i.dispatchEvent(new Event("change",{bubbles:true}))});
+document.addEventListener("click",()=>{if(!$("calPop").hidden)$("calPop").hidden=true});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("calPop").hidden)$("calPop").hidden=true});
+calLabel();
 </script>
 
 </body>
