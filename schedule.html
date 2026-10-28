@@ -391,6 +391,8 @@ const MONTHS = ['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY','AUGUST
 const COLW = [3.86,20.29,3.86,3.86,8,8,8,3.86,6.71,3.71,21.43,4.14,4.14,8.14,18,3.86,7.14,7.43]; // Excel column widths A..R
 const EMAIL = 'songkhlapilot@hotmail.com';
 const $ = id => document.getElementById(id);
+// Ctrl+Z / Ctrl+Y by key position, so they also work with the Thai keyboard layout (e.key is 'ผ' / 'ฝ' there)
+const isZ = e => e.code==='KeyZ' || /^[zZ]$/.test(e.key||''), isY = e => e.code==='KeyY' || /^[yY]$/.test(e.key||'');
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const S = { ships:[], shipIdx:new Map(), berths:[], agents:[], pilots:{}, duty:{}, fixed:[], settings:{cutoff:'17:00', gap:2}, mv:[], D:'' };
 
@@ -830,7 +832,7 @@ function moveV(inp,d){
 G.addEventListener('keydown',e=>{
   const i=e.target.closest('input'); if(!i) return;
   const mod=e.ctrlKey||e.metaKey, k=e.key;
-  if(mod && (k==='z'||k==='Z'||k==='y'||k==='Y') && i.value===i.defaultValue){ e.preventDefault(); if((k==='z'||k==='Z') && !e.shiftKey) gUndo(); else gRedo(); return; }
+  if(mod && (isZ(e)||isY(e)) && i.value===i.defaultValue){ e.preventDefault(); if(isZ(e) && !e.shiftKey) gUndo(); else gRedo(); return; }
   const open=!pop.hidden && cb.inp===i;
   if(open && (e.key==='ArrowDown'||e.key==='ArrowUp')){ e.preventDefault(); const n=cb.items.length; cb.act=(cb.act+(e.key==='ArrowDown'?1:-1)+n)%n;
     [...pop.children].forEach((c,k)=>c.classList.toggle('act',k===cb.act)); pop.children[cb.act]?.scrollIntoView({block:'nearest'}); return; }
@@ -950,15 +952,15 @@ document.addEventListener('paste',e=>{ if(!inGrid(e)||!GSEL) return; const t=(e.
 
 // Ctrl+Z / Ctrl+Y also when no cell has the cursor (e.g. right after deleting a ship)
 document.addEventListener('keydown',e=>{
-  const mod=e.ctrlKey||e.metaKey, k=(e.key||'').toLowerCase(); if(!mod || (k!=='z' && k!=='y')) return;
+  const mod=e.ctrlKey||e.metaKey; if(!mod || !(isZ(e)||isY(e))) return;
   const t=e.target; if(t && (t.closest?.('#grid') || t.closest?.('#board') || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable)) return;
-  const redoKey = k==='y' || e.shiftKey;
+  const redoKey = isY(e) || e.shiftKey;
   if(!$('view-work').hidden){ e.preventDefault(); redoKey?gRedo():gUndo(); }
   else if(!$('view-line').hidden){ e.preventDefault(); redoKey?redo():undo(); }
 });
 /* right-click menu for จัดตาราง */
 const GM=$('gmenu');
-GM.innerHTML=[['cut','ตัด','Ctrl+X'],['copy','คัดลอก','Ctrl+C'],['paste','วาง','Ctrl+V'],['clear','ลบข้อมูล','Delete'],['-'],['late','สลับ พ (แจ้งเพิ่มหลังจัดจ่าย)',''],['out','สร้างเที่ยวออก',''],['delship','ลบเรือทั้งลำ','']]
+GM.innerHTML=[['undo','↶ ย้อนกลับ','Ctrl+Z'],['redo','↷ ทำซ้ำ','Ctrl+Y'],['-'],['cut','ตัด','Ctrl+X'],['copy','คัดลอก','Ctrl+C'],['paste','วาง','Ctrl+V'],['clear','ลบข้อมูล','Delete'],['-'],['late','สลับ พ (แจ้งเพิ่มหลังจัดจ่าย)',''],['out','สร้างเที่ยวออก',''],['delship','ลบเรือทั้งลำ','']]
   .map(x=>x[0]==='-'?'<hr>':`<button type="button" data-gm="${x[0]}"><span>${x[1]}</span><kbd>${x[2]}</kbd></button>`).join('');
 function hideGMenu(){ GM.hidden=true; }
 G.addEventListener('contextmenu',e=>{
@@ -973,6 +975,7 @@ document.addEventListener('mousedown',e=>{ if(!GM.hidden && !e.target.closest('#
 document.addEventListener('scroll',()=>hideGMenu(),true);
 GM.addEventListener('click',async e=>{
   const b=e.target.closest('[data-gm]'); if(!b) return; hideGMenu(); const a=b.dataset.gm;
+  if(a==='undo'){ gUndo(); return; } if(a==='redo'){ gRedo(); return; }
   const mvs=[...new Map(gTargets().map(mvOf).filter(Boolean).map(m=>[m.id,m])).values()];
   if(a==='copy'||a==='cut'){ const t=gTSV(); GCLIP=t; try{ await navigator.clipboard.writeText(t.text); }catch(x){} if(a==='cut') gClear(); else toast('คัดลอกแล้ว'); }
   else if(a==='paste'){ try{ const t=(await navigator.clipboard.readText()).replace(/\r/g,'').replace(/\n$/,''); gPaste(t.split('\n').map(l=>l.split('\t'))); }catch(x){ if(GCLIP) gPaste(GCLIP.cells); else toast('ใช้ Ctrl+V เพื่อวาง'); } }
@@ -1522,8 +1525,8 @@ async function menuCopy(cut){ if(!needSel()) return; const t=selTSV(); CLIP=t; t
 /* keyboard */
 BOARD.addEventListener('keydown',e=>{ const i=e.target.closest('.ce'); if(!i) return;
   const open=!pop.hidden && cb.inp===i; const k=e.key, mod=e.ctrlKey||e.metaKey;
-  if(mod && (k==='z'||k==='Z') && !e.shiftKey){ e.preventDefault(); undo(); return; }
-  if(mod && (k==='y'||k==='Y'||((k==='z'||k==='Z') && e.shiftKey))){ e.preventDefault(); redo(); return; }
+  if(mod && isZ(e) && !e.shiftKey){ e.preventDefault(); undo(); return; }
+  if(mod && (isY(e) || (isZ(e) && e.shiftKey))){ e.preventDefault(); redo(); return; }
   if(open && (k==='ArrowDown'||k==='ArrowUp')){ e.preventDefault(); const n=cb.items.length; cb.act=(cb.act+(k==='ArrowDown'?1:-1)+n)%n;
     [...pop.children].forEach((x,j)=>x.classList.toggle('act',j===cb.act)); pop.children[cb.act]?.scrollIntoView({block:'nearest'}); return; }
   if(open && (k==='Enter'||k==='Tab') && cb.act>=0 && i.value.trim()){ if(k==='Enter') e.preventDefault(); pick(cb.act); return; }
@@ -1549,6 +1552,7 @@ BOARD.addEventListener('focusout',e=>{ const i=e.target.closest('.ce'); if(i && 
 /* right-click menu */
 const MENU=$('cmenu');
 const MENU_ITEMS=[
+  ['undo','↶ ย้อนกลับ','Ctrl+Z'],['redo','↷ ทำซ้ำ','Ctrl+Y'],['-'],
   ['cut','ตัด','Ctrl+X'],['copy','คัดลอก','Ctrl+C'],['paste','วาง','Ctrl+V'],['clear','ลบข้อมูล','Delete'],['-'],
   ['colors'],['-'],
   ['delblock','เอาตารางวันนี้ออกทั้งตาราง',''],['-'],
