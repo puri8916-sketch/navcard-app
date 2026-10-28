@@ -501,15 +501,23 @@ function dutyPilots(D){ const k=D.slice(0,7); const keys=Object.keys(S.duty).sor
   let best=null; for(const x of keys){ if(x<=k) best=x; } return (best? S.duty[best] : (keys.length? S.duty[keys[0]]:['178','189'])).filter(Boolean); }
 
 /* ---------- layout engine (matches the Excel sheet rules) ---------- */
-const order = m => m.type==='IN' ? 1 : 0;   // same minute: sailing/shifting numbered before entering
-function sortMv(a,b){ return a.datetime<b.datetime?-1:a.datetime>b.datetime?1:order(a)-order(b); }
+// เวลาเดียวกัน: เรียงเลขตามความสำคัญของท่า (บนสุด = ได้เลขก่อน) · ท่าที่ไม่อยู่ในรายการไปท้ายสุด
+const BERTH_ORDER = ['PRATEEP','SAWAT','SOUTHERN','HARIN1','HARIN2','SIRICHON1','SIRICHON2','RW','MPP','UNITHAI',
+  'DWP-1','DWP 1-2','DWP-2','DWP-3','PSB-6','PSB-5','PSB-4','PSB-3','PSB-2','PSB-1','PTT-A','PTT-B','SHELL','ANCHORAGE'];
+const bKey = t => String(t||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+const B_KEYS = BERTH_ORDER.map(bKey);
+function berthRank(t){ const k=bKey(String(t||'').split('<>')[0]); let best=999, len=0;
+  B_KEYS.forEach((b,i)=>{ if(b && k.startsWith(b) && b.length>len){ best=i; len=b.length; } }); return best; }
+const mvBerth = m => m.type==='IN' ? m.to : m.from;   // ท่าที่นำร่องไปรับเรือ
+const order = m => m.type==='IN' ? 1 : 0;   // same minute + same berth: sailing/shifting before entering
+function sortMv(a,b){ return a.datetime<b.datetime?-1:a.datetime>b.datetime?1:(berthRank(mvBerth(a))-berthRank(mvBerth(b)))||(order(a)-order(b)); }
 function buildMain(items){
   const list=items.slice().sort(sortMv); const rows=[{blank:true}]; const no=new Map(); let n=1, prev=null;
   const slots=[]; for(const m of list){ const s=slots[slots.length-1]; if(s && s.dt===m.datetime) s.items.push(m); else slots.push({dt:m.datetime, items:[m]}); }
   for(const s of slots){
     if(prev && (minutes(s.dt)-minutes(prev))/60 >= S.settings.gap) rows.push({blank:true, gapH:(minutes(s.dt)-minutes(prev))/60});
     const outs=s.items.filter(m=>m.type!=='IN'), ins=s.items.filter(m=>m.type==='IN');
-    outs.forEach(m=>no.set(m.id,n++)); ins.forEach(m=>no.set(m.id,n++));
+    s.items.forEach(m=>no.set(m.id,n++));   // already in berth-priority order
     for(let i=0;i<Math.max(outs.length,ins.length);i++) rows.push({L:ins[i], R:outs[i]});
     prev=s.dt;
   }
@@ -1487,7 +1495,7 @@ function relayout(bi, r0, c0){
       halves.push(hf);
     }
   });
-  const timed=halves.filter(x=>x.dt).sort((x,y)=>x.dt<y.dt?-1:x.dt>y.dt?1:x.ord-y.ord), untimed=halves.filter(x=>!x.dt);
+  const timed=halves.filter(x=>x.dt).sort((x,y)=>x.dt<y.dt?-1:x.dt>y.dt?1:(berthRank(x.c[x.side==='L'?6:5])-berthRank(y.c[y.side==='L'?6:5]))||x.ord-y.ord), untimed=halves.filter(x=>!x.dt);
   const out=[blankRow()]; let prev=null; const slots=[];
   for(const x of timed){ const s=slots[slots.length-1]; if(s && s.dt===x.dt) s.items.push(x); else slots.push({dt:x.dt, items:[x]}); }
   const place=(L,R)=>{ const row=blankRow(); for(const [hf,a] of [[L,0],[R,9]]) if(hf){ hf.c.forEach((v,k)=>{ row.c[a+k]=v; row.r[a+k]=hf.r[k]; row.h[a+k]=hf.h[k]; }); hf.at=out.length; } out.push(row); };
