@@ -689,7 +689,7 @@ function halfHTML(side, m, o){
       if(f==='no'){ const lt=+m.late; h+=`<td class="no${lt?' lt':''}${mid}"><button type="button" data-act="late" data-id="${m.id}" title="${lt?'กดเพื่อยกเลิก พ':'กดเพื่อทำเป็น พ (แจ้งเพิ่มหลังจัดจ่าย)'}">${lt?'พ':(o.no??'')}</button></td>`; continue; }
       const need = f==='pilot' && !m.pilot ? ' need' : '';
       const cell = inputHTML(m.id,f,side,fieldVal(m,f,side),`data-base="${o.base}"`);
-      if(f==='ship') h+=`<td class="shipc">${cell}<span class="ops">${side==='L'?`<button type="button" data-act="out" data-id="${m.id}" title="สร้างเที่ยวออกของเรือลำนี้">+ออก</button>`:''}<button type="button" data-act="del" data-id="${m.id}">ลบ</button></span></td>`;
+      if(f==='ship') h+=`<td class="shipc">${cell}<span class="ops"><button type="button" data-act="del" data-id="${m.id}">ลบ</button></span></td>`;
       else h+=`<td class="${need.trim()}">${cell}</td>`;
     }
   } else if(o.draft){
