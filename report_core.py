@@ -296,16 +296,12 @@ def _fill_sheet(ws, tpl, tab, sig_png, rank, name, dx=0, dy=0):
     _paginate(ws, spans, L)
 
 
-PRINT_SCALE = 87
-
-
 def _paginate(ws, spans, last_row):
-    """Print setup: a fixed size instead of "fit to one page" — nothing is shrunk to squeeze a long day in,
-    it simply runs on to page 2 (no repeated header, no forced breaks); centred across the page.
-    Fixed at 87 % (the office template's own value): at 100 % the last columns (Pilot No, ผู้ปิดงาน) would
-    print on a separate page because the columns are wider than A4 landscape."""
-    ws.sheet_properties.pageSetUpPr.fitToPage = False
-    ws.page_setup.scale = PRINT_SCALE
+    """Print setup: every column on the page width (ผู้ปิดงาน never spills to its own page), at most 2 pages tall;
+    a long day runs on to page 2 naturally (no repeated header, no forced breaks); centred across the page."""
+    ps = ws.page_setup
+    ws.sheet_properties.pageSetUpPr.fitToPage = True
+    ps.fitToWidth, ps.fitToHeight = 1, 2
     ws.print_options.horizontalCentered = True
     ws.print_title_rows = None
     ws.row_breaks = RowBreak()
