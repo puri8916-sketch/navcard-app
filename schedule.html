@@ -1573,8 +1573,8 @@ BOARD.addEventListener('focusout',e=>{ const i=e.target.closest('.ce'); if(i && 
 const MENU=$('cmenu');
 const MENU_ITEMS=[
   ['undo','↶ ย้อนกลับ','Ctrl+Z'],['redo','↷ ทำซ้ำ','Ctrl+Y'],['-'],
-  ['cut','ตัด','Ctrl+X'],['copy','คัดลอก','Ctrl+C'],['paste','วาง','Ctrl+V'],['clear','ลบข้อมูล','Delete'],['delblock','เอาตารางวันนี้ออกทั้งตาราง',''],['-'],
   ['colors'],['-'],
+  ['cut','ตัด','Ctrl+X'],['copy','คัดลอก','Ctrl+C'],['paste','วาง','Ctrl+V'],['clear','ลบข้อมูล','Delete'],['delblock','เอาตารางวันนี้ออกทั้งตาราง',''],['-'],
   ['insup','แทรกแถวด้านบน',''],['insdown','แทรกแถวด้านล่าง',''],['delrow','ลบแถว','']];
 MENU.innerHTML = MENU_ITEMS.map(x=>x[0]==='-'?'<hr>':x[0]==='colors'?`<div class="mcol"><span>สีตัวอักษร</span><div>${FC.map(k=>`<button type="button" data-col="${k}" style="background:${k}" title="${k}"></button>`).join('')}<button type="button" data-col="" class="auto" title="อัตโนมัติ (ดำ)">A</button></div></div>`:`<button type="button" data-m="${x[0]}" class="${x[3]||''}"><span>${x[1]}</span><kbd>${x[2]}</kbd></button>`).join('');
 function hideMenu(){ MENU.hidden=true; }
