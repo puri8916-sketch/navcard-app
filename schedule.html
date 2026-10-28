@@ -207,7 +207,7 @@ table.lsheet{border-collapse:separate;border-spacing:0;border-top:1px dotted #8C
 .btn.tb{padding:7px 12px;font-size:17px}
 .btn.tb.red{color:#D0021B}
 /* ทุกปุ่มสีเขียว LINE ยกเว้น ดาวน์โหลด PDF (แดง) */
-.btn.primary,#impBtn,#impGo,#printBtn,#dispBtn,#sBack,.btn.danger,#linePull,.btn.addblk{background:#06C755;border:2px solid #06C755;color:#fff;font-weight:700;box-shadow:0 3px 10px rgb(6 199 85 / .35)}
+.btn.primary,#impBtn,#impGo,#printBtn,#dispBtn,#sBack,.btn.danger,#linePull{background:#06C755;border:2px solid #06C755;color:#fff;font-weight:700;box-shadow:0 3px 10px rgb(6 199 85 / .35)}
 .btn.primary:hover,#impBtn:hover,#impGo:hover,#printBtn:hover,#dispBtn:hover,#sBack:hover,.btn.danger:hover,#linePull:hover,.btn.tb[data-bact="undo"],.btn.tb[data-bact="redo"],#gUndo,#gRedo{background:#E8F0FE;color:#1A56DB;border:1.5px solid #A4C2F4;font-weight:700}
 .btn.tb[data-bact="undo"]:hover,.btn.tb[data-bact="redo"]:hover,#gUndo:hover,#gRedo:hover{background:#D2E3FC}
 #printBtn{font-size:19px;font-weight:800;padding:10px 24px}
@@ -218,9 +218,10 @@ table.lsheet{border-collapse:separate;border-spacing:0;border-top:1px dotted #8C
 #linePull{font-size:17px;font-weight:700;padding:9px 18px;box-shadow:0 2px 6px rgb(6 199 85 / .35)}
 #linePull.arm{background:#D0021B!important;border-color:#D0021B!important;color:#fff}
 .lsheet+.lsheet{border-top:0}
-.btn.addblk{font-size:17px;font-weight:700;padding:9px 18px;box-shadow:0 2px 6px rgb(6 199 85 / .35)}
+.btn.addblk{background:#D93025;border:2px solid #D93025;color:#fff;font-size:17px;font-weight:700;padding:9px 18px;box-shadow:0 2px 6px rgb(217 48 37 / .3)}
+.btn.addblk:hover{background:#B3261E;border-color:#B3261E}
 @media (prefers-reduced-motion:no-preference){.btn.addblk{animation:addpulse 1.6s ease-in-out 3}}
-@keyframes addpulse{50%{box-shadow:0 0 0 6px rgb(6 199 85 / .3)}}
+@keyframes addpulse{50%{box-shadow:0 0 0 6px rgb(217 48 37 / .25)}}
 .lsheet.board td.title{position:relative}
 .blkdel{position:absolute;right:8px;top:50%;transform:translateY(-50%);font:600 14px var(--f-ui);color:#D0021B;background:#fff;border:1px solid #E3B3B3;border-radius:6px;padding:4px 10px;cursor:pointer;opacity:0;transition:opacity .15s}
 .lsheet.board:hover .blkdel,.blkdel:focus-visible{opacity:1}
