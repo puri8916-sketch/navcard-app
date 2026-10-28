@@ -70,6 +70,7 @@ main{padding-block:14px 40px;padding-left:max(16px,env(safe-area-inset-left,0px)
 .scrollx{overflow-x:auto}
 
 /* setup form */
+.pw{position:relative}.pw input{padding-right:64px}.pwbtn{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:0;background:transparent;color:var(--accent);font-weight:600;cursor:pointer;font-size:14px}
 .setup{max-width:760px;display:grid;gap:12px}.setup p{margin:0}
 .fgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
 .f{display:grid;gap:4px;min-width:0}
@@ -310,7 +311,7 @@ table.lsheet.board{width:100%;font-size:17px}
       <p class="note">ใช้ชีต <b>ShipSchedule_DB</b> + สคริปต์ <b>apps_script/Schedule.gs</b> (คนละชีตกับบันทึกเรือ) ขั้นตอนติดตั้งอยู่ใน README หัวข้อ เมนู 🗓 จัดตารางเรือ</p>
       <form id="setupForm" class="fgrid" autocomplete="off">
         <div class="f span4"><label for="sUrl">Web app URL (ลงท้าย /exec)</label><input id="sUrl" placeholder="https://script.google.com/macros/s/…/exec"></div>
-        <div class="f span2"><label for="sKey">รหัส (ตามบรรทัด KEYS ในสคริปต์)</label><input id="sKey"></div>
+        <div class="f span2"><label for="sKey">รหัส (ตามบรรทัด KEYS ในสคริปต์)</label><div class="pw"><input id="sKey" type="password" autocomplete="off"><button type="button" class="pwbtn" id="sKeyShow" aria-label="แสดงรหัส">แสดง</button></div></div>
         <div class="f span2" style="align-content:end"><button type="submit" class="btn primary" id="sTest">ทดสอบและเชื่อมต่อ</button></div>
         <div class="f span4"><div class="hint" id="sMsg"></div></div>
       </form>
@@ -1084,10 +1085,12 @@ $('shipAdd').addEventListener('submit',async e=>{ e.preventDefault();
   const s={name, loa:$('nsLoa').value.trim(), berth:norm($('nsBerth').value), agent:norm($('nsAgent').value), note:''};
   try{ await api('saveShip',{},{ship:s}); S.ships.push(s); S.shipIdx.set(name,s); ['nsName','nsLoa','nsBerth','nsAgent'].forEach(id=>$(id).value=''); $('shipQ').value=''; renderShips(); toast(`เพิ่ม ${name} แล้ว`); $('nsName').focus(); }
   catch(err){ toast('เพิ่มไม่สำเร็จ: '+err.message); } });
-$('modeBadge').addEventListener('click',()=>{ if(!SEED || CFG.API_URL){ $('sUrl').value=CFG.API_URL; $('sKey').value=CFG.TOKEN; showTab('setup'); } });
+$('modeBadge').addEventListener('click',()=>{ if(!SEED || CFG.API_URL){ $('sUrl').value=CFG.API_URL; $('sKey').value=''; $('sKey').type='password'; $('sKeyShow').textContent='แสดง';
+  $('sKey').placeholder = CFG.TOKEN ? '•••••••• (บันทึกไว้แล้ว · เว้นว่างได้)' : ''; showTab('setup'); } });
+$('sKeyShow').addEventListener('click',()=>{ const k=$('sKey'); const show=k.type==='password'; k.type=show?'text':'password'; $('sKeyShow').textContent=show?'ซ่อน':'แสดง'; });
 $('sBack').addEventListener('click',()=>showTab('work'));
 $('setupForm').addEventListener('submit',async e=>{ e.preventDefault();
-  const url=$('sUrl').value.trim(), key=$('sKey').value.trim(); const msg=$('sMsg');
+  const url=$('sUrl').value.trim(), key=$('sKey').value.trim() || (url===CFG.API_URL ? CFG.TOKEN : ''); const msg=$('sMsg');
   if(!/^https:\/\/script\.google\.com\/.+\/exec/.test(url)){ msg.textContent='URL ต้องเป็น Web app ของ Apps Script ลงท้าย /exec'; msg.className='hint bad'; return; }
   msg.textContent='กำลังทดสอบ…'; msg.className='hint';
   const old={...CFG}; CFG.API_URL=url; CFG.TOKEN=key;
@@ -1592,7 +1595,7 @@ $('lineCopy').addEventListener('click',async()=>{
   const D0 = (!CFG.API_URL && SEED && SEED.startDate) ? SEED.startDate : todayYmd();
   const c = cacheGet();
   if(c && c.init){ applyInit(c.init); S.mv=c.mv||[]; S.loaded=c.loaded; S.D=D0; $('schedDate').value=D0; renderAll(); renderShips(); showTab('line'); refresh(true); return; }
-  try{ await Promise.all([loadInit(), (S.D=D0, loadMovements(D0))]); cacheSet(); }catch(err){ toast('โหลดฐานข้อมูลไม่สำเร็จ: '+err.message); $('sUrl').value=CFG.API_URL; $('sKey').value=CFG.TOKEN; $('sMsg').textContent='โหลดไม่สำเร็จ: '+err.message; $('sMsg').className='hint bad'; showTab('setup'); return; }
+  try{ await Promise.all([loadInit(), (S.D=D0, loadMovements(D0))]); cacheSet(); }catch(err){ toast('โหลดฐานข้อมูลไม่สำเร็จ: '+err.message); $('sUrl').value=CFG.API_URL; $('sKey').value=''; $('sMsg').textContent='โหลดไม่สำเร็จ: '+err.message; $('sMsg').className='hint bad'; showTab('setup'); return; }
   $('schedDate').value=D0; renderAll(); renderShips(); showTab('line');
   try{ document.fonts.ready.then(()=>fitAll()); }catch(e){}
 })();
