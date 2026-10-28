@@ -509,6 +509,20 @@ const B_KEYS = BERTH_ORDER.map(bKey);
 function berthRank(t){ const k=bKey(String(t||'').split('<>')[0]); let best=999, len=0;
   B_KEYS.forEach((b,i)=>{ if(b && k.startsWith(b) && b.length>len){ best=i; len=b.length; } }); return best; }
 const mvBerth = m => m.type==='IN' ? m.to : m.from;   // ท่าที่นำร่องไปรับเรือ
+// จับคู่แถวในเวลาเดียวกัน: เข้า-ออก ท่าเดียวกันอยู่แถวเดียวกัน · เรือเดี่ยวที่อยู่ติดกันในลำดับท่า (เข้า 1 ออก 1) ใช้แถวเดียวกันได้
+function pairSlot(ins, outs, berthOf){
+  const bk=x=>bKey(String(berthOf(x)||'').split('<>')[0]);
+  const all=[...ins,...outs].map((x,o)=>({x,L:ins.includes(x),o})).sort((a,b)=>(berthRank(berthOf(a.x))-berthRank(berthOf(b.x)))||(a.o-b.o));
+  const used=new Set(), units=[];
+  for(const a of all){ if(used.has(a)) continue; used.add(a);
+    const m=bk(a.x) && all.find(b=>!used.has(b) && b.L!==a.L && bk(b.x)===bk(a.x));
+    if(m){ used.add(m); units.push({L:a.L?a.x:m.x, R:a.L?m.x:a.x}); } else units.push(a.L?{L:a.x}:{R:a.x}); }
+  const rows=[];
+  for(const u of units){ const last=rows[rows.length-1];
+    if(last && last.single && !(u.L&&u.R) && (u.L?!last.L:!last.R)){ Object.assign(last,u); last.single=false; continue; }
+    rows.push({...u, single:!(u.L&&u.R)}); }
+  return rows.map(r=>({L:r.L,R:r.R}));
+}
 const order = m => m.type==='IN' ? 1 : 0;   // same minute + same berth: sailing/shifting before entering
 function sortMv(a,b){ return a.datetime<b.datetime?-1:a.datetime>b.datetime?1:(berthRank(mvBerth(a))-berthRank(mvBerth(b)))||(order(a)-order(b)); }
 function buildMain(items){
@@ -518,7 +532,7 @@ function buildMain(items){
     if(prev && (minutes(s.dt)-minutes(prev))/60 >= S.settings.gap) rows.push({blank:true, gapH:(minutes(s.dt)-minutes(prev))/60});
     const outs=s.items.filter(m=>m.type!=='IN'), ins=s.items.filter(m=>m.type==='IN');
     s.items.forEach(m=>no.set(m.id,n++));   // already in berth-priority order
-    for(let i=0;i<Math.max(outs.length,ins.length);i++) rows.push({L:ins[i], R:outs[i]});
+    pairSlot(ins,outs,mvBerth).forEach(r=>rows.push(r));
     prev=s.dt;
   }
   rows.push({blank:true});
@@ -528,7 +542,7 @@ function buildLate(items){
   const list=items.slice().sort(sortMv); const rows=[]; const slots=[];
   for(const m of list){ const s=slots[slots.length-1]; if(s && s.dt===m.datetime) s.items.push(m); else slots.push({dt:m.datetime, items:[m]}); }
   for(const s of slots){ const outs=s.items.filter(m=>m.type!=='IN'), ins=s.items.filter(m=>m.type==='IN');
-    for(let i=0;i<Math.max(outs.length,ins.length);i++) rows.push({L:ins[i], R:outs[i], late:true}); }
+    pairSlot(ins,outs,mvBerth).forEach(r=>rows.push({...r, late:true})); }
   if(!rows.length) rows.push({blank:true});
   return rows;
 }
@@ -1302,7 +1316,7 @@ function pairRows(items){
   for(const s of slots){
     if(prev && (minutes(s.dt)-minutes(prev))/60 >= S.settings.gap) rows.push({gap:true});
     const outs=s.items.filter(m=>m.type!=='IN'), ins=s.items.filter(m=>m.type==='IN');
-    for(let i=0;i<Math.max(outs.length,ins.length);i++) rows.push({L:ins[i], R:outs[i]});
+    pairSlot(ins,outs,mvBerth).forEach(r=>rows.push(r));
     prev=s.dt;
   }
   return rows;
@@ -1502,7 +1516,7 @@ function relayout(bi, r0, c0){
   for(const s of slots){
     if(prev && (minutes(s.dt)-minutes(prev))/60 >= S.settings.gap) out.push(blankRow());
     const ins=s.items.filter(x=>x.side==='L'), outs=s.items.filter(x=>x.side==='R');
-    for(let k=0;k<Math.max(ins.length,outs.length);k++) place(ins[k],outs[k]);
+    pairSlot(ins,outs,x=>x.c[x.side==='L'?6:5]).forEach(r=>place(r.L,r.R));
     prev=s.dt;
   }
   if(untimed.length){ out.push(blankRow()); untimed.forEach(x=>place(x.side==='L'?x:null, x.side==='R'?x:null)); }
