@@ -205,7 +205,9 @@ table.lsheet{border-collapse:separate;border-spacing:0;border-top:1px dotted #8C
 .ltool .grp{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 .btn.tb{padding:7px 12px;font-size:15px}
 .btn.tb.red{color:#D0021B}
-#linePull.arm{background:var(--pilot);color:#fff;border-color:var(--pilot)}
+#linePull{background:#E8710A;color:#fff;border:2px solid #E8710A;font-size:17px;font-weight:700;padding:9px 18px;box-shadow:0 2px 6px rgb(232 113 10 / .35)}
+#linePull:hover{background:#C75F06;border-color:#C75F06}
+#linePull.arm{background:#D0021B;border-color:#D0021B;color:#fff}
 .lsheet+.lsheet{border-top:0}
 .btn.addblk{background:#1E8E3E;color:#fff;border:2px solid #1E8E3E;font-size:17px;font-weight:700;padding:9px 18px;box-shadow:0 2px 6px rgb(30 142 62 / .35)}
 .btn.addblk:hover{background:#18752F;border-color:#18752F}
@@ -298,7 +300,7 @@ table.lsheet.board{width:100%;font-size:17px}
       <div class="grp"><button class="btn tb" data-bact="undo" title="Ctrl+Z">↶ ย้อนกลับ</button><button class="btn tb" data-bact="redo" title="Ctrl+Y">↷ ทำซ้ำ</button></div>
       <div class="grp fcolor"><button class="btn tb fc-main" data-bact="color" title="สีตัวอักษร"><span class="fcA">A</span><span class="fcBar" id="fcBar"></span></button><button class="btn tb fc-drop" id="fcDrop" title="เลือกสี" aria-label="เลือกสีตัวอักษร">▾</button><div class="fc-pal" id="fcPal" hidden></div></div>
       <div class="grp" id="addBlk"></div>
-      <div class="grp"><label class="since" for="lineSince">ตั้งแต่</label><input id="lineSince" class="since num" autocomplete="off" aria-label="ดึงเรือตั้งแต่เวลา"><button class="btn" id="linePull">ดึงจากจัดตารางใหม่</button><span class="note" id="boardInfo"></span></div>
+      <div class="grp"><label class="since" for="lineSince">ตั้งแต่</label><input id="lineSince" class="since num" autocomplete="off" aria-label="ดึงเรือตั้งแต่เวลา"><button class="btn" id="linePull">⟳ ดึงจากจัดตารางใหม่</button><span class="note" id="boardInfo"></span></div>
     </div>
     <div class="scrollx"><div class="paper linepaper" id="board"></div></div>
   </section>
@@ -1605,8 +1607,8 @@ function delBlock(bi){
 BOARD.addEventListener('click',e=>{ const b=e.target.closest('[data-delblk]'); if(b) delBlock(+b.dataset.delblk); });
 let pullArm=false;
 $('linePull').addEventListener('click',()=>{
-  if(!pullArm){ pullArm=true; $('linePull').textContent='ยืนยัน: แทนที่ด้วยข้อมูลจัดตาราง'; $('linePull').classList.add('arm'); setTimeout(()=>{ pullArm=false; $('linePull').textContent='ดึงจากจัดตารางใหม่'; $('linePull').classList.remove('arm'); },3500); return; }
-  pullArm=false; $('linePull').textContent='ดึงจากจัดตารางใหม่'; $('linePull').classList.remove('arm');
+  if(!pullArm){ pullArm=true; $('linePull').textContent='ยืนยัน: แทนที่ด้วยข้อมูลจัดตาราง'; $('linePull').classList.add('arm'); setTimeout(()=>{ pullArm=false; $('linePull').textContent='⟳ ดึงจากจัดตารางใหม่'; $('linePull').classList.remove('arm'); },3500); return; }
+  pullArm=false; $('linePull').textContent='⟳ ดึงจากจัดตารางใหม่'; $('linePull').classList.remove('arm');
   pushUndo(); const nb=boardFromSchedule(S.D); BD.blocks=nb.blocks; SEL=null; boardSave(); renderBoard(); toast('ดึงข้อมูลจากจัดตารางแล้ว (ย้อนกลับได้)');
 });
 
