@@ -205,28 +205,19 @@ table.lsheet{border-collapse:separate;border-spacing:0;border-top:1px dotted #8C
 .ltool .grp{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 .btn.tb{padding:7px 12px;font-size:15px}
 .btn.tb.red{color:#D0021B}
-.btn.tb[data-bact="undo"],.btn.tb[data-bact="redo"],#gUndo,#gRedo{background:#E8F0FE;color:#1A56DB;border:1.5px solid #A4C2F4;font-weight:700}
-.btn.tb[data-bact="undo"]:hover,.btn.tb[data-bact="redo"]:hover,#gUndo:hover,#gRedo:hover{background:#D2E3FC}
-#impBtn{background:#0E9F9A;border:2px solid #0E9F9A;color:#fff;font-weight:700}#impBtn:hover{background:#0B827E;border-color:#0B827E}
-#printBtn{background:#1A56DB;border-color:#1A56DB;color:#fff;font-weight:800;font-size:19px;padding:10px 24px;box-shadow:0 3px 10px rgb(26 86 219 / .4)}#printBtn:hover{background:#1646B3}
-#pdfBtn{background:#D93025;border:2px solid #D93025;color:#fff;font-weight:700;box-shadow:0 2px 6px rgb(217 48 37 / .3)}#pdfBtn:hover{background:#B3261E}
-#dispBtn{background:#4338CA;border:2px solid #4338CA;color:#fff;font-weight:700}#dispBtn:hover{background:#3730A3}
-#sTest{background:#06C755;border-color:#06C755;color:#fff;font-weight:700}
-#sBack{background:#E8F0FE;color:#1A56DB;border:1.5px solid #A4C2F4}
-.btn.danger{background:#FDECEA;border:1.5px solid #F4B4AE;color:#C5221F;font-weight:700}
-#pilotAdd .btn.primary,#shipAdd .btn.primary{background:#1E8E3E;border-color:#1E8E3E;color:#fff;font-weight:700}
-#impGo{background:#0E9F9A;border-color:#0E9F9A;color:#fff}
+/* ทุกปุ่มสีเขียว LINE ยกเว้น ดาวน์โหลด PDF (แดง) */
+.btn.primary,.btn.tb[data-bact="undo"],.btn.tb[data-bact="redo"],#gUndo,#gRedo,#impBtn,#impGo,#printBtn,#dispBtn,#sBack,.btn.danger,#linePull,.btn.addblk{background:#06C755;border:2px solid #06C755;color:#fff;font-weight:700;box-shadow:0 3px 10px rgb(6 199 85 / .35)}
+.btn.primary:hover,.btn.tb[data-bact="undo"]:hover,.btn.tb[data-bact="redo"]:hover,#gUndo:hover,#gRedo:hover,#impBtn:hover,#impGo:hover,#printBtn:hover,#dispBtn:hover,#sBack:hover,.btn.danger:hover,#linePull:hover,#printBtn{font-size:19px;font-weight:800;padding:10px 24px}
+#pdfBtn{background:#D93025;border:2px solid #D93025;color:#fff;font-weight:700;box-shadow:0 2px 6px rgb(217 48 37 / .3)}#pdfBtn:hover{background:#B3261E;border-color:#B3261E}
 #lineCopy{background:#06C755;color:#fff;border:2px solid #06C755;font-size:19px;font-weight:800;padding:10px 22px;border-radius:10px;box-shadow:0 3px 10px rgb(6 199 85 / .45);letter-spacing:.2px}
 #lineCopy:hover{background:#05A847;border-color:#05A847;transform:translateY(-1px);box-shadow:0 5px 14px rgb(6 199 85 / .55)}
 #lineCopy:active{transform:translateY(0)}
-#linePull{background:#E8710A;color:#fff;border:2px solid #E8710A;font-size:17px;font-weight:700;padding:9px 18px;box-shadow:0 2px 6px rgb(232 113 10 / .35)}
-#linePull:hover{background:#C75F06;border-color:#C75F06}
-#linePull.arm{background:#D0021B;border-color:#D0021B;color:#fff}
+#linePull{font-size:17px;font-weight:700;padding:9px 18px;box-shadow:0 2px 6px rgb(6 199 85 / .35)}
+#linePull.arm{background:#D0021B!important;border-color:#D0021B!important;color:#fff}
 .lsheet+.lsheet{border-top:0}
-.btn.addblk{background:#6D28D9;color:#fff;border:2px solid #6D28D9;font-size:17px;font-weight:700;padding:9px 18px;box-shadow:0 2px 6px rgb(109 40 217 / .35)}
-.btn.addblk:hover{background:#5B21B6;border-color:#5B21B6}
+.btn.addblk{font-size:17px;font-weight:700;padding:9px 18px;box-shadow:0 2px 6px rgb(6 199 85 / .35)}
 @media (prefers-reduced-motion:no-preference){.btn.addblk{animation:addpulse 1.6s ease-in-out 3}}
-@keyframes addpulse{50%{box-shadow:0 0 0 6px rgb(109 40 217 / .25)}}
+@keyframes addpulse{50%{box-shadow:0 0 0 6px rgb(6 199 85 / .3)}}
 .lsheet.board td.title{position:relative}
 .blkdel{position:absolute;right:8px;top:50%;transform:translateY(-50%);font:600 14px var(--f-ui);color:#D0021B;background:#fff;border:1px solid #E3B3B3;border-radius:6px;padding:4px 10px;cursor:pointer;opacity:0;transition:opacity .15s}
 .lsheet.board:hover .blkdel,.blkdel:focus-visible{opacity:1}
