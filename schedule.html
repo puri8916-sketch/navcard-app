@@ -1005,8 +1005,12 @@ async function refresh(force){
        && Object.keys(BD.all).some(d=>{ const r=dayRemote(d); return r && (r.updated||0)>(BD.all[d].updated||0); })) openBoard(S.D);
   }catch(err){ toast('โหลดข้อมูลไม่สำเร็จ: '+err.message); }
 }
+// แต่ละแท็บจำวันของตัวเอง: แก้ไข = 'line', จัดตาราง+พิมพ์ = 'work' (พิมพ์ใช้วันเดียวกับจัดตาราง)
+const TD={line:null, work:null};
+const tabGrp=t=> t==='line'?'line' : (t==='work'||t==='print')?'work' : null;
+const curGrp=()=> !$('view-line').hidden?'line' : (!$('view-work').hidden||!$('view-print').hidden)?'work' : null;
 async function goDate(D){
-  S.D=D; $('schedDate').value=D; hidePop(); if(!$('view-line').hidden) openBoard(D);
+  S.D=D; $('schedDate').value=D; const g=curGrp(); if(g) TD[g]=D; hidePop(); if(!$('view-line').hidden) openBoard(D);
   if(covered(D)){ renderAll(); refresh(false); return; }
   try{ await loadMovements(D); cacheSet(); }catch(err){ toast('โหลดข้อมูลไม่สำเร็จ: '+err.message); }
   renderAll();
@@ -1014,7 +1018,11 @@ async function goDate(D){
 $('schedDate').addEventListener('change',e=>{ if(e.target.value) goDate(e.target.value); });
 $('prevDay').addEventListener('click',()=>goDate(addDays(S.D,-1)));
 $('nextDay').addEventListener('click',()=>goDate(addDays(S.D,1)));
-function showTab(t){ for(const x of ['work','print','line','ships','pilots']){ $('tab-'+x).setAttribute('aria-selected', x===t); $('view-'+x).hidden = x!==t; } if(t==='work') fitAll(); if(t==='print'){ renderPrint(); renderDisp(); } if(t==='line'){ if(!$('lineSince').value) $('lineSince').value=fmtT(nowDt()); if(!BD || BD.date!==S.D) openBoard(S.D); else fitBoard(); } $('view-setup').hidden = t!=='setup'; hidePop(); }
+function showTab(t){ const g=tabGrp(t); if(!TD.line && !TD.work && S.D){ TD.line=TD.work=S.D; }
+  if(g){ if(!TD[g]) TD[g]=S.D;
+    else if(TD[g]!==S.D){ const D=TD[g]; S.D=D; $('schedDate').value=D; renderAll();
+      if(!covered(D)) loadMovements(D).then(()=>{ cacheSet(); renderAll(); if(!$('view-line').hidden && S.D===D) openBoard(D); }).catch(err=>toast('โหลดข้อมูลไม่สำเร็จ: '+err.message)); } }
+  for(const x of ['work','print','line','ships','pilots']){ $('tab-'+x).setAttribute('aria-selected', x===t); $('view-'+x).hidden = x!==t; } if(t==='work') fitAll(); if(t==='print'){ renderPrint(); renderDisp(); } if(t==='line'){ if(!$('lineSince').value) $('lineSince').value=fmtT(nowDt()); if(!BD || BD.date!==S.D) openBoard(S.D); else fitBoard(); } $('view-setup').hidden = t!=='setup'; hidePop(); }
 $('tab-work').addEventListener('click',()=>showTab('work')); $('tab-print').addEventListener('click',()=>showTab('print'));
 $('tab-line').addEventListener('click',()=>showTab('line'));
 $('tab-ships').addEventListener('click',()=>{ renderShips(); showTab('ships'); });
