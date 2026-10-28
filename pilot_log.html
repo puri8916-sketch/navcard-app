@@ -299,6 +299,26 @@ table.reg{border-collapse:collapse;width:100%;min-width:520px}
 .calpop .d.sel.has::after{background:#fff}
 .calpop .cf{display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-size:14px;color:var(--muted)}
 .calpop .cf button{font-size:16px;padding:6px 14px}
+
+/* Excel-style colour tools (same as จัดตาราง) + right-click menu */
+.ctool{position:relative;display:inline-flex}
+.ctool .btn{padding:5px 10px}
+.ct-main{display:inline-flex;flex-direction:column;align-items:center;gap:1px;border-top-right-radius:0;border-bottom-right-radius:0;min-width:40px}
+.ct-main[aria-pressed="true"]{box-shadow:0 0 0 2px var(--accent) inset;background:var(--head)}
+.ct-ic{font-size:16px;line-height:1}.ct-a{font-weight:700;font-family:serif;font-size:18px}
+.ct-bar{display:block;width:22px;height:5px;border-radius:1px;border:1px solid rgb(0 0 0 / .15)}
+.ct-drop{border-left:0;border-top-left-radius:0;border-bottom-left-radius:0;padding:5px 6px}
+.ct-pal{position:absolute;top:calc(100% + 4px);left:0;z-index:70;background:var(--surface);border:1px solid var(--line);border-radius:8px;box-shadow:0 8px 22px rgb(0 0 0 / .2);padding:8px;display:grid;grid-template-columns:repeat(5,28px);gap:6px}
+.ct-pal button,.cmenu .sws button{width:28px;height:28px;border:1px solid rgb(0 0 0 / .2);border-radius:4px;cursor:pointer;padding:0}
+.cmenu .sws button.none{background:var(--surface);color:var(--muted);font-size:14px}
+.ct-pal button.wide{grid-column:1/-1;width:auto;font-size:14px;background:var(--surface);color:var(--ink)}
+.cmenu{position:fixed;z-index:95;min-width:250px;background:var(--surface);border:1px solid var(--line);border-radius:8px;box-shadow:0 10px 28px rgb(0 0 0 / .22);padding:6px}
+.cmenu .lab{font-size:13px;color:var(--muted);padding:4px 8px 2px}
+.cmenu .sws{display:grid;grid-template-columns:repeat(6,28px);gap:5px;padding:4px 8px 8px}
+.cmenu .mi{display:block;width:100%;border:0;background:transparent;padding:8px 10px;border-radius:6px;font-size:15px;text-align:left;cursor:pointer;color:var(--ink)}
+.cmenu .mi:hover{background:var(--head)}
+.cmenu hr{border:0;border-top:1px solid var(--line);margin:4px 2px}
+td.mkfc,td.mkfc *{color:var(--mkfc)!important}
 </style>
 </head>
 <body>
@@ -335,16 +355,11 @@ table.reg{border-collapse:collapse;width:100%;min-width:520px}
       <button class="btn primary addship" id="addBtn">＋ เพิ่มเรือ</button>
       <div class="spacer"></div>
       <div class="hlbar">
-        <button class="btn" id="hlToggle" type="button" aria-pressed="false"><svg class="palico" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 3a9 9 0 0 0 0 18c1.1 0 1.8-.8 1.8-1.7 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.2 0-.9.8-1.7 1.7-1.7H16a5 5 0 0 0 5-5C21 6.4 17 3 12 3z" fill="var(--surface)" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="7.3" cy="11.2" r="1.7" fill="#f2c200"/><circle cx="9.6" cy="7.1" r="1.7" fill="#e75a9b"/><circle cx="14.4" cy="7.1" r="1.7" fill="#3fae4f"/><circle cx="17" cy="11" r="1.7" fill="#3a8fe0"/></svg>มาร์กสี</button>
-        <span id="hlColors" class="hlbar" hidden>
-          <button class="sw" type="button" data-c="y" aria-pressed="true" aria-label="เหลือง" title="เหลือง"></button>
-          <button class="sw" type="button" data-c="p" aria-pressed="false" aria-label="ชมพู" title="ชมพู"></button>
-          <button class="sw" type="button" data-c="g" aria-pressed="false" aria-label="เขียว" title="เขียว"></button>
-          <button class="sw" type="button" data-c="b" aria-pressed="false" aria-label="ฟ้า" title="ฟ้า"></button>
-          <button class="sw" type="button" data-c="x" aria-pressed="false" aria-label="ลบสี" title="ลบสี">✕</button>
-          <span class="hint">คลิกช่องในตารางเพื่อมาร์ก · คลิกซ้ำเพื่อลบ</span>
-        </span>
+        <div class="ctool" title="สีพื้น"><button class="btn tb ct-main" id="fillMain" type="button" aria-pressed="false" title="สีพื้น (กดแล้วคลิกช่องในตาราง)"><span class="ct-ic">🖍</span><span class="ct-bar" id="fillBar"></span></button><button class="btn tb ct-drop" id="fillDrop" type="button" aria-label="เลือกสีพื้น">▾</button><div class="ct-pal" id="fillPal" hidden></div></div>
+        <div class="ctool" title="สีตัวอักษร"><button class="btn tb ct-main" id="fontMain" type="button" aria-pressed="false" title="สีตัวอักษร (กดแล้วคลิกช่องในตาราง)"><span class="ct-ic ct-a">A</span><span class="ct-bar" id="fontBar"></span></button><button class="btn tb ct-drop" id="fontDrop" type="button" aria-label="เลือกสีตัวอักษร">▾</button><div class="ct-pal" id="fontPal" hidden></div></div>
+        <span class="hint" id="hlHint" hidden>คลิกช่องเพื่อใส่สี · คลิกซ้ำเพื่อลบ · Esc เลิก</span>
       </div>
+      <div class="cmenu" id="cellMenu" role="menu" hidden></div>
       <button class="btn grpA" id="wordBtn" type="button" hidden title="ไฟล์ Word รายการเรือ เข้า-ออก (SAMARN)">รายงานSMS</button>
       <button class="btn grpA" id="pdfBtn" type="button" hidden>สมุดประจำเดือน</button>
       <button class="btn grpB" id="bigBtn" type="button" hidden title="Excel: จำนวนเรือแยกตามขนาดชั้นใบอนุญาตผู้นำร่อง ประจำเดือน">สรุปเรือนำร่อง</button>
@@ -936,8 +951,9 @@ async function buildPdfBlob(rows,title,sub,onPage){
           const s=r.s;return {job:"",vessel:"↳ ย้ายท่า "+(r.i+1),order:s.order,pilotIn:s.pilot,berth:moveTxt(s),draughtIn:s.draught,agent:s.agent}[k]||""};
         PDF_COLS.forEach((cc,i)=>{
           const k=cc[2],mk=(isS?"s"+r.i+":":"")+(k==="closeNo"?"status":k),m=c.marks?.[mk];
-          if(m&&PDF_C.hl[m]){g.fillStyle=PDF_C.hl[m];g.fillRect(xs[i]*S,y*S,cc[1]*S,r.h*S)}
-          const cy=y+r.h/2,o={c:col,pt:isS?7:7.5,mono:!["vessel","agent","agentOut","remark"].includes(k)};if(i>=3&&i<=14)o.align="center";
+          if(m&&(PDF_C.hl[m]||m[0]==="#")){g.fillStyle=PDF_C.hl[m]||m;g.fillRect(xs[i]*S,y*S,cc[1]*S,r.h*S)}
+          const fcm=c.marks?.["fc|"+mk];
+          const cy=y+r.h/2,o={c:fcm||col,pt:isS?7:7.5,mono:!["vessel","agent","agentOut","remark"].includes(k)};if(i>=3&&i<=14)o.align="center";
           if(!isS&&k==="loa"){if(!c.loa&&!c.loaM)return;{let pt=7.5;font(pt,400,mono);while(pt>5.9&&g.measureText(String(c.loa||"")+"′/"+(c.loaM||"")).width>(cc[1]-5)*S){pt-=.3;font(pt,400,mono)}}const ft=(/^\d+(\.\d+)?$/.test(String(c.loa||"").trim())?c.loa+"′":c.loa||"");
             g.textBaseline="middle";g.textAlign="left";g.fillStyle=PDF_C.ink;const lx=xs[i]+Math.max(2.5,(cc[1]-g.measureText(ft+(c.loaM?"/"+c.loaM:"")).width/S)/2);g.fillText(fit(ft,(cc[1]-5)*S),lx*S,cy*S);
             if(c.loaM){const w1=g.measureText(ft+"/").width/S;g.fillStyle=PDF_C.red;g.fillText(ft?"/":"",(lx+g.measureText(ft).width/S)*S,cy*S);g.fillStyle=PDF_C.red;g.fillText(fit(c.loaM,(cc[1]-5-w1)*S),(lx+w1)*S,cy*S)}return}
@@ -1315,30 +1331,70 @@ $("statCopy").onclick=async()=>{const t=[["","ลำ","เน็ต","กร๊�
 
 /* ---------- highlighter: colour individual cells like a marker pen ---------- */
 const CELL_KEYS=["job","vessel","from","eta","order","pilotIn","berth","draughtIn","loa","lbp","agent","atd","pilotOut","draughtOut","agentOut","remark","status"];
-let markMode=false,markColor="y";
+let markMode=false,markTool="fill";
+// fill = cell background (old marks y/p/g/b still work), font = text colour; stored in c.marks: k -> fill, "fc|"+k -> font
+const FILL_C=["#FFFF00","#FFC000","#92D050","#00B0F0","#FF99CC","#FFF59A","#C9F2B5","#C4E4FF","#FFC6E0","#D9D9D9"];
+const FONT_C=["#000000","#FF0000","#C00000","#FFC000","#00B050","#0070C0","#002060","#7030A0","#808080"];
+let curFill="#FFFF00",curFont="#FF0000";
 function paintMarks(rows){
   const byId=new Map(rows.map(c=>[c.id,c]));
   $("logBody").querySelectorAll("tr[data-id]").forEach(tr=>{
     const c=byId.get(tr.dataset.id);if(!c)return;const pre=tr.dataset.si!=null?"s"+tr.dataset.si+":":"";
-    [...tr.children].forEach((td,j)=>{const k=pre+CELL_KEYS[j];td.dataset.k=k;const m=c.marks?.[k];if(m)td.dataset.hl=m;else delete td.dataset.hl});
+    [...tr.children].forEach((td,j)=>{const k=pre+CELL_KEYS[j];td.dataset.k=k;const m=c.marks?.[k],fc=c.marks?.["fc|"+k];
+      delete td.dataset.hl;td.style.background="";
+      if(m){if(m[0]==="#")td.style.background=m;else td.dataset.hl=m}
+      if(fc){td.classList.add("mkfc");td.style.setProperty("--mkfc",fc)}else{td.classList.remove("mkfc");td.style.removeProperty("--mkfc")}});
   });
 }
-function setMarkMode(on){markMode=on;setTimeout(renderLog);$("hlToggle").setAttribute("aria-pressed",on);$("hlColors").hidden=!on;document.body.classList.toggle("marking",on)}
-$("hlToggle").onclick=()=>setMarkMode(!markMode);
-document.querySelectorAll("#hlColors [data-c]").forEach(b=>b.addEventListener("click",()=>{markColor=b.dataset.c;document.querySelectorAll("#hlColors [data-c]").forEach(x=>x.setAttribute("aria-pressed",x===b))}));
-document.addEventListener("keydown",e=>{if(e.key==="Escape"&&markMode&&$("sheet").hidden)setMarkMode(false)});
-$("logBody").addEventListener("click",async e=>{
+function setMarkMode(on,tool){markMode=on;if(tool)markTool=tool;setTimeout(renderLog);
+  $("fillMain").setAttribute("aria-pressed",String(on&&markTool==="fill"));$("fontMain").setAttribute("aria-pressed",String(on&&markTool==="font"));
+  $("hlHint").hidden=!on;document.body.classList.toggle("marking",on)}
+function ctBars(){$("fillBar").style.background=curFill||"transparent";$("fontBar").style.background=curFont||"#000"}
+function ctPal(id,list,isFill){$(id).innerHTML=list.map(k=>`<button type="button" data-col="${k}" style="background:${k}" title="${k}"></button>`).join("")+
+  `<button type="button" class="wide" data-col="">${isFill?"ไม่มีสี (ลบสีพื้น)":"อัตโนมัติ (ลบสีตัวอักษร)"}</button>`}
+ctPal("fillPal",FILL_C,true);ctPal("fontPal",FONT_C,false);ctBars();
+$("fillMain").onclick=()=>setMarkMode(!(markMode&&markTool==="fill"),"fill");
+$("fontMain").onclick=()=>setMarkMode(!(markMode&&markTool==="font"),"font");
+$("fillDrop").onclick=e=>{e.stopPropagation();$("fontPal").hidden=true;$("fillPal").hidden=!$("fillPal").hidden};
+$("fontDrop").onclick=e=>{e.stopPropagation();$("fillPal").hidden=true;$("fontPal").hidden=!$("fontPal").hidden};
+$("fillPal").onclick=e=>{const b=e.target.closest("[data-col]");if(!b)return;e.stopPropagation();curFill=b.dataset.col;ctBars();$("fillPal").hidden=true;setMarkMode(true,"fill")};
+$("fontPal").onclick=e=>{const b=e.target.closest("[data-col]");if(!b)return;e.stopPropagation();curFont=b.dataset.col;ctBars();$("fontPal").hidden=true;setMarkMode(true,"font")};
+document.addEventListener("click",e=>{if(!e.target.closest(".ctool")){$("fillPal").hidden=true;$("fontPal").hidden=true}});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"){if(!$("cellMenu").hidden){$("cellMenu").hidden=true;return}if(markMode&&$("sheet").hidden)setMarkMode(false)}});
+async function saveMarks(c,marks){const {id,...rest}=c;try{await db.collection("calls").doc(id).set({...rest,marks})}catch(err){toast("บันทึกสีไม่สำเร็จ ("+(err.code||"error")+")")}}
+function setCellColor(td,kind,col,toggle){
+  if(!canWrite||!db)return;const id=td.parentElement.dataset.id,c=allCalls.find(x=>x.id===id);if(!c)return;
+  const k=(kind==="font"?"fc|":"")+td.dataset.k,marks={...(c.marks||{})};
+  if(!col||(toggle&&marks[k]===col))delete marks[k];else marks[k]=col;
+  return saveMarks(c,marks);
+}
+$("logBody").addEventListener("click",e=>{
   if(!markMode)return;
   if(e.target.closest(".edbtn,.shiftbtn,.grip"))return;
   const td=e.target.closest("td[data-k]");if(!td)return;
   e.stopPropagation();e.preventDefault();
-  if(!canWrite||!db)return;
-  const id=td.parentElement.dataset.id,c=allCalls.find(x=>x.id===id);if(!c)return;
-  const k=td.dataset.k,marks={...(c.marks||{})};
-  if(markColor==="x"||marks[k]===markColor)delete marks[k];else marks[k]=markColor;
-  const {id:_omit,...rest}=c;
-  try{await db.collection("calls").doc(id).set({...rest,marks})}catch(err){toast("บันทึกสีไม่สำเร็จ ("+(err.code||"error")+")")}
+  setCellColor(td,markTool,markTool==="font"?curFont:curFill,true);
 },true);
+// right-click a cell: colour menu (like จัดตาราง)
+let cmTd=null;
+$("logBody").addEventListener("contextmenu",e=>{
+  const td=e.target.closest("td[data-k]");if(!td||!canWrite||!db)return;e.preventDefault();cmTd=td;
+  const M=$("cellMenu"),sw=(list,kind)=>`<div class="sws">${list.map(k=>`<button type="button" data-kind="${kind}" data-col="${k}" style="background:${k}" title="${k}"></button>`).join("")}<button type="button" class="none" data-kind="${kind}" data-col="" title="ลบ">✕</button></div>`;
+  M.innerHTML=`<div class="lab">สีพื้น</div>${sw(FILL_C,"fill")}<div class="lab">สีตัวอักษร</div>${sw(FONT_C,"font")}<hr>`+
+    `<button type="button" class="mi" data-act="clear">ล้างสีช่องนี้</button><button type="button" class="mi" data-act="clearrow">ล้างสีทั้งแถว</button><hr><button type="button" class="mi" data-act="edit">✎ แก้ไขเรือลำนี้</button>`;
+  M.hidden=false;M.style.left="0px";M.style.top="0px";const r=M.getBoundingClientRect();
+  M.style.left=Math.max(4,Math.min(e.clientX,innerWidth-r.width-8))+"px";M.style.top=Math.max(4,Math.min(e.clientY,innerHeight-r.height-8))+"px";
+});
+$("cellMenu").addEventListener("click",e=>{const b=e.target.closest("button");if(!b||!cmTd)return;const td=cmTd;$("cellMenu").hidden=true;
+  if(b.dataset.kind){const col=b.dataset.col;if(col){if(b.dataset.kind==="fill")curFill=col;else curFont=col;ctBars()}setCellColor(td,b.dataset.kind,col,false);return}
+  const tr=td.parentElement,c=allCalls.find(x=>x.id===tr.dataset.id);if(!c)return;
+  if(b.dataset.act==="edit"){const eb=tr.querySelector(".edbtn")||document.querySelector(`#logBody tr[data-id="${tr.dataset.id}"] .edbtn`);if(eb)eb.click();return}
+  const k=td.dataset.k,marks={...(c.marks||{})};
+  if(b.dataset.act==="clear"){delete marks[k];delete marks["fc|"+k]}
+  else{const pre=tr.dataset.si!=null?"s"+tr.dataset.si+":":"";for(const x of Object.keys(marks)){const kk=x.replace(/^fc\|/,"");if(pre?kk.startsWith(pre):!/^s\d+:/.test(kk))delete marks[x]}}
+  saveMarks(c,marks)});
+document.addEventListener("mousedown",e=>{if(!$("cellMenu").hidden&&!e.target.closest("#cellMenu"))$("cellMenu").hidden=true});
+document.addEventListener("scroll",()=>{$("cellMenu").hidden=true},true);
 
 $("q").addEventListener("input",()=>{searchQ=norm($("q").value);if(searchQ&&scope!=="all"){scope="all";setSeg("scopeSeg","all")}renderLog()});
 document.querySelectorAll("#fSeg button").forEach(b=>b.addEventListener("click",()=>{fStatus=b.dataset.v;setSeg("fSeg",fStatus);if(fStatus==="open"&&scope!=="all"){scope="all";setSeg("scopeSeg","all")}renderLog()}));
@@ -1530,7 +1586,7 @@ $("edSave").onclick=async()=>{
   const data={date:editing?.date||curDate,by:beYY(editing?.date||curDate),fy:fyYY(editing?.date||curDate),job:g("fJob"),vessel,from:g("fFrom"),loa:g("fLoa"),loaM:g("fLoaM"),lbp:g("fLbp"),ng:editing?.ng||"",agent:g("fAgent"),
     eta:timeOf(g("fEta")),order:timeOf(g("fOrder")),invIn:$("invIn").checked||invSplit(g("fEta")).inv||invSplit(g("fOrder")).inv,pilotIn:pIn.p,capIn:pIn.p==="-CAP-"?(pIn.t||g("fCapIn")):"",berth:g("fBerth"),draughtIn:g("fDraughtIn"),
     atd:timeOf(g("fAtd")),invOut:$("invOut").checked||invSplit(g("fAtd")).inv,paknam:editing?.paknam||"",...(editing?.sms?{sms:editing.sms}:{}),pilotOut:pOut.p,capOut:pOut.p==="-CAP-"?(pOut.t||g("fCapOut")):"",draughtOut:g("fDraughtOut"),agentOut:g("fAgentOut")||g("fAgent"),remark:g("fRemark"),status,closeNo:g("fCloseNo"),cnAt:g("fCloseNo")!==(editing?.closeNo||"")?(g("fCloseNo")?Date.now():0):(editing?.cnAt||0),
-    shifts:shifts.filter(s=>s.order||s.pilot||s.fromBerth||s.berth||s.draught||s.agent),t:editing?.t||Date.now(),updated:Date.now(),marks:Object.fromEntries(Object.entries(editing?.marks||{}).filter(([k])=>{const m=k.match(/^s(\d+):/);return !m||+m[1]<shifts.filter(s=>s.order||s.pilot||s.fromBerth||s.berth||s.draught||s.agent).length}))};
+    shifts:shifts.filter(s=>s.order||s.pilot||s.fromBerth||s.berth||s.draught||s.agent),t:editing?.t||Date.now(),updated:Date.now(),marks:Object.fromEntries(Object.entries(editing?.marks||{}).filter(([k])=>{const m=k.match(/^(?:fc\|)?s(\d+):/);return !m||+m[1]<shifts.filter(s=>s.order||s.pilot||s.fromBerth||s.berth||s.draught||s.agent).length}))};
   $("edSave").disabled=true;
   try{
     if(editing)await db.collection("calls").doc(editing.id).set(data);
