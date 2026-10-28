@@ -433,6 +433,7 @@ async function api(action, params={}, body=null){
     if(action==='saveMovement'){ const i=demo.db.mv.findIndex(x=>x.id===body.m.id); if(i>=0) demo.db.mv[i]=body.m; else demo.db.mv.push(body.m); demo.persist(); return body.m; }
     if(action==='deleteMovement'){ demo.db.mv=demo.db.mv.filter(x=>x.id!==body.id); demo.persist(); return true; }
     if(action==='saveMovements'){ body.list.forEach(m=>demo.db.mv.push(m)); demo.persist(); return body.list.length; }
+    if(action==='deleteMovements'){ demo.db.mv=demo.db.mv.filter(x=>!body.ids.includes(x.id)); demo.persist(); return true; }
     if(action==='saveShip'){ if(!demo.db.ships.some(x=>x.name===body.ship.name)) demo.db.ships.push(body.ship); demo.persist(); return body.ship; }
     if(action==='updateShip'){ const i=demo.db.ships.findIndex(x=>x.name===body.oldName);
       if(body.ship.name!==body.oldName && demo.db.ships.some(x=>x.name===body.ship.name)) throw new Error(body.ship.name+' มีในทะเบียนแล้ว');
@@ -1642,7 +1643,8 @@ function impDay(rows){ const a=String((rows[1]||[])[1]||'').trim();
   if(/^\d{5}(\.\d+)?$/.test(a)){ const t=new Date(Date.UTC(1899,11,30)+Math.floor(+a)*864e5); return `${t.getUTCFullYear()}-${pad(t.getUTCMonth()+1)}-${pad(t.getUTCDate())}`; }
   return null; }
 function impSheet(sh){
-  const D=impDay(sh.rows); if(!D) return null;
+  const tm=String(sh.name).trim().match(/^(\d{1,2})-(\d{1,2})-\d+$/); if(!tm) return null;   // แก้ไข / ไว้ก็อฟ / เบอร์เรือ … are not day tabs
+  const D=impDay(sh.rows); if(!D || +D.slice(8)!==+tm[1] || +D.slice(5,7)!==+tm[2]) return null;
   const cl=v=>String(v??'').replace(/ /g,' ').trim(), num=v=>{v=cl(v);return /^\d+(\.0+)?$/.test(v)?String(parseInt(v)):v};
   const mv=[], bad=[]; let late=false;
   let r0=sh.rows.findIndex(R=>R&&/^NO\.?$/i.test(cl(R[1]))); if(r0<0) r0=3;
@@ -1656,8 +1658,11 @@ function impSheet(sh){
       if(!dt){ bad.push(`${ship} (${tt||'ไม่มีเวลา'})`); continue }
       const isLate = late || g(1)==='พ';
       const m={id:newId(), datetime:dt, ship, loa:num(g(3)), drf:g(4), pilot:num(side==='L'?g(8):g(7)).replace(/^P\.?/i,''), agent:norm(side==='L'?g(9):g(8)), late:isLate?1:0, note:''};
-      if(side==='L'){ m.type='IN'; m.to=norm(g(7)); m.from=''; const pv=g(6).replace(/\s/g,''); m.pob=pv?(parseTime(pv,D)||dt):dt; }
+      if(side==='L'){ m.type='IN'; m.to=norm(g(7)); m.from=''; const pv=g(6).replace(/\s/g,''); m.pob=pv?(parseTime(pv,D)||''):''; }
       else { const b=parseBerthR(g(6)); m.type=b.type; m.from=b.from; m.to=b.to; m.pob=''; }
+      // a time that belongs to another day's table would show up there: leave it out and say so
+      const want=isLate?addDays(D,-1):D;
+      if(schedOf(dt)!==want){ bad.push(`${ship} ${tt} (เวลาไม่อยู่ในรอบของแท็บนี้)`); continue }
       mv.push(m);
     }
   }
@@ -1673,29 +1678,46 @@ $('impFile').addEventListener('change',async e=>{
     if(!days.length){ P.innerHTML='ไม่พบแท็บตารางเรือในไฟล์ (A1 ต้องเป็นวันที่ เช่น 13 SEPTEMBER 2026) <button class="btn tb" id="impX">ปิด</button>'; $('impX').onclick=()=>P.hidden=true; return; }
     const from=`${addDays(days[0].D,-1)} 00:00`, to=`${addDays(days[days.length-1].D,3)} 23:59`;
     let have=[]; try{ have=await api('movements',{from,to}); }catch(err){ have=S.mv; }
-    const hk=new Set(have.map(impKey));
-    days.forEach(d=>{ d.dup=0; d.mv.forEach(m=>{ m._dup=hk.has(impKey(m)); if(m._dup) d.dup++; }); d.add=d.mv.length-d.dup; });
-    IMP=days; impShow();
+    IMP=days; IMP.have=have; impCount(false); impShow();
   }catch(err){ P.innerHTML=`อ่านไฟล์ไม่ได้: ${esc(err.message||String(err))} <button class="btn tb" id="impX">ปิด</button>`; $('impX').onclick=()=>P.hidden=true; }
 });
+const impOwn=(m,D)=> +m.late ? schedOf(m.datetime)===addDays(D,-1) : schedOf(m.datetime)===D;   // rows shown on day D's table
+function impCount(replace){
+  const days=IMP, sel=new Set(days.map(d=>d.D));
+  const keep=replace ? IMP.have.filter(m=>![...sel].some(D=>impOwn(m,D))) : IMP.have;
+  const hk=new Set(keep.map(impKey));
+  days.forEach(d=>{ d.dup=0; d.old=replace?IMP.have.filter(m=>impOwn(m,d.D)).length:0;
+    d.mv.forEach(m=>{ const k=impKey(m); m._dup=hk.has(k); if(m._dup) d.dup++; else hk.add(k); }); d.add=d.mv.length-d.dup; });
+}
 function impShow(){
   const P=$('impPanel'), tot=IMP.reduce((n,d)=>n+d.add,0);
   P.innerHTML=`<h3>นำเข้าไฟล์ตาราง · ${IMP.length} วัน</h3>
   <div class="dim">ติ๊กวันที่จะนำเข้า · เรือที่มีอยู่แล้ว (ชื่อ + วันเวลา + เข้า/ออก ตรงกัน) จะข้าม ไม่ซ้ำ</div>
-  <table><thead><tr><th><input type="checkbox" id="impAll" checked></th><th class="l">วันที่ (แท็บ)</th><th>เข้า</th><th>ออก/เลื่อน</th><th>พ</th><th>ใหม่</th><th>มีแล้ว</th><th class="l">อ่านไม่ได้</th></tr></thead><tbody>
+  <table><thead><tr><th><input type="checkbox" id="impAll" checked></th><th class="l">วันที่ (แท็บ)</th><th>เข้า</th><th>ออก/เลื่อน</th><th>พ</th><th>ใหม่</th><th>มีแล้ว</th>${IMP.rep?'<th>ลบเดิม</th>':''}<th class="l">อ่านไม่ได้</th></tr></thead><tbody>
   ${IMP.map((d,i)=>`<tr><td><input type="checkbox" class="impC" data-i="${i}" ${d.add?'checked':''}></td><td class="l">${shortDate(d.D)} <span class="dim">(${esc(d.name)})</span></td>
     <td>${d.mv.filter(m=>m.type==='IN'&&!m.late).length}</td><td>${d.mv.filter(m=>m.type!=='IN'&&!m.late).length}</td><td>${d.mv.filter(m=>m.late).length}</td>
-    <td><b>${d.add}</b></td><td class="dim">${d.dup||''}</td><td class="l dim">${esc(d.bad.join(', '))}</td></tr>`).join('')}
+    <td><b>${d.add}</b></td><td class="dim">${d.dup||''}</td>${IMP.rep?`<td class="dim">${d.old||''}</td>`:''}<td class="l dim">${esc(d.bad.join(', '))}</td></tr>`).join('')}
   </tbody></table>
+  <label class="row"><input type="checkbox" id="impRep" ${IMP.rep?'checked':''}> แทนที่ทั้งวัน: ลบเรือเดิมของวันที่ติ๊กก่อน แล้วใส่ตามไฟล์ 100% (ใช้ล้างข้อมูลที่ซ้ำ/เพี้ยน)</label>
   <div class="row"><button class="btn primary" id="impGo">นำเข้า <span id="impN">${tot}</span> รายการ</button><button class="btn" id="impX">ยกเลิก</button><span id="impMsg" class="dim"></span></div>`;
-  const cnt=()=>{ const n=[...P.querySelectorAll('.impC:checked')].reduce((s,c)=>s+IMP[+c.dataset.i].add,0); $('impN').textContent=n; $('impGo').disabled=!n; };
+  const cnt=()=>{ const n=[...P.querySelectorAll('.impC:checked')].reduce((s,c)=>s+IMP[+c.dataset.i].add,0); $('impN').textContent=n; $('impGo').disabled=!n&&!IMP.rep; };
   P.querySelectorAll('.impC').forEach(c=>c.onchange=cnt); $('impAll').onchange=e=>{P.querySelectorAll('.impC').forEach(c=>c.checked=e.target.checked); cnt();};
   $('impX').onclick=()=>{P.hidden=true; IMP=null;}; cnt();
+  $('impRep').onchange=e=>{ IMP.rep=e.target.checked; impCount(IMP.rep); impShow(); };
   $('impGo').onclick=impRun;
 }
 async function impRun(){
   const P=$('impPanel'), src=[...P.querySelectorAll('.impC:checked')].flatMap(c=>IMP[+c.dataset.i].mv.filter(m=>!m._dup)), list=src.map(({_dup,...m})=>m);
-  if(!list.length) return; $('impGo').disabled=true; const msg=$('impMsg');
+  const daysSel=[...P.querySelectorAll('.impC:checked')].map(c=>IMP[+c.dataset.i].D);
+  const olds=IMP.rep ? IMP.have.filter(m=>daysSel.some(D=>impOwn(m,D))) : [];
+  if(!list.length && !olds.length) return; $('impGo').disabled=true; const msg=$('impMsg');
+  if(olds.length){ msg.textContent=`กำลังลบเรือเดิม ${olds.length} รายการ…`;
+    let bat=true; const ids=olds.map(m=>m.id);
+    for(let i=0;i<ids.length;i+=60){ const part=ids.slice(i,i+60);
+      if(bat){ try{ await api('deleteMovements',{},{ids:part}); }catch(err){ if(/ไม่รู้จักคำสั่ง/.test(err.message)) bat=false; else { msg.textContent='ลบไม่สำเร็จ: '+err.message; $('impGo').disabled=false; return; } } }
+      if(!bat) for(const id of part){ try{ await api('deleteMovement',{},{id}); }catch(err){ msg.textContent='ลบไม่สำเร็จ: '+err.message; $('impGo').disabled=false; return; } }
+    }
+    IMP.have=IMP.have.filter(m=>!ids.includes(m.id)); IMP.rep=false; }
   let done=0; const say=()=>msg.textContent=`กำลังบันทึก ${done}/${list.length}…`; say();
   try{
     let batch=true;
@@ -1704,12 +1726,8 @@ async function impRun(){
       if(!batch) for(const m of part){ await api('saveMovement',{},{m}); src[done]._dup=true; done++; say(); }
       else { for(let k=0;k<part.length;k++) src[done+k]._dup=true; done+=part.length; say(); }
     }
-    // new ship names go into ทะเบียนเรือ (quietly)
-    const seen=new Set(); for(const m of list){ if(S.shipIdx.has(m.ship)||seen.has(m.ship)) continue; seen.add(m.ship);
-      const s={name:m.ship, loa:m.loa, berth:m.type==='IN'?m.to:(m.from||m.to), agent:m.agent, note:''}; S.ships.push(s); S.shipIdx.set(m.ship,s);
-      try{ await api('saveShip',{},{ship:s}); }catch(_){} }
     await loadMovements(S.D); printDirty=true; lineDirty=true; rerender();
-    P.innerHTML=`✓ นำเข้าแล้ว ${list.length} รายการ`+(seen.size?` · เพิ่มเรือใหม่เข้าทะเบียน ${seen.size} ลำ`:'')+` <button class="btn tb" id="impX">ปิด</button>`; $('impX').onclick=()=>P.hidden=true; IMP=null;
+    P.innerHTML=`✓ นำเข้าแล้ว ${list.length} รายการ`+(olds.length?` · ลบเรือเดิม ${olds.length} รายการ`:'')+` <button class="btn tb" id="impX">ปิด</button>`; $('impX').onclick=()=>P.hidden=true; IMP=null;
     toast(`นำเข้าแล้ว ${list.length} รายการ`);
   }catch(err){ msg.textContent=`หยุดที่ ${done}/${list.length}: ${err.message} (กดนำเข้าอีกครั้งได้ รายการที่บันทึกแล้วจะถูกข้าม)`; $('impGo').disabled=false; }
 }

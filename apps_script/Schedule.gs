@@ -29,6 +29,7 @@ function doPost(e) {
       switch (req.action) {
         case 'saveMovement': return saveMovement_(req.m);
         case 'saveMovements': return saveMovements_(req.list);
+        case 'deleteMovements': return deleteMovements_(req.ids);
         case 'deleteMovement': return deleteById_('Movements', req.id);
         case 'saveShip': return saveShip_(req.ship);
         case 'updateShip': return updateShip_(req.oldName, req.ship);
@@ -138,6 +139,12 @@ function saveMovements_(list) {
   const rows = list.map(m => { const o = Object.assign({}, m, { updated: now }); return header.map(h => o[h] === undefined ? '' : String(o[h])); });
   s.getRange(s.getLastRow() + 1, 1, rows.length, header.length).setNumberFormat('@').setValues(rows);
   return rows.length;
+}
+function deleteMovements_(ids) {
+  const s = sh_('Movements'); const v = s.getDataRange().getValues(); const c = v[0].map(String).indexOf('id');
+  const want = {}; (ids || []).forEach(i => want[String(i)] = 1);
+  for (let r = v.length - 1; r >= 1; r--) if (want[String(v[r][c])]) s.deleteRow(r + 1);
+  return true;
 }
 function deleteById_(name, id) {
   const s = sh_(name); const r = findRow_(s, 'id', id);
