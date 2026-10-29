@@ -399,9 +399,9 @@ table.lsheet.board{width:100%;font-size:17px}
       <div class="panel pilots">
         <h2>เลขผก. และเบอร์โทร</h2>
         <table class="st"><colgroup><col style="width:72px"><col style="width:15%"><col><col style="width:28%"><col style="width:66px"></colgroup>
-          <thead><tr><th>รูป</th><th>เลขผก.</th><th>ชื่อ</th><th>เบอร์โทร</th><th></th></tr></thead><tbody id="pilotBody"></tbody></table>
+          <thead><tr><th>รูป</th><th>เลขผก.</th><th>ชื่อเล่น</th><th>เบอร์โทร</th><th></th></tr></thead><tbody id="pilotBody"></tbody></table>
         <form id="pilotAdd" class="padd" autocomplete="off"><input id="npNo" placeholder="เลขผก." inputmode="numeric" aria-label="เลขผก."><input id="npPhone" placeholder="เบอร์โทร" inputmode="tel" aria-label="เบอร์โทร"><button type="submit" class="btn primary">เพิ่ม</button></form>
-        <details class="pimpd"><summary>📥 นำเข้าเลขผก. / เบอร์ / ชื่อ / รูป</summary>
+        <details class="pimpd"><summary>📥 นำเข้าเลขผก. / เบอร์ / รูป</summary>
           <div class="pimpin"><textarea id="pimpText" rows="3" placeholder="วางข้อความ เช่น P.178/095-9595392 หรือ 178 095-9595392 (บรรทัดละคน)"></textarea>
           <div class="pimpbar"><button type="button" class="btn" id="pimpRead">อ่านข้อความ</button><button type="button" class="btn" id="pimpFileBtn">เลือกไฟล์ (.json / .xlsx / .csv)</button><input type="file" id="pimpFile" accept=".json,.xlsx,.csv,.txt" hidden></div></div>
           <div id="pimpBox" hidden></div></details>
@@ -1253,7 +1253,7 @@ $('tab-pilots').addEventListener('click',()=>{ renderPilots(); showTab('pilots')
 const DUTY_LBL=['ผก.ประจำ 1','ผก.ประจำ 2','ผก.เวร 3','ผก.เวร 4'];
 function pilotList(){ return Object.keys(S.pilots).sort((a,b)=>(+a)-(+b)||a.localeCompare(b)); }
 function renderPilots(){
-  $('pilotBody').innerHTML = pilotList().map(p=>`<tr><td class="avc"><button type="button" class="avbtn" data-avpick="${esc(p)}" title="คลิกเพื่อเปลี่ยนรูป">${avatar(p,48)}</button>${photoOf(p)?`<button type="button" class="avx" data-avdel="${esc(p)}" title="ลบรูป">✕</button>`:''}</td><td class="num" style="padding:8px;font-weight:700;color:var(--pilot)">${esc(p)}</td><td><input class="pname" data-pname="${esc(p)}" value="${esc(nameOf(p))}" placeholder="ชื่อ" aria-label="ชื่อ ${esc(p)}"></td><td><input class="num" data-pphone="${esc(p)}" value="${esc(S.pilots[p])}" inputmode="tel" aria-label="เบอร์ ${esc(p)}"></td><td><button type="button" class="del" data-delpilot="${esc(p)}">ลบ</button></td></tr>`).join('')
+  $('pilotBody').innerHTML = pilotList().map(p=>`<tr><td class="avc"><button type="button" class="avbtn" data-avpick="${esc(p)}" title="คลิกเพื่อเปลี่ยนรูป">${avatar(p,48)}</button>${photoOf(p)?`<button type="button" class="avx" data-avdel="${esc(p)}" title="ลบรูป">✕</button>`:''}</td><td class="num" style="padding:8px;font-weight:700;color:var(--pilot)">${esc(p)}</td><td><input class="pname" data-pname="${esc(p)}" value="${esc(nameOf(p))}" placeholder="ชื่อเล่น" aria-label="ชื่อเล่น ${esc(p)}"></td><td><input class="num" data-pphone="${esc(p)}" value="${esc(S.pilots[p])}" inputmode="tel" aria-label="เบอร์ ${esc(p)}"></td><td><button type="button" class="del" data-delpilot="${esc(p)}">ลบ</button></td></tr>`).join('')
     || `<tr><td colspan="5" class="empty">ยังไม่มีเลขผก.</td></tr>`;
   if(!$('dutyMonth').value) $('dutyMonth').value=S.D.slice(0,7); dmLabel();
   const k=$('dutyMonth').value, cur=S.duty[k]||[];
@@ -2083,7 +2083,7 @@ let phFor=null;
 $('pilotBody').addEventListener('click',e=>{ const a=e.target.closest('[data-avpick]'); if(a){ phFor=a.dataset.avpick; $('phFile').click(); return; }
   const r=e.target.closest('[data-avdel]'); if(r){ setPhoto(r.dataset.avdel,''); } });
 $('pilotBody').addEventListener('change',async e=>{ const i=e.target.closest('[data-pname]'); if(!i) return; const no=i.dataset.pname, v=i.value.trim(); S.names=S.names||{}; const old=S.names[no]; S.names[no]=v;
-  try{ await saveProfiles([{no,name:v}]); flash(i); }catch(err){ S.names[no]=old; i.value=old||''; toast('บันทึกชื่อไม่สำเร็จ: '+err.message); } });
+  try{ await saveProfiles([{no,name:v}]); flash(i); }catch(err){ S.names[no]=old; i.value=old||''; toast('บันทึกชื่อเล่นไม่สำเร็จ: '+err.message); } });
 
 // import: JSON prepared by Claude ({pilots:[{no,phone,name,photo}]}), the old schedule workbook (P.178/095-9595392), CSV/text, or pasted text
 function parsePilots(text){ const out=new Map(); const add=(no,ph)=>{ no=String(no).replace(/\D/g,''); ph=String(ph||'').trim(); if(no.length<2||no.length>4) return; const o=out.get(no)||{no}; if(ph&&!o.phone) o.phone=ph; out.set(no,o); };
@@ -2095,7 +2095,7 @@ function pimpShow(map){ const P=$('pimpBox'); const rows=[...map.values()].sort(
   rows.forEach(r=>{ if(r.phone) r.phone=fmtPhone(r.phone); });
   const what=r=>{ const w=[]; if(S.pilots[r.no]===undefined) w.push('ใหม่'); else if(r.phone&&S.pilots[r.no]!==r.phone) w.push('เปลี่ยนเบอร์');
     if(r.name&&nameOf(r.no)!==r.name) w.push('ชื่อ'); if(r.photo&&photoOf(r.no)!==r.photo) w.push('รูป'); return w; };
-  P.innerHTML = rows.length ? `<table class="st pimp"><thead><tr><th></th><th></th><th>เลขผก.</th><th>ชื่อ</th><th>เบอร์โทร</th><th>จะทำ</th></tr></thead><tbody>${rows.map(r=>{ const w=what(r);
+  P.innerHTML = rows.length ? `<table class="st pimp"><thead><tr><th></th><th></th><th>เลขผก.</th><th>ชื่อเล่น</th><th>เบอร์โทร</th><th>จะทำ</th></tr></thead><tbody>${rows.map(r=>{ const w=what(r);
       return `<tr><td><input type="checkbox" data-pno="${esc(r.no)}" ${w.length?'checked':''}></td><td>${r.photo?`<span class="av" style="width:40px;height:40px"><img src="${esc(r.photo)}" alt=""></span>`:''}</td><td class="num" style="color:var(--pilot);font-weight:700">${esc(r.no)}</td><td class="pn">${esc(r.name||'')}</td><td class="num">${esc(r.phone||'—')}</td><td>${w.length?w.map(x=>`<b>${x}</b>`).join(' · '):'<span class="muted">มีครบแล้ว</span>'}</td></tr>`; }).join('')}</tbody></table>
       <div class="pimpbar"><button type="button" class="btn primary" id="pimpGo">นำเข้า</button><button type="button" class="btn" id="pimpX">ยกเลิก</button></div>`
     : `<div class="empty">ไม่พบเลขผก. + เบอร์ในข้อมูลนี้ (เช่น P.178/095-9595392 หรือ 178 095-9595392)</div>`;
