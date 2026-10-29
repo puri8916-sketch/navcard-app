@@ -339,6 +339,19 @@ table.lsheet.board{width:100%;font-size:17px}
 .dpop{min-width:460px}
 .dpop .dpn{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .dpop span:last-child{white-space:nowrap}
+
+/* profile cropper */
+.crop-m{position:fixed;inset:0;z-index:300;background:rgb(0 0 0 / .55);display:grid;place-items:center;padding:12px}
+.crop-box{background:var(--surface);color:var(--ink);border-radius:14px;padding:16px;width:min(360px,100%);box-shadow:0 20px 50px rgb(0 0 0 / .35)}
+.crop-box h3{margin:0 0 10px;font-size:18px;text-align:center}
+.crop-stage{position:relative;width:320px;height:320px;max-width:100%;margin:0 auto;touch-action:none}
+.crop-stage canvas{display:block;width:100%;height:100%;cursor:grab;border-radius:8px}
+.crop-stage canvas:active{cursor:grabbing}
+.crop-ring{position:absolute;inset:0;border-radius:50%;box-shadow:0 0 0 999px rgb(0 0 0 / .45);pointer-events:none;outline:2px solid #fff;outline-offset:-2px}
+.crop-stage{overflow:hidden;border-radius:8px}
+.crop-row{display:flex;align-items:center;gap:10px;margin-top:12px;font-size:20px}
+.crop-row input{flex:1}.crop-row.end{justify-content:flex-end}
+.crop-hint{font-size:13px;color:var(--muted);text-align:center;margin-top:6px}
 </style>
 <style>:root{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}body{margin:0}[hidden]{display:none!important}</style>
 </head>
@@ -2079,7 +2092,7 @@ async function setPhoto(p,data){
   catch(err){ if(old) S.photos[p]=old; else delete S.photos[p]; renderPilots(); toast('บันทึกรูปไม่สำเร็จ: '+err.message); } }
 let phFor=null;
 (()=>{ const f=document.createElement('input'); f.type='file'; f.accept='image/*'; f.hidden=true; f.id='phFile'; document.body.appendChild(f);
-  f.addEventListener('change',async()=>{ const file=f.files[0]; f.value=''; if(!file||!phFor) return; try{ await setPhoto(phFor, await shrinkPhoto(file)); }catch(e){ toast('อ่านรูปไม่ได้'); } }); })();
+  f.addEventListener('change',async()=>{ const file=f.files[0]; f.value=''; if(!file||!phFor) return; try{ const d=await cropPhoto(file); if(d) await setPhoto(phFor, d); }catch(e){ toast('อ่านรูปไม่ได้'); } }); })();
 $('pilotBody').addEventListener('click',e=>{ const a=e.target.closest('[data-avpick]'); if(a){ phFor=a.dataset.avpick; $('phFile').click(); return; }
   const r=e.target.closest('[data-avdel]'); if(r){ setPhoto(r.dataset.avdel,''); } });
 $('pilotBody').addEventListener('change',async e=>{ const i=e.target.closest('[data-pname]'); if(!i) return; const no=i.dataset.pname, v=i.value.trim(); S.names=S.names||{}; const old=S.names[no]; S.names[no]=v;
@@ -2117,6 +2130,41 @@ $('pimpFile').addEventListener('change',async e=>{ const f=e.target.files[0]; e.
   try{ let map; if(/\.xlsx$/i.test(f.name)){ const sh=await xlsxRead(await f.arrayBuffer()); map=parsePilots(sh.map(x=>x.rows.map(r=>(r||[]).join('\t')).join('\n')).join('\n')); }
        else { const t=(await f.text()).replace(/^﻿/,''); map=/^\s*[\[{]/.test(t)?pimpJson(JSON.parse(t)):parsePilots(t); }
        pimpShow(map); }catch(err){ toast('อ่านไฟล์ไม่ได้: '+(err.message||err)); } });
+
+/* ---------- profile picture cropper: drag to move, slider / wheel to zoom, ⟳ to rotate ---------- */
+function cropPhoto(file){ return new Promise(async (resolve)=>{
+  const url=URL.createObjectURL(file); const img=new Image(); img.src=url; try{ await img.decode(); }catch(e){ URL.revokeObjectURL(url); resolve(null); return; }
+  const V=320, OUT=220; let rot=0, z=1, ox=0, oy=0;   // view size, output size, rotation (quarter turns), zoom, offset (view px)
+  const M=document.createElement('div'); M.className='crop-m';
+  M.innerHTML=`<div class="crop-box" role="dialog" aria-label="ครอบรูป"><h3>ปรับรูปโปรไฟล์</h3>
+    <div class="crop-stage"><canvas width="${V}" height="${V}"></canvas><div class="crop-ring"></div></div>
+    <div class="crop-row"><span>−</span><input type="range" min="1" max="4" step="0.01" value="1" aria-label="ซูม"><span>＋</span><button type="button" class="btn" data-a="rot" title="หมุน 90°">⟳</button></div>
+    <div class="crop-hint">ลากรูปเพื่อเลื่อน · เลื่อนแถบหรือหมุนล้อเมาส์เพื่อซูม</div>
+    <div class="crop-row end"><button type="button" class="btn" data-a="no">ยกเลิก</button><button type="button" class="btn primary" data-a="ok">ใช้รูปนี้</button></div></div>`;
+  document.body.appendChild(M);
+  const cv=M.querySelector('canvas'), g=cv.getContext('2d'), sl=M.querySelector('input[type=range]');
+  const dims=()=> rot%2 ? [img.naturalHeight,img.naturalWidth] : [img.naturalWidth,img.naturalHeight];
+  const base=()=>{ const [w,h]=dims(); return V/Math.min(w,h); };          // scale that just covers the square
+  const clamp=()=>{ const [w,h]=dims(), s=base()*z, mx=Math.max(0,(w*s-V)/2), my=Math.max(0,(h*s-V)/2); ox=Math.max(-mx,Math.min(mx,ox)); oy=Math.max(-my,Math.min(my,oy)); };
+  const draw=(ctx,size)=>{ const k=size/V, s=base()*z*k; ctx.save(); ctx.fillStyle='#fff'; ctx.fillRect(0,0,size,size);
+    ctx.translate(size/2+ox*k, size/2+oy*k); ctx.rotate(rot*Math.PI/2); ctx.drawImage(img,-img.naturalWidth*s/2,-img.naturalHeight*s/2,img.naturalWidth*s,img.naturalHeight*s); ctx.restore(); };
+  const paint=()=>{ clamp(); draw(g,V); };
+  // start a little above centre (faces sit high in a portrait)
+  { const [w,h]=dims(); if(h>w) oy=(h*base()-V)/2*0.4; } paint();
+  let drag=null;
+  cv.addEventListener('pointerdown',e=>{ drag={x:e.clientX,y:e.clientY,ox,oy}; cv.setPointerCapture(e.pointerId); });
+  cv.addEventListener('pointermove',e=>{ if(!drag) return; ox=drag.ox+(e.clientX-drag.x); oy=drag.oy+(e.clientY-drag.y); paint(); });
+  cv.addEventListener('pointerup',()=>drag=null); cv.addEventListener('pointercancel',()=>drag=null);
+  sl.addEventListener('input',()=>{ const nz=+sl.value, r=nz/z; ox*=r; oy*=r; z=nz; paint(); });
+  cv.addEventListener('wheel',e=>{ e.preventDefault(); sl.value=Math.max(1,Math.min(4,z*(e.deltaY<0?1.08:1/1.08))); sl.dispatchEvent(new Event('input')); },{passive:false});
+  const done=v=>{ URL.revokeObjectURL(url); M.remove(); document.removeEventListener('keydown',key); resolve(v); };
+  const key=e=>{ if(e.key==='Escape') done(null); if(e.key==='Enter') M.querySelector('[data-a=ok]').click(); };
+  document.addEventListener('keydown',key);
+  M.addEventListener('click',e=>{ const a=e.target.closest('[data-a]')?.dataset.a; if(e.target===M) return done(null);
+    if(a==='rot'){ rot=(rot+1)%4; ox=0; oy=0; paint(); }
+    if(a==='no') done(null);
+    if(a==='ok'){ const c=document.createElement('canvas'); c.width=c.height=OUT; draw(c.getContext('2d'),OUT); done(c.toDataURL('image/jpeg',0.85)); } });
+}); }
 </script>
 
 </body>
