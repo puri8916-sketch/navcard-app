@@ -389,7 +389,8 @@ input,textarea{line-height:1.6}
 .pzoom #pzFit{font-size:15px}
 .pzv{min-width:52px;text-align:center;font:600 16px var(--f-num)}
 
-.vfit{overflow:auto!important;overscroll-behavior:contain}
+.hbar{position:fixed;bottom:0;z-index:60;height:18px;overflow-x:auto;overflow-y:hidden;background:rgb(255 255 255 / .92);border-top:1px solid var(--line)}
+.hbar>div{height:1px}
 </style>
 <style>:root{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}body{margin:0}[hidden]{display:none!important}</style>
 </head>
@@ -2227,13 +2228,21 @@ window.addEventListener('resize',()=>{ fitHeads($('board')); fitHeads($('grid'))
   $('tab-print').addEventListener('click',()=>setTimeout(apply,0));
   apply(); })();
 
-/* wide sheets: the box is at most one screen tall, so its sideways scrollbar is always on screen (scroll inside for long days) */
-function vfit(){ const top=document.querySelector('.top'), stuck=top&&getComputedStyle(top).position==='sticky'?top.offsetHeight:0;
-  document.querySelectorAll('.vfit').forEach(el=>{ if(el.offsetParent===null) return; const tool=el.parentElement.querySelector('.ltool');
-    const t=tool&&getComputedStyle(tool).position==='sticky'?tool.offsetHeight:0; el.style.maxHeight=Math.max(260,innerHeight-stuck-t-14)+'px'; }); }
-window.addEventListener('resize',vfit);
-['tab-line','tab-work','tab-print'].forEach(id=>$(id).addEventListener('click',()=>setTimeout(vfit,0)));
-setTimeout(vfit,300);
+/* wide sheets: a sideways scrollbar pinned to the bottom of the screen (like Excel), so you don't have to scroll down to the sheet's own bar */
+(function(){ const bar=document.createElement('div'); bar.className='hbar'; bar.hidden=true; bar.innerHTML='<div></div>'; document.body.appendChild(bar);
+  let cur=null, lock=false;
+  const pick=()=>[...document.querySelectorAll('.vfit')].find(el=>el.offsetParent!==null)||null;
+  function upd(){ cur=pick(); if(!cur){ bar.hidden=true; return; }
+    const r=cur.getBoundingClientRect(), over=cur.scrollWidth>cur.clientWidth+2, ownBarSeen=r.bottom<=innerHeight, onScreen=r.top<innerHeight-30&&r.bottom>0;
+    bar.hidden=!(over&&onScreen&&!ownBarSeen); if(bar.hidden) return;
+    bar.style.left=Math.max(0,r.left)+'px'; bar.style.width=Math.min(innerWidth,r.right)-Math.max(0,r.left)+'px';
+    bar.firstChild.style.width=cur.scrollWidth+'px'; lock=true; bar.scrollLeft=cur.scrollLeft; lock=false; }
+  bar.addEventListener('scroll',()=>{ if(!lock&&cur){ lock=true; cur.scrollLeft=bar.scrollLeft; lock=false; } });
+  document.addEventListener('scroll',e=>{ if(e.target===bar) return; if(cur&&e.target===cur&&!lock){ lock=true; bar.scrollLeft=cur.scrollLeft; lock=false; } upd(); },true);
+  window.addEventListener('resize',upd);
+  ['tab-line','tab-work','tab-print','tab-ships','tab-pilots'].forEach(id=>$(id).addEventListener('click',()=>setTimeout(upd,50)));
+  try{ new ResizeObserver(upd).observe(document.body); }catch(e){}
+  setInterval(upd,1500); setTimeout(upd,300); })();
 </script>
 
 </body>
