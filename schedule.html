@@ -404,6 +404,15 @@ input,textarea{line-height:1.6}
   input.since{width:76px;font-size:14px;padding:4px 6px}
   .pzoom .btn{min-width:34px;font-size:16px!important}.pzv{min-width:40px;font-size:13px}
 }
+
+/* day strip at the bottom of the screen, like Excel's sheet tabs */
+.datenav{position:fixed;left:0;right:0;bottom:0;z-index:58;background:var(--surface);border-top:1px solid var(--line);box-shadow:0 -2px 8px rgb(0 0 0 / .08);
+  padding:6px max(10px,env(safe-area-inset-left)) calc(6px + env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-right));flex-basis:auto;order:0;margin:0;box-sizing:border-box}
+.datenav .iconbtn{width:40px;align-self:stretch}
+.datenav .dchip{flex:1 0 58px;max-width:96px;padding:3px 2px;border-radius:8px;display:flex;gap:4px;align-items:baseline;justify-content:center}
+.datenav .dchip .d{font-size:19px}.datenav .dchip .m{font-size:12px}
+body{padding-bottom:64px}
+.hbar{bottom:var(--dnH,0px)!important}
 </style>
 <style>:root{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}body{margin:0}[hidden]{display:none!important}</style>
 </head>
@@ -2297,6 +2306,10 @@ window.addEventListener('orientationchange',()=>setTimeout(()=>{ window.__boardP
 window.addEventListener('resize',()=>fitBoardWidth(false));
 $('dstrip').addEventListener('click',()=>setTimeout(()=>{ window.__boardPinched=false; fitBoardWidth(true); },200));
 setTimeout(()=>fitBoardWidth(false),600);
+
+/* keep the pinned sideways scrollbar just above the bottom day strip */
+(function(){ const dn=$('dateNav'); const put=()=>{ const h=dn.hidden?0:dn.offsetHeight; document.documentElement.style.setProperty('--dnH',h+'px'); document.body.style.paddingBottom=(h+18)+'px'; };
+  try{ new ResizeObserver(put).observe(dn); }catch(e){} new MutationObserver(put).observe(dn,{attributes:true,attributeFilter:['hidden']}); window.addEventListener('resize',put); put(); })();
 </script>
 
 </body>
