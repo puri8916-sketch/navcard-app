@@ -416,6 +416,17 @@ input,textarea{line-height:1.6}
 .datenav .dchip .d{font-size:19px}.datenav .dchip .m{font-size:12px}
 body{padding-bottom:64px}
 .hbar{bottom:var(--dnH,0px)!important}
+
+/* bottom day strip = Excel sheet tabs: 29-10-69, active tab white with a green underline */
+.datenav{background:#F3F3F3}
+.datenav .dstrip{gap:0;align-items:stretch}
+.datenav .dchip{flex:0 0 auto;max-width:none;min-width:84px;padding:6px 12px 5px;border:0;border-right:1px solid #C9C9C9;border-radius:0;background:transparent;display:block;text-align:center;line-height:1.2}
+.datenav .dchip .d{font:500 16px var(--f-num);color:#333}
+.datenav .dchip:hover{background:#E6E6E6}
+.datenav .dchip.on{background:#fff;box-shadow:inset 0 -3px 0 #107C41;border-right-color:#C9C9C9}
+.datenav .dchip.on .d{color:#107C41;font-weight:700}
+.datenav .dchip.today:not(.on) .d{text-decoration:underline dotted;text-underline-offset:3px}
+@media (max-width:640px){.datenav .dchip{min-width:72px;padding:5px 8px}.datenav .dchip .d{font-size:14px}}
 </style>
 <style>:root{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}body{margin:0}[hidden]{display:none!important}</style>
 </head>
@@ -1313,7 +1324,7 @@ function renderStrip(){
   stripD=S.D;
   const T=todayYmd(); let h='';
   for(let i=0;i<14;i++){ const d=addDays(stripBase,i), [,m,dd]=d.split('-').map(Number);
-    h+=`<button type="button" class="dchip${d===S.D?' on':''}${d===T?' today':''}" data-sd="${d}" role="option" aria-selected="${d===S.D}"><span class="d">${dd}</span><span class="m">${TH_MS[m-1]}</span></button>`; }
+    h+=`<button type="button" class="dchip${d===S.D?' on':''}${d===T?' today':''}" data-sd="${d}" role="option" aria-selected="${d===S.D}"><span class="d">${dd}-${m}-${String(+d.slice(0,4)+543).slice(-2)}</span></button>`; }
   $('dstrip').innerHTML=h;
 }
 $('dstrip').addEventListener('click',e=>{ const b=e.target.closest('[data-sd]'); if(b && b.dataset.sd!==S.D) goDate(b.dataset.sd); });
