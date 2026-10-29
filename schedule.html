@@ -368,8 +368,8 @@ input,textarea{line-height:1.6}
   .crop-stage{width:min(320px,80vw);height:min(320px,80vw)}
 }
 
-/* short screens (phone in landscape): header scrolls away with the page and is compact, so the sheet gets the screen */
-@media (max-height:520px){
+/* phones (portrait or landscape): header scrolls away with the page and is compact, so the sheet gets the screen */
+@media (max-height:520px),(max-width:640px){
   .top{position:static}
   .ltool,.shipsticky{position:static}
   #view-ships .st thead th{top:0}
