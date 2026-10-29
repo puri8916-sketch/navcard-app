@@ -336,7 +336,7 @@ table.lsheet.board{width:100%;font-size:17px}
 .dpop div.act .dpn{color:#fff}
 
 @media (min-width:1000px){.pgrid .panel.pilots{grid-column:span 2}}
-.dpop{min-width:460px}
+.dpop{min-width:0}
 .dpop .dpn{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .dpop span:last-child{white-space:nowrap}
 
@@ -356,6 +356,7 @@ table.lsheet.board{width:100%;font-size:17px}
 /* Thai tone marks (่ ้ ๊ ๋) above tall vowels were cut off at the top of table inputs */
 .st input,.st input.dutyin,.st input.pname{line-height:1.9;padding-top:3px;padding-bottom:3px;overflow:visible}
 input,textarea{line-height:1.6}
+.dpop div{justify-content:center}
 </style>
 <style>:root{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}body{margin:0}[hidden]{display:none!important}</style>
 </head>
@@ -1320,8 +1321,8 @@ function dpShow(inp,all0){ const q=all0?'':inp.value.replace(/^P\.?/i,'').trim()
   const it=all.filter(p=>!q||p.startsWith(q)).concat(q?all.filter(p=>!p.startsWith(q)&&p.includes(q)):[]);
   DP.inp=inp; DP.items=it; DP.act=all0?Math.max(0,it.indexOf(inp.value.trim())):0; const P=dpEl();
   if(!it.length){ P.hidden=true; return; }
-  P.innerHTML=it.map((p,i)=>`<div data-i="${i}" class="${i===DP.act?'act':''}">${avatar(p,38)}<b>${esc(p)}</b><span class="dpn">${esc(nameOf(p))}</span><span>${esc(S.pilots[p]||'')}</span></div>`).join('');
-  const r=inp.getBoundingClientRect(); P.style.left=(r.left+scrollX)+'px'; P.style.top=(r.bottom+scrollY)+'px'; P.style.width=Math.max(r.width,460)+"px"; P.style.left=(Math.max(8,Math.min(r.left,innerWidth-Math.max(r.width,460)-8))+scrollX)+"px"; P.hidden=false; }
+  P.innerHTML=it.map((p,i)=>`<div data-i="${i}" class="${i===DP.act?'act':''}"><b>${esc(p)}</b></div>`).join('');
+  const r=inp.getBoundingClientRect(); P.style.left=(r.left+scrollX)+'px'; P.style.top=(r.bottom+scrollY)+'px'; P.style.width=r.width+"px"; P.style.left=(r.left+scrollX)+"px"; P.hidden=false; }
 function dpHide(){ dpEl().hidden=true; DP.inp=null; }
 function dpPick(i){ const inp=DP.inp; if(!inp||!DP.items[i]) return; inp.value=DP.items[i]; dpHide(); inp.dispatchEvent(new Event('change',{bubbles:true})); inp.blur(); }
 $('dutyBody').addEventListener('focusin',e=>{ const i=e.target.closest('[data-duty]'); if(i){ i.select(); dpShow(i,true); } });
