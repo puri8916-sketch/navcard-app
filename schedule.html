@@ -601,7 +601,24 @@ const demo = {
   boot(){ const saved=lsGet(); this.db = saved && saved.v===2 ? saved : {v:2, mv:SEED.movements.slice(), ships:SEED.init.ships.slice()}; },
   persist(){ lsSet(this.db); },
 };
+/* local changes win over a server copy that was read before they were saved (fixes "new ship vanishes, then comes back") */
+const PENDMV=new Map();   // id -> {m: movement | null (deleted), t: time the save finished (0 = still saving)}
+function pendMark(action, body){
+  if(action==='saveMovement') PENDMV.set(body.m.id,{m:JSON.parse(JSON.stringify(body.m)),t:0});
+  else if(action==='saveMovements') body.list.forEach(m=>PENDMV.set(m.id,{m:JSON.parse(JSON.stringify(m)),t:0}));
+  else if(action==='deleteMovement') PENDMV.set(body.id,{m:null,t:0});
+  else if(action==='deleteMovements') body.ids.forEach(id=>PENDMV.set(id,{m:null,t:0}));
+  else return null;
+  return action==='saveMovement'?[body.m.id]:action==='saveMovements'?body.list.map(m=>m.id):action==='deleteMovement'?[body.id]:body.ids; }
+function mergeRemote(list){
+  const now=Date.now(); for(const [id,p] of PENDMV) if(p.t && now-p.t>25000) PENDMV.delete(id);
+  if(!PENDMV.size) return list;
+  const out=list.filter(x=>!PENDMV.has(x.id)); for(const p of PENDMV.values()) if(p.m) out.push(p.m); return out; }
 async function api(action, params={}, body=null){
+  const pids = body ? pendMark(action, body) : null;
+  try{ const r = await api0(action, params, body); if(pids) pids.forEach(id=>{ const p=PENDMV.get(id); if(p) p.t=Date.now(); }); return r; }
+  catch(err){ if(pids) pids.forEach(id=>PENDMV.delete(id)); throw err; } }
+async function api0(action, params={}, body=null){
   if(!CFG.API_URL){
     if(!SEED) throw new Error('ยังไม่ได้ตั้งค่า API_URL');
     if(!demo.db) demo.boot();
@@ -664,7 +681,7 @@ function covered(D){ const L=S.loaded; return L && L[0]<=`${addDays(D,-14)} 00:0
 async function loadMovements(D){
   const [from,to]=rangeFor(D||S.D);
   const list = await api('movements',{from,to});
-  S.mv=list; S.loaded=[from,to];
+  S.mv=mergeRemote(list); S.loaded=[from,to];
 }
 function dutyPilots(D){ const k=D.slice(0,7); const keys=Object.keys(S.duty).sort();
   let best=null; for(const x of keys){ if(x<=k) best=x; } return (best? S.duty[best] : (keys.length? S.duty[keys[0]]:['178','189'])).filter(Boolean); }
@@ -1295,9 +1312,9 @@ function gridBusy(){ const a=document.activeElement; return !!(a && a.closest &&
 async function refresh(force){
   if(!force && Date.now()-refreshT<20000) return; refreshT=Date.now();
   try{
-    const [init,list]=await Promise.all([api('init'), api('movements',(()=>{ const [from,to]=rangeFor(S.D); return {from,to}; })())]);
+    let [init,list]=await Promise.all([api('init'), api('movements',(()=>{ const [from,to]=rangeFor(S.D); return {from,to}; })())]);
     const changed = JSON.stringify(init)!==JSON.stringify(S.init) || JSON.stringify(list)!==JSON.stringify(S.mv);
-    applyInit(init); S.mv=list; S.loaded=rangeFor(S.D); cacheSet();
+    list=mergeRemote(list); applyInit(init); S.mv=list; S.loaded=rangeFor(S.D); cacheSet();
     if(changed){ if(gridBusy()) pendingRender=true; else { rerender(); if(!$('view-ships').hidden) renderShips(); } }
     if(BD && BD.date===S.D && !$('view-line').hidden && !(document.activeElement && document.activeElement.closest && document.activeElement.closest('#board'))
        && Object.keys(BD.all).some(d=>{ const r=dayRemote(d); return r && (r.updated||0)>(BD.all[d].updated||0); })) openBoard(S.D);
@@ -1543,7 +1560,7 @@ document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==
 let mvPollBusy=false;
 async function refreshMv(){
   if(mvPollBusy || !S.init || !S.D || document.visibilityState==='hidden') return; mvPollBusy=true;
-  try{ const [from,to]=rangeFor(S.D); const list=await api('movements',{from,to});
+  try{ const [from,to]=rangeFor(S.D); const list=mergeRemote(await api('movements',{from,to}));
     if(JSON.stringify(list)!==JSON.stringify(S.mv)){ S.mv=list; S.loaded=[from,to]; cacheSet(); if(gridBusy()) pendingRender=true; else rerender(); } }
   catch(e){ /* offline for a moment: try again next round */ }
   finally{ mvPollBusy=false; } }
