@@ -1701,6 +1701,7 @@ function fitHeads(root){ if(!root||root.offsetParent===null) return;
   hs.forEach(h=>h.style.fontSize=''); const m=hs.map(h=>[h.scrollWidth,h.clientWidth,parseFloat(getComputedStyle(h).fontSize)]);
   hs.forEach((h,k)=>{ const [sw,cw,fs]=m[k]; if(sw>cw+1) h.style.fontSize=Math.max(8,fs*(cw-2)/sw).toFixed(1)+'px'; }); }
 function fitBoard(){
+  if(typeof fitBoardWidth==='function') fitBoardWidth(false);
   fitHeads($('board'));
   const list=[...$('board').querySelectorAll('.ce')].filter(i=>i.value); if(!list.length || $('view-line').hidden) return;
   list.forEach(i=>i.style.fontSize='');
@@ -2263,7 +2264,7 @@ window.addEventListener('resize',()=>{ fitHeads($('board')); fitHeads($('grid'))
     let st=null;
     const dist=t=>Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);
     const getZ=()=> inner==='#paperBig' ? window.getPrintZoom() : (parseFloat(I.style.zoom)||1);
-    const setZ=v=>{ if(inner==='#paperBig') window.setPrintZoom(v); else I.style.zoom=Math.max(0.3,Math.min(2.5,v)); if(inner==='#board'&&typeof fitHeads==='function') fitHeads(I); };
+    const setZ=v=>{ if(inner==='#board') window.__boardPinched=true; if(inner==='#paperBig') window.setPrintZoom(v); else I.style.zoom=Math.max(0.3,Math.min(2.5,v)); if(inner==='#board'&&typeof fitHeads==='function') fitHeads(I); };
     B.addEventListener('touchstart',e=>{ if(e.touches.length===2){ const sc=B.closest('.scrollx,.sheetwrap')||B; st={d:dist(e.touches),z:getZ(),mx:(e.touches[0].clientX+e.touches[1].clientX)/2-sc.getBoundingClientRect().left,sl:sc.scrollLeft,sc}; e.preventDefault(); } },{passive:false});
     B.addEventListener('touchmove',e=>{ if(!st||e.touches.length!==2) return; e.preventDefault();
       const nz=st.z*dist(e.touches)/st.d; setZ(nz); const z2=getZ(); st.sc.scrollLeft=(st.mx+st.sl)*(z2/st.z)-st.mx; },{passive:false});
@@ -2271,6 +2272,17 @@ window.addEventListener('resize',()=>{ fitHeads($('board')); fitHeads($('grid'))
     B.addEventListener('touchcancel',()=>{ st=null; });
   });
 })();
+
+/* phones: แก้ไข opens with the whole sheet fitting the screen width (pinch to enlarge); a new day / rotating the phone fits again */
+function fitBoardWidth(force){ const B=$('board'), W=B&&B.closest('.scrollx'); if(!W||$('view-line').hidden) return;
+  if(innerWidth>900){ if(!window.__boardPinched) B.style.zoom=''; return; }
+  if(window.__boardPinched && !force) return;
+  const w=parseFloat(getComputedStyle(B).width)||1600; B.style.zoom=Math.min(1,Math.max(0.2,(W.clientWidth-2)/w)); }
+$('tab-line').addEventListener('click',()=>setTimeout(()=>fitBoardWidth(false),30));
+window.addEventListener('orientationchange',()=>setTimeout(()=>{ window.__boardPinched=false; fitBoardWidth(true); },300));
+window.addEventListener('resize',()=>fitBoardWidth(false));
+$('dstrip').addEventListener('click',()=>setTimeout(()=>{ window.__boardPinched=false; fitBoardWidth(true); },200));
+setTimeout(()=>fitBoardWidth(false),600);
 </script>
 
 </body>
