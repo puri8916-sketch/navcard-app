@@ -1244,11 +1244,12 @@ $('pilotBody').addEventListener('change',async e=>{ const i=e.target.closest('[d
   S.pilots[no]=i.value.trim(); try{ await savePilots(); flash(i); }catch(err){ S.pilots[no]=old; i.value=old; toast('บันทึกไม่สำเร็จ: '+scriptOld(err)); } });
 $('pilotBody').addEventListener('click',async e=>{ const b=e.target.closest('[data-delpilot]'); if(!b) return;
   if(!b.classList.contains('arm')){ b.classList.add('arm'); b.textContent='ยืนยันลบ'; setTimeout(()=>{ if(b.isConnected){ b.classList.remove('arm'); b.textContent='ลบ'; } },3000); return; }
-  const no=b.dataset.delpilot, old=S.pilots[no]; delete S.pilots[no];
-  try{ await savePilots(); renderPilots(); toast(`ลบผก. ${no} แล้ว`); }catch(err){ S.pilots[no]=old; toast('ลบไม่สำเร็จ: '+scriptOld(err)); } });
+  const no=b.dataset.delpilot, old=S.pilots[no]; delete S.pilots[no]; renderPilots();   // show at once, save in the background
+  try{ await savePilots(); toast(`ลบผก. ${no} แล้ว`); }catch(err){ S.pilots[no]=old; renderPilots(); toast('ลบไม่สำเร็จ: '+scriptOld(err)); } });
 $('pilotAdd').addEventListener('submit',async e=>{ e.preventDefault(); const no=$('npNo').value.replace(/^P\.?/i,'').trim(), ph=$('npPhone').value.trim();
   if(!no){ $('npNo').focus(); return; } if(S.pilots[no]!==undefined){ toast(`ผก. ${no} มีอยู่แล้ว`); return; }
-  S.pilots[no]=ph; try{ await savePilots(); $('npNo').value=''; $('npPhone').value=''; renderPilots(); toast(`เพิ่มผก. ${no} แล้ว`); }catch(err){ delete S.pilots[no]; toast('เพิ่มไม่สำเร็จ: '+scriptOld(err)); } });
+  S.pilots[no]=ph; $('npNo').value=''; $('npPhone').value=''; renderPilots(); $('npNo').focus();   // show at once, save in the background
+  try{ await savePilots(); toast(`เพิ่มผก. ${no} แล้ว`); }catch(err){ delete S.pilots[no]; renderPilots(); $('npNo').value=no; $('npPhone').value=ph; toast('เพิ่มไม่สำเร็จ: '+scriptOld(err)); } });
 $('dutyMonth').addEventListener('change',renderPilots);
 // ตัวเลือกเดือนตัวใหญ่
 const TH_MF=['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
@@ -1291,8 +1292,8 @@ window.addEventListener('resize',()=>{ if(DP.inp) dpShow(DP.inp); });
 $('dutyBody').addEventListener('change',async e=>{ const sel=e.target.closest('[data-duty]'); if(!sel) return; const k=$('dutyMonth').value; if(!k) return;
   sel.value=sel.value.replace(/^P\.?/i,'').replace(/\s+/g,'');
   const list=[...$('dutyBody').querySelectorAll('[data-duty]')].map(x=>x.value); const old=S.duty[k];
-  const clean=list.filter(Boolean); S.duty[k]=clean;
-  try{ await api('saveDuty',{},{month:k,list}); printDirty=true; cacheSet(); flash(sel); if(k===S.D.slice(0,7)) rerender(); renderPilots(); }
+  const clean=list.filter(Boolean); S.duty[k]=clean; printDirty=true; renderPilots(); const di=sel.dataset.duty;
+  try{ await api('saveDuty',{},{month:k,list}); cacheSet(); const ne=$('dutyBody').querySelector(`[data-duty="${di}"]`); if(ne) flash(ne); if(k===S.D.slice(0,7)) rerender(); }
   catch(err){ if(old) S.duty[k]=old; else delete S.duty[k]; renderPilots(); toast('บันทึกไม่สำเร็จ: '+scriptOld(err)); } });
 $('fixedText').addEventListener('change',async e=>{ const ta=e.target; const old=S.fixed;
   const fixed=[]; let g=1, gap=false; for(const line of ta.value.split('\n')){ const t=line.trim(); if(!t){ if(fixed.length) gap=true; continue; } if(gap){ g++; gap=false; } fixed.push({text:t,group:g}); }
@@ -1327,15 +1328,17 @@ $('shipBody').addEventListener('focusin',e=>{ const i=e.target.closest('input');
 $('shipBody').addEventListener('click',async e=>{ const b=e.target.closest('[data-delship]'); if(!b) return;
   if(!b.classList.contains('arm')){ b.classList.add('arm'); b.textContent='ยืนยันลบ'; setTimeout(()=>{ if(b.isConnected){ b.classList.remove('arm'); b.textContent='ลบ'; } },3000); return; }
   const name=b.dataset.delship;
-  try{ await api('deleteShip',{},{name}); S.ships=S.ships.filter(x=>x.name!==name); S.shipIdx.delete(name); renderShips(); toast(`ลบ ${name} ออกจากทะเบียนแล้ว`); }
-  catch(err){ toast('ลบไม่สำเร็จ: '+scriptOld(err)); } });
+  const old=S.ships.slice(), os=S.shipIdx.get(name); S.ships=S.ships.filter(x=>x.name!==name); S.shipIdx.delete(name); renderShips();   // at once, save in the background
+  try{ await api('deleteShip',{},{name}); toast(`ลบ ${name} ออกจากทะเบียนแล้ว`); }
+  catch(err){ S.ships=old; if(os) S.shipIdx.set(name,os); renderShips(); toast('ลบไม่สำเร็จ: '+scriptOld(err)); } });
 $('shipQ').addEventListener('input',renderShips);
 $('shipAdd').addEventListener('submit',async e=>{ e.preventDefault();
   const name=norm($('nsName').value); if(!name){ $('nsName').focus(); return; }
   if(S.shipIdx.has(name)){ toast(`${name} มีในทะเบียนแล้ว`); $('shipQ').value=name; renderShips(); return; }
   const s={name, loa:$('nsLoa').value.trim(), berth:norm($('nsBerth').value), agent:norm($('nsAgent').value), note:''};
-  try{ await api('saveShip',{},{ship:s}); S.ships.push(s); S.shipIdx.set(name,s); ['nsName','nsLoa','nsBerth','nsAgent'].forEach(id=>$(id).value=''); $('shipQ').value=''; renderShips(); toast(`เพิ่ม ${name} แล้ว`); $('nsName').focus(); }
-  catch(err){ toast('เพิ่มไม่สำเร็จ: '+err.message); } });
+  S.ships.push(s); S.shipIdx.set(name,s); ['nsName','nsLoa','nsBerth','nsAgent'].forEach(id=>$(id).value=''); $('shipQ').value=''; renderShips(); $('nsName').focus();   // at once, save in the background
+  try{ await api('saveShip',{},{ship:s}); toast(`เพิ่ม ${name} แล้ว`); }
+  catch(err){ S.ships=S.ships.filter(x=>x!==s); S.shipIdx.delete(name); renderShips(); $('nsName').value=name; $('nsLoa').value=s.loa; $('nsBerth').value=s.berth; $('nsAgent').value=s.agent; toast('เพิ่มไม่สำเร็จ: '+err.message); } });
 $('modeBadge').addEventListener('click',()=>{ if(!SEED || CFG.API_URL){ $('sUrl').value=CFG.API_URL; $('sKey').value=''; $('sKey').type='password'; $('sKeyShow').textContent='แสดง';
   $('sKey').placeholder = CFG.TOKEN ? '•••••••• (บันทึกไว้แล้ว · เว้นว่างได้)' : ''; showTab('setup'); } });
 $('sKeyShow').addEventListener('click',()=>{ const k=$('sKey'); const show=k.type==='password'; k.type=show?'text':'password'; $('sKeyShow').textContent=show?'ซ่อน':'แสดง'; });
