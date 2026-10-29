@@ -304,6 +304,11 @@ table.lsheet.board{width:100%;font-size:17px}
 .shipsticky{position:sticky;top:calc(env(safe-area-inset-top,0px) + 62px);z-index:6;background:var(--bg);padding-top:6px}
 #view-ships .gridwrap{overflow:visible}
 #view-ships .st thead th{top:var(--shipTop,0px);z-index:3}
+
+.st input.dutyin{width:100%;min-height:40px;border:0;background:transparent;font:600 18px var(--f-num);color:var(--pilot);text-align:center}
+.st input.dutyin:focus{outline:2px solid var(--accent);outline-offset:-2px;background:var(--surface)}
+.st input.dutyin.warn{background:var(--warn);color:var(--warn-ink)}
+.st input.dutyin::placeholder{color:var(--muted);font-weight:400;font-size:15px}
 </style>
 <style>:root{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}body{margin:0}[hidden]{display:none!important}</style>
 </head>
@@ -1217,8 +1222,10 @@ function renderPilots(){
     || `<tr><td colspan="3" class="empty">ยังไม่มีเลขผก.</td></tr>`;
   if(!$('dutyMonth').value) $('dutyMonth').value=S.D.slice(0,7); dmLabel();
   const k=$('dutyMonth').value, cur=S.duty[k]||[];
-  const opts=v=>['',...pilotList(),...(v&&!S.pilots[v]?[v]:[])].map(p=>`<option value="${esc(p)}"${p===v?' selected':''}>${p||'—'}</option>`).join('');
-  $('dutyBody').innerHTML = DUTY_LBL.map((l,i)=>`<tr><th class="lbl">${l}</th><td><select data-duty="${i}" aria-label="${l}">${opts(cur[i]||'')}</select></td></tr>`).join('')
+  // type the pilot number (suggestions from the list on the left) — or pick from the list
+  const dl=`<datalist id="dutyList">${pilotList().map(p=>`<option value="${esc(p)}">${esc(S.pilots[p]||'')}</option>`).join('')}</datalist>`;
+  $('dutyBody').innerHTML = DUTY_LBL.map((l,i)=>{ const v=cur[i]||''; const warn=v&&S.pilots[v]===undefined;
+      return `<tr><th class="lbl">${l}</th><td><input class="dutyin${warn?' warn':''}" data-duty="${i}" list="dutyList" inputmode="numeric" autocomplete="off" value="${esc(v)}" placeholder="พิมพ์เลขผก." aria-label="${l}" title="${warn?'ยังไม่มีเลขนี้ในตารางเลขผก. (ซ้าย) — เบอร์โทรจะว่าง':''}"></td></tr>`; }).join('') + dl
     + (S.duty[k]? '' : `<tr><td colspan="2" class="empty">เดือนนี้ยังไม่ได้ตั้งเวร · ตารางใช้เวรเดือนก่อนหน้า</td></tr>`);
   let txt='', g=null; for(const f of S.fixed){ if(g!==null && f.group!==g) txt+='\n'; txt+=f.text+'\n'; g=f.group; }
   if(document.activeElement!==$('fixedText')) $('fixedText').value=txt.trim();
@@ -1252,7 +1259,9 @@ document.addEventListener('click',()=>{ if(!$('dmPop').hidden) dmClose(); });
 document.addEventListener('keydown',e=>{ if(e.key==='Escape' && !$('dmPop').hidden){ dmClose(); $('dmLabel').focus(); } });
 $('dmPrev').addEventListener('click',()=>dmSet(addMon($('dutyMonth').value||S.D.slice(0,7),-1)));
 $('dmNext').addEventListener('click',()=>dmSet(addMon($('dutyMonth').value||S.D.slice(0,7),1)));
+$('dutyBody').addEventListener('keydown',e=>{ const i=e.target.closest('[data-duty]'); if(i&&e.key==='Enter'){ e.preventDefault(); i.blur(); } });
 $('dutyBody').addEventListener('change',async e=>{ const sel=e.target.closest('[data-duty]'); if(!sel) return; const k=$('dutyMonth').value; if(!k) return;
+  sel.value=sel.value.replace(/^P\.?/i,'').replace(/\s+/g,'');
   const list=[...$('dutyBody').querySelectorAll('[data-duty]')].map(x=>x.value); const old=S.duty[k];
   const clean=list.filter(Boolean); S.duty[k]=clean;
   try{ await api('saveDuty',{},{month:k,list}); printDirty=true; cacheSet(); flash(sel); if(k===S.D.slice(0,7)) rerender(); renderPilots(); }
