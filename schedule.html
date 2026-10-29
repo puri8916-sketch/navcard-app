@@ -380,6 +380,9 @@ input,textarea{line-height:1.6}
   .tabs button{font-size:15px;padding:5px 10px}
   .btn{font-size:14px;padding:6px 10px}
 }
+
+.lsheet td.hd,.eg thead th{overflow:hidden;text-overflow:clip;letter-spacing:-.01em}
+.lsheet td.hd{padding:0 1px}
 </style>
 <style>:root{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}body{margin:0}[hidden]{display:none!important}</style>
 </head>
@@ -844,6 +847,7 @@ function renderGrid(){
 }
 // shrink long text to fit its cell, like Excel's shrink-to-fit
 function fitAll(){   // read all widths first, then write — one layout pass instead of one per cell
+  fitHeads($('grid'));
   const list=[...$('grid').querySelectorAll('input')].filter(i=>i.value);
   if(!list.length || $('view-work').hidden) return;
   list.forEach(i=>{ if(i.style.fontSize) i.style.fontSize=''; });
@@ -1672,7 +1676,13 @@ function renderBoard(){
   if(keep && BD.blocks[keep.b]){ const n=BD.blocks[keep.b].rows.length-1;
     SEL={b:keep.b, r1:Math.min(keep.r1,n), c1:keep.c1, r2:Math.min(keep.r2,n), c2:keep.c2}; paintSel(); focusCell(SEL.b,SEL.r1,SEL.c1,true); }
 }
+// column titles (NO., LOA, Drf …) shrink to fit their cell instead of being cut — phones use a wider fallback font
+function fitHeads(root){ if(!root||root.offsetParent===null) return;
+  const hs=[...root.querySelectorAll('td.hd,th')].filter(h=>h.textContent.trim()&&h.colSpan===1);
+  hs.forEach(h=>h.style.fontSize=''); const m=hs.map(h=>[h.scrollWidth,h.clientWidth,parseFloat(getComputedStyle(h).fontSize)]);
+  hs.forEach((h,k)=>{ const [sw,cw,fs]=m[k]; if(sw>cw+1) h.style.fontSize=Math.max(8,fs*(cw-2)/sw).toFixed(1)+'px'; }); }
 function fitBoard(){
+  fitHeads($('board'));
   const list=[...$('board').querySelectorAll('.ce')].filter(i=>i.value); if(!list.length || $('view-line').hidden) return;
   list.forEach(i=>i.style.fontSize='');
   const m=list.map(i=>[i.scrollWidth,i.clientWidth,parseFloat(getComputedStyle(i).fontSize)]);
@@ -2194,6 +2204,9 @@ function cropPhoto(file){ return new Promise(async (resolve)=>{
     if(a==='no') done(null);
     if(a==='ok'){ const c=document.createElement('canvas'); c.width=c.height=OUT; draw(c.getContext('2d'),OUT); done(c.toDataURL('image/jpeg',0.85)); } });
 }); }
+
+try{ document.fonts.ready.then(()=>{ fitHeads($('board')); fitHeads($('grid')); }); }catch(e){}
+window.addEventListener('resize',()=>{ fitHeads($('board')); fitHeads($('grid')); });
 </script>
 
 </body>
