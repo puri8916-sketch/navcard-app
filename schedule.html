@@ -383,6 +383,11 @@ input,textarea{line-height:1.6}
 
 .lsheet td.hd,.eg thead th{overflow:hidden;text-overflow:clip;letter-spacing:-.01em}
 .lsheet td.hd{padding:0 1px}
+
+.pzoom{display:inline-flex;align-items:center;gap:4px;margin-left:auto}
+.pzoom .btn{min-width:44px;font-size:20px;padding:6px 10px}
+.pzoom #pzFit{font-size:15px}
+.pzv{min-width:52px;text-align:center;font:600 16px var(--f-num)}
 </style>
 <style>:root{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}body{margin:0}[hidden]{display:none!important}</style>
 </head>
@@ -495,8 +500,9 @@ input,textarea{line-height:1.6}
       <span class="note" id="printNote" hidden></span>
       <span class="disp" id="dispState" hidden></span>
       <button class="btn" id="dispBtn" hidden>บันทึกจัดจ่าย</button>
+      <div class="grp pzoom" role="group" aria-label="ซูมตัวอย่างพิมพ์"><button class="btn tb" id="pzOut" type="button" aria-label="ซูมออก">−</button><button class="btn tb" id="pzFit" type="button" title="พอดีความกว้างจอ">พอดีจอ</button><span class="pzv" id="pzVal">100%</span><button class="btn tb" id="pzIn" type="button" aria-label="ซูมเข้า">＋</button></div>
     </div>
-    <div class="scrollx"><div class="paper" id="paperBig"></div></div>
+    <div class="scrollx" id="paperWrap"><div class="paper" id="paperBig"></div></div>
   </section>
 </main>
 
@@ -2207,6 +2213,17 @@ function cropPhoto(file){ return new Promise(async (resolve)=>{
 
 try{ document.fonts.ready.then(()=>{ fitHeads($('board')); fitHeads($('grid')); }); }catch(e){}
 window.addEventListener('resize',()=>{ fitHeads($('board')); fitHeads($('grid')); });
+
+/* พิมพ์: zoom the on-screen preview (printing / PDF are not affected) */
+(function(){ const P=$('paperBig'), W=$('paperWrap'); let z=null;   // null = fit the screen width
+  const fitZ=()=>{ const w=P.offsetWidth||1123; return Math.max(0.3,Math.min(1,(W.clientWidth-4)/w)); };
+  const apply=()=>{ const v=z==null?fitZ():z; P.style.zoom=v; $('pzVal').textContent=Math.round(v*100)+'%'; $('pzFit').classList.toggle('on',z==null); };
+  const step=d=>{ const cur=z==null?fitZ():z; z=Math.max(0.3,Math.min(2,Math.round((cur+d)*10)/10)); apply(); };
+  $('pzIn').addEventListener('click',()=>step(0.1)); $('pzOut').addEventListener('click',()=>step(-0.1));
+  $('pzFit').addEventListener('click',()=>{ z=null; apply(); });
+  window.addEventListener('resize',()=>{ if(z==null) apply(); });
+  $('tab-print').addEventListener('click',()=>setTimeout(apply,0));
+  apply(); })();
 </script>
 
 </body>
