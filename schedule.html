@@ -1966,9 +1966,9 @@ $('lineCopy').addEventListener('click',async()=>{
   if(!CFG.API_URL && !SEED){ $('modeBadge').textContent='ยังไม่เชื่อมต่อ'; $('tab-work').disabled=true; $('tab-print').disabled=true; $('tab-ships').disabled=true; $('tab-line').disabled=true; $('tab-pilots').disabled=true; $('sBack').hidden=true; $('sOff').hidden=true; showTab('setup'); return; }
   const D0 = (!CFG.API_URL && SEED && SEED.startDate) ? SEED.startDate : todayYmd();
   const c = cacheGet();
-  if(c && c.init){ applyInit(c.init); S.mv=c.mv||[]; S.loaded=c.loaded; S.D=D0; $('schedDate').value=D0; renderAll(); renderShips(); showTab('line'); refresh(true); return; }
+  if(c && c.init){ applyInit(c.init); S.mv=c.mv||[]; S.loaded=c.loaded; S.D=D0; $('schedDate').value=D0; renderAll(); renderShips(); showTab('work'); refresh(true); return; }
   try{ await Promise.all([loadInit(), (S.D=D0, loadMovements(D0))]); cacheSet(); }catch(err){ toast('โหลดฐานข้อมูลไม่สำเร็จ: '+err.message); $('sUrl').value=CFG.API_URL; $('sKey').value=''; $('sMsg').textContent='โหลดไม่สำเร็จ: '+err.message; $('sMsg').className='hint bad'; showTab('setup'); return; }
-  $('schedDate').value=D0; renderAll(); renderShips(); showTab('line');
+  $('schedDate').value=D0; renderAll(); renderShips(); showTab('work');
   try{ document.fonts.ready.then(()=>fitAll()); }catch(e){}
 })();
 
