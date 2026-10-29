@@ -445,7 +445,7 @@ input,textarea{line-height:1.6}
         <table class="st"><colgroup><col style="width:72px"><col style="width:15%"><col><col style="width:28%"><col style="width:66px"></colgroup>
           <thead><tr><th>รูป</th><th>เลขผก.</th><th>ชื่อเล่น</th><th>เบอร์โทร</th><th></th></tr></thead><tbody id="pilotBody"></tbody></table>
         <form id="pilotAdd" class="padd" autocomplete="off"><input id="npNo" placeholder="เลขผก." inputmode="numeric" aria-label="เลขผก."><input id="npPhone" placeholder="เบอร์โทร" inputmode="tel" aria-label="เบอร์โทร"><button type="submit" class="btn primary">เพิ่ม</button></form>
-        <details class="pimpd"><summary>📥 นำเข้าเลขผก. / เบอร์ / รูป</summary>
+        <details class="pimpd" hidden><summary>📥 นำเข้าเลขผก. / เบอร์ / รูป</summary>
           <div class="pimpin"><textarea id="pimpText" rows="3" placeholder="วางข้อความ เช่น P.178/095-9595392 หรือ 178 095-9595392 (บรรทัดละคน)"></textarea>
           <div class="pimpbar"><button type="button" class="btn" id="pimpRead">อ่านข้อความ</button><button type="button" class="btn" id="pimpFileBtn">เลือกไฟล์ (.json / .xlsx / .csv)</button><input type="file" id="pimpFile" accept=".json,.xlsx,.csv,.txt" hidden></div></div>
           <div id="pimpBox" hidden></div></details>
