@@ -409,6 +409,9 @@ input,textarea{line-height:1.6}
 .datenav{position:fixed;left:0;right:0;bottom:0;z-index:58;background:var(--surface);border-top:1px solid var(--line);box-shadow:0 -2px 8px rgb(0 0 0 / .08);
   padding:6px max(10px,env(safe-area-inset-left)) calc(6px + env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-right));flex-basis:auto;order:0;margin:0;box-sizing:border-box}
 .datenav .iconbtn{width:40px;align-self:stretch}
+/* keep clear of Streamlit Cloud's corner buttons (bottom-right of the app) */
+.datenav{padding-right:calc(130px + env(safe-area-inset-right))!important}
+.hbar{right:130px}
 .datenav .dchip{flex:1 0 58px;max-width:96px;padding:3px 2px;border-radius:8px;display:flex;gap:4px;align-items:baseline;justify-content:center}
 .datenav .dchip .d{font-size:19px}.datenav .dchip .m{font-size:12px}
 body{padding-bottom:64px}
