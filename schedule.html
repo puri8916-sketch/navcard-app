@@ -846,7 +846,8 @@ function renderGrid(){
   // the empty first row of the printed sheet (typing here adds a ship too)
   h += `<tr>${halfHTML('L',null,{draft:'topL',base:D})}${halfHTML('R',null,{draft:'topR',base:D})}</tr>`;
   body.forEach((r,i)=>{
-    if(r.blank){ h+=`<tr class="sep" data-li="${i}">${'<td></td>'.repeat(9)}<td class="mid"></td>${'<td></td>'.repeat(7)}</tr>`; return; }
+    // separator rows between time groups look empty like the print, but you can type a ship there like any other row
+    if(r.blank){ h+=`<tr class="sep" data-li="${i}">${halfHTML('L',null,{draft:'s'+i+'L',base:D})}${halfHTML('R',null,{draft:'s'+i+'R',base:D})}</tr>`; return; }
     const dt = (r.L||r.R).datetime;
     h += `<tr data-li="${i}">${r.L? halfHTML('L',r.L,{no:main.no.get(r.L.id),base:D}) : halfHTML('L',null,{draft:'e'+i+'L',base:D,def:dt})}`+
          `${r.R? halfHTML('R',r.R,{no:main.no.get(r.R.id),base:D}) : halfHTML('R',null,{draft:'e'+i+'R',base:D,def:dt})}</tr>`;
