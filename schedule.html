@@ -276,7 +276,7 @@ table.lsheet.board{width:100%;font-size:17px}
 .fc-main{display:inline-flex;flex-direction:column;align-items:center;gap:1px;padding:4px 12px 5px;border-top-right-radius:0;border-bottom-right-radius:0}
 .fcA{font:700 18px/1 var(--f-sheet);text-decoration:underline;text-decoration-color:transparent}
 .fcBar{display:block;width:20px;height:5px;background:#FF0000;border-radius:1px}
-.fillbtn{display:inline-flex;align-items:center;gap:8px}.fillsw{width:20px;height:20px;border-radius:4px;background:#E0E0E0;border:1px solid #9AA4AD}
+.fillbtn{display:inline-flex;align-items:center;gap:8px}.fillsw{width:20px;height:20px;border-radius:4px;background:#C8C8C8;border:1px solid #8A949D}
 .fc-drop{padding:7px 7px;border-left:0;border-top-left-radius:0;border-bottom-left-radius:0}
 .fc-pal{position:absolute;top:calc(100% + 4px);left:0;z-index:60;background:var(--surface);border:1px solid var(--line);border-radius:8px;box-shadow:0 8px 22px rgb(0 0 0 / .2);padding:8px;display:grid;grid-template-columns:repeat(4,28px);gap:6px}
 .fc-pal button,.mcol button{width:28px;height:28px;border:1px solid rgb(0 0 0 / .2);border-radius:4px;cursor:pointer;padding:0}
@@ -1526,8 +1526,8 @@ const blankRow=()=>({c:Array(17).fill(''), r:Array(17).fill(false), h:Array(17).
 const FC=['#000000','#FF0000','#C00000','#FFC000','#00B050','#0070C0','#002060','#7030A0','#808080'];   // font colours (Excel standard)
 let curColor='#FF0000';
 const colOf=(row,c)=>{ const v=row.r[c]; return v===true?'#FF0000':(v||''); };   // old data stored red as true
-const FILL='#E0E0E0';   // พื้นหลังเทาอ่อน
-const bgOf=(row,c)=>(row.g&&row.g[c])||'';
+const FILL='#C8C8C8';   // พื้นหลังเทา (cells saved with the old #E0E0E0 show in the new grey too)
+const bgOf=(row,c)=>{ const v=(row.g&&row.g[c])||''; return v==='#E0E0E0'?FILL:v; };
 const tdStyle=(row,c)=>{ const k=colOf(row,c), g=bgOf(row,c); const st=(k?`color:${k};`:'')+(g?`background:${g};`:''); return st?` style="${st}"`:''; };
 const hOf=(row,c)=>(row.h&&row.h[c])||'';
 function setH(row,c,v){ if(!row.h) row.h=Array(17).fill(''); row.h[c]=v; }
