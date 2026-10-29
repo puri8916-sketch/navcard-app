@@ -2236,6 +2236,7 @@ window.addEventListener('resize',()=>{ fitHeads($('board')); fitHeads($('grid'))
   $('pzFit').addEventListener('click',()=>{ z=null; apply(); });
   window.addEventListener('resize',()=>{ if(z==null) apply(); });
   $('tab-print').addEventListener('click',()=>setTimeout(apply,0));
+  window.setPrintZoom=v=>{ z=Math.max(0.3,Math.min(2,v)); apply(); }; window.getPrintZoom=()=>z==null?fitZ():z;
   apply(); })();
 
 /* wide sheets: a sideways scrollbar pinned to the bottom of the screen (like Excel), so you don't have to scroll down to the sheet's own bar */
@@ -2253,6 +2254,23 @@ window.addEventListener('resize',()=>{ fitHeads($('board')); fitHeads($('grid'))
   ['tab-line','tab-work','tab-print','tab-ships','tab-pilots'].forEach(id=>$(id).addEventListener('click',()=>setTimeout(upd,50)));
   try{ new ResizeObserver(upd).observe(document.body); }catch(e){}
   setInterval(upd,1500); setTimeout(upd,300); })();
+
+/* two-finger pinch zoom on the sheets (แก้ไข / จัดตาราง / พิมพ์) — zooms the sheet only, not the whole page */
+(function(){
+  const targets=[['#board','#board'],['.sheetwrap','#grid'],['#paperWrap','#paperBig']];
+  targets.forEach(([box,inner])=>{ const B=document.querySelector(box), I=document.querySelector(inner); if(!B||!I) return;
+    B.style.touchAction='pan-x pan-y';   // let our code handle the pinch here instead of the browser zooming the page
+    let st=null;
+    const dist=t=>Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);
+    const getZ=()=> inner==='#paperBig' ? window.getPrintZoom() : (parseFloat(I.style.zoom)||1);
+    const setZ=v=>{ if(inner==='#paperBig') window.setPrintZoom(v); else I.style.zoom=Math.max(0.3,Math.min(2.5,v)); if(inner==='#board'&&typeof fitHeads==='function') fitHeads(I); };
+    B.addEventListener('touchstart',e=>{ if(e.touches.length===2){ const sc=B.closest('.scrollx,.sheetwrap')||B; st={d:dist(e.touches),z:getZ(),mx:(e.touches[0].clientX+e.touches[1].clientX)/2-sc.getBoundingClientRect().left,sl:sc.scrollLeft,sc}; e.preventDefault(); } },{passive:false});
+    B.addEventListener('touchmove',e=>{ if(!st||e.touches.length!==2) return; e.preventDefault();
+      const nz=st.z*dist(e.touches)/st.d; setZ(nz); const z2=getZ(); st.sc.scrollLeft=(st.mx+st.sl)*(z2/st.z)-st.mx; },{passive:false});
+    B.addEventListener('touchend',e=>{ if(e.touches.length<2) st=null; });
+    B.addEventListener('touchcancel',()=>{ st=null; });
+  });
+})();
 </script>
 
 </body>
