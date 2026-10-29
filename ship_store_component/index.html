@@ -48,11 +48,21 @@
     if (s !== lastSent) { lastSent = s; post('streamlit:setComponentValue', { value: store, dataType: 'json' }); }
   }
   let fetched = null;
-  async function refresh() {
-    send(fetched || readLocal());
-    if (fetched) return;
-    try { const r = await readSheet(); if (r) { fetched = r; send(r); } } catch (e) { /* offline: keep local copy */ }
+  // sheet copy (fresh at page load) + this browser's live sync cache on top, so a ship just saved in the
+  // ×3.2808 calculator (same browser) reaches Python straight away — no page refresh needed
+  function current() {
+    const loc = readLocal();
+    if (!fetched) return loc;
+    return { ships: Object.assign({}, fetched.ships, loc.ships), source: 'sheet+local', cfg: loc.cfg };
   }
+  async function refresh() {
+    send(current());
+    if (fetched) return;
+    try { const r = await readSheet(); if (r) { fetched = r; send(current()); } } catch (e) { /* offline: keep local copy */ }
+  }
+  // the calculator writes to the same localStorage: pick that up at once (storage event) and, as a fallback, every 2 s
+  window.addEventListener('storage', function (e) { if (!e.key || e.key === CACHE || e.key === OLD_KEY) send(current()); });
+  setInterval(function () { send(current()); }, 2000);
 
   window.addEventListener('message', function (event) {
     if (event.data && event.data.type === 'streamlit:render') refresh();

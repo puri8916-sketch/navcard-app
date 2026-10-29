@@ -384,6 +384,16 @@ with _main:
         else:
             st.error("ไม่พบไฟล์เดิมบนเซิร์ฟเวอร์แล้ว — กรุณาวาง zip ใหม่")
 
+    # a ship just saved in the ×3.2808 calculator: re-check by itself (no refresh / no button needed)
+    if (not recheck_clicked and st.session_state.report is not None and _xlsx and _has_cards
+            and st.session_state.report.get("unmatched_loa_ships")):
+        _mem = {nc.normalize_name(k) for k in _ship_memory}
+        _now = [nm for _cn, nm in st.session_state.report["unmatched_loa_ships"] if nc.normalize_name(nm) in _mem]
+        if _now and st.session_state.get("_auto_loa") != (tuple(_now), len(_mem)):
+            st.session_state._auto_loa = (tuple(_now), len(_mem))
+            st.session_state.report = nc.analyze_batch(card_dir, _xlsx, _csvs, ship_memory=_ship_memory)
+            st.toast("พบความยาวเรือใหม่จากเครื่องคิดเลข: " + ", ".join(dict.fromkeys(_now)))
+
     report = st.session_state.report
 
     if report is not None:
