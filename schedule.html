@@ -388,6 +388,8 @@ input,textarea{line-height:1.6}
 .pzoom .btn{min-width:44px;font-size:20px;padding:6px 10px}
 .pzoom #pzFit{font-size:15px}
 .pzv{min-width:52px;text-align:center;font:600 16px var(--f-num)}
+
+.vfit{overflow:auto!important;overscroll-behavior:contain}
 </style>
 <style>:root{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}body{margin:0}[hidden]{display:none!important}</style>
 </head>
@@ -421,12 +423,12 @@ input,textarea{line-height:1.6}
       <div class="grp" id="addBlk"></div>
       <div class="grp"><label class="since" for="lineSince">ตั้งแต่</label><input id="lineSince" class="since num" autocomplete="off" aria-label="ดึงเรือตั้งแต่เวลา"><button class="btn" id="linePull">⟳ ดึงจากจัดตารางใหม่</button><span class="note" id="boardInfo" hidden></span></div>
     </div>
-    <div class="scrollx"><div class="paper linepaper" id="board"></div></div>
+    <div class="scrollx vfit"><div class="paper linepaper" id="board"></div></div>
   </section>
   <section id="view-work" hidden>
     <div class="ltool"><div class="grp"><button class="btn tb" id="gUndo" title="Ctrl+Z">↶ ย้อนกลับ</button><button class="btn tb" id="gRedo" title="Ctrl+Y">↷ ทำซ้ำ</button></div><div class="grp"><button class="btn tb" id="gAutoBtn" hidden>⟲ จัดอัตโนมัติใหม่</button></div><div class="grp"><button class="btn tb" id="impBtn" title="นำเข้าจากไฟล์ Excel ตารางเรือเดิม (แท็บแยกตามวัน)">📥 นำเข้าไฟล์ตาราง</button><input type="file" id="impFile" accept=".xlsx" hidden></div></div>
     <div class="panel imp" id="impPanel" hidden></div>
-    <div class="sheetwrap"><table class="eg" id="grid"></table></div>
+    <div class="sheetwrap vfit"><table class="eg" id="grid"></table></div>
   </section>
 
   <section id="view-setup" hidden>
@@ -502,7 +504,7 @@ input,textarea{line-height:1.6}
       <button class="btn" id="dispBtn" hidden>บันทึกจัดจ่าย</button>
       <div class="grp pzoom" role="group" aria-label="ซูมตัวอย่างพิมพ์"><button class="btn tb" id="pzOut" type="button" aria-label="ซูมออก">−</button><button class="btn tb" id="pzFit" type="button" title="พอดีความกว้างจอ">พอดีจอ</button><span class="pzv" id="pzVal">100%</span><button class="btn tb" id="pzIn" type="button" aria-label="ซูมเข้า">＋</button></div>
     </div>
-    <div class="scrollx" id="paperWrap"><div class="paper" id="paperBig"></div></div>
+    <div class="scrollx vfit" id="paperWrap"><div class="paper" id="paperBig"></div></div>
   </section>
 </main>
 
@@ -2224,6 +2226,14 @@ window.addEventListener('resize',()=>{ fitHeads($('board')); fitHeads($('grid'))
   window.addEventListener('resize',()=>{ if(z==null) apply(); });
   $('tab-print').addEventListener('click',()=>setTimeout(apply,0));
   apply(); })();
+
+/* wide sheets: the box is at most one screen tall, so its sideways scrollbar is always on screen (scroll inside for long days) */
+function vfit(){ const top=document.querySelector('.top'), stuck=top&&getComputedStyle(top).position==='sticky'?top.offsetHeight:0;
+  document.querySelectorAll('.vfit').forEach(el=>{ if(el.offsetParent===null) return; const tool=el.parentElement.querySelector('.ltool');
+    const t=tool&&getComputedStyle(tool).position==='sticky'?tool.offsetHeight:0; el.style.maxHeight=Math.max(260,innerHeight-stuck-t-14)+'px'; }); }
+window.addEventListener('resize',vfit);
+['tab-line','tab-work','tab-print'].forEach(id=>$(id).addEventListener('click',()=>setTimeout(vfit,0)));
+setTimeout(vfit,300);
 </script>
 
 </body>
