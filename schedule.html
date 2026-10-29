@@ -367,6 +367,19 @@ input,textarea{line-height:1.6}
   .pgrid{grid-template-columns:minmax(0,1fr)}
   .crop-stage{width:min(320px,80vw);height:min(320px,80vw)}
 }
+
+/* short screens (phone in landscape): header scrolls away with the page and is compact, so the sheet gets the screen */
+@media (max-height:520px){
+  .top{position:static}
+  .ltool,.shipsticky{position:static}
+  #view-ships .st thead th{top:0}
+  .datenav{gap:4px}
+  .iconbtn{width:34px;font-size:20px}
+  .dchip{flex:1 0 52px;padding:2px 2px;border-radius:8px;display:flex;gap:3px;align-items:baseline;justify-content:center}
+  .dchip .d{font-size:17px}.dchip .m{font-size:11px}
+  .tabs button{font-size:15px;padding:5px 10px}
+  .btn{font-size:14px;padding:6px 10px}
+}
 </style>
 <style>:root{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}body{margin:0}[hidden]{display:none!important}</style>
 </head>
