@@ -1250,7 +1250,7 @@ function gAuto(){ if(!layoutOf(S.D)) return toast('ตารางนี้จ�
 
 /* right-click menu for จัดตาราง */
 const GM=$('gmenu');
-GM.innerHTML=[['undo','↶ ย้อนกลับ','Ctrl+Z'],['redo','↷ ทำซ้ำ','Ctrl+Y'],['-'],['cut','ตัด','Ctrl+X'],['copy','คัดลอก','Ctrl+C'],['paste','วาง','Ctrl+V'],['clear','ลบข้อมูล','Delete'],['-'],['mvup','ย้ายขึ้น','Alt+↑'],['mvdown','ย้ายลง','Alt+↓'],['rowup','ย้ายทั้งแถวขึ้น','Alt+Shift+↑'],['rowdown','ย้ายทั้งแถวลง','Alt+Shift+↓'],['insblank','แทรกแถวว่าง',''],['delblank','ลบแถวว่าง',''],['auto','จัดอัตโนมัติใหม่',''],['-'],['late','สลับ พ (แจ้งเพิ่มหลังจัดจ่าย)',''],['out','สร้างเที่ยวออก',''],['delship','ลบเรือทั้งลำ','']]
+GM.innerHTML=[['undo','↶ ย้อนกลับ','Ctrl+Z'],['redo','↷ ทำซ้ำ','Ctrl+Y'],['-'],['cut','ตัด','Ctrl+X'],['copy','คัดลอก','Ctrl+C'],['paste','วาง','Ctrl+V'],['clear','ลบข้อมูล','Delete'],['-'],['mvup','ย้ายขึ้น','Alt+↑'],['mvdown','ย้ายลง','Alt+↓'],['rowup','ย้ายทั้งแถวขึ้น','Alt+Shift+↑'],['rowdown','ย้ายทั้งแถวลง','Alt+Shift+↓'],['insblank','แทรกแถวว่าง',''],['delblank','ลบแถวว่าง',''],['auto','จัดอัตโนมัติใหม่','']]
   .map(x=>x[0]==='-'?'<hr>':`<button type="button" data-gm="${x[0]}"><span>${x[1]}</span><kbd>${x[2]}</kbd></button>`).join('');
 function hideGMenu(){ GM.hidden=true; }
 G.addEventListener('mousedown',()=>{ GSEP=null; });
