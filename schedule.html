@@ -299,6 +299,11 @@ table.lsheet.board{width:100%;font-size:17px}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:10px;font-weight:600;z-index:80;max-width:calc(100vw - 32px)}
 .imp{margin:8px 0 12px;font-size:16px}.imp h3{margin:0 0 8px;font-size:18px}.imp table{border-collapse:collapse;margin:8px 0}.imp td,.imp th{padding:6px 12px;border-bottom:1px solid var(--line);text-align:center}.imp td.l,.imp th.l{text-align:left}.imp .dim{color:var(--muted)}.imp .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:8px}
 
+
+/* ทะเบียนเรือ: search + add bar and the table header stay on screen while scrolling */
+.shipsticky{position:sticky;top:calc(env(safe-area-inset-top,0px) + 62px);z-index:6;background:var(--bg);padding-top:6px}
+#view-ships .gridwrap{overflow:visible}
+#view-ships .st thead th{top:var(--shipTop,0px);z-index:3}
 </style>
 <style>:root{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}body{margin:0}[hidden]{display:none!important}</style>
 </head>
@@ -381,6 +386,7 @@ table.lsheet.board{width:100%;font-size:17px}
   </section>
 
   <section id="view-ships" hidden>
+    <div class="shipsticky" id="shipSticky">
     <div class="shipbar">
       <input id="shipQ" type="search" placeholder="ค้นหา ชื่อเรือ / ท่า / เอเย่นต์" autocomplete="off" aria-label="ค้นหาเรือ">
       <span class="chip c-in" id="shipCount"></span>
@@ -393,6 +399,7 @@ table.lsheet.board{width:100%;font-size:17px}
       <input id="nsAgent" placeholder="เอเย่นต์" aria-label="เอเย่นต์">
       <button type="submit" class="btn primary">เพิ่มเรือ</button>
     </form>
+    </div>
     <div class="gridwrap"><table class="st"><colgroup><col style="width:5%"><col style="width:29%"><col style="width:9%"><col style="width:15%"><col style="width:15%"><col style="width:19%"><col style="width:8%"></colgroup>
       <thead><tr><th>#</th><th>ชื่อเรือ</th><th>LOA</th><th>ท่าประจำ</th><th>เอเย่นต์</th><th>หมายเหตุ</th><th></th></tr></thead><tbody id="shipBody"></tbody></table></div>
   </section>
@@ -1974,6 +1981,11 @@ async function impRun(){
     toast(`นำเข้าแล้ว ${list.length} รายการ`);
   }catch(err){ msg.textContent=`หยุดที่ ${done}/${list.length}: ${err.message} (กดนำเข้าอีกครั้งได้ รายการที่บันทึกแล้วจะถูกข้าม)`; $('impGo').disabled=false; }
 }
+
+/* keep ทะเบียนเรือ's table header right under the sticky search bar */
+(function(){const st=document.getElementById('shipSticky');if(!st)return;
+  const put=()=>{const top=parseFloat(getComputedStyle(st).top)||0;document.getElementById('view-ships').style.setProperty('--shipTop',(top+st.offsetHeight)+'px')};
+  try{new ResizeObserver(put).observe(st)}catch(e){}window.addEventListener('resize',put);put();})();
 </script>
 
 </body>
