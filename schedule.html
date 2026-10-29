@@ -374,7 +374,7 @@ input,textarea{line-height:1.6}
 
 
 <header class="top">
-  <div class="datenav">
+  <div class="datenav" id="dateNav">
     <button class="iconbtn" id="prevDay" aria-label="สัปดาห์ก่อน" title="สัปดาห์ก่อน">‹</button>
     <div class="dstrip" id="dstrip" role="listbox" aria-label="เลือกวันที่ตาราง"></div>
     <button class="iconbtn" id="nextDay" aria-label="สัปดาห์ถัดไป" title="สัปดาห์ถัดไป">›</button>
@@ -1271,7 +1271,8 @@ function showTab(t){ const g=tabGrp(t); if(!TD.line && !TD.work && S.D){ TD.line
   if(g){ if(!TD[g]) TD[g]=S.D;
     else if(TD[g]!==S.D){ const D=TD[g]; S.D=D; $('schedDate').value=D; renderAll();
       if(!covered(D)) loadMovements(D).then(()=>{ cacheSet(); renderAll(); if(!$('view-line').hidden && S.D===D) openBoard(D); }).catch(err=>toast('โหลดข้อมูลไม่สำเร็จ: '+err.message)); } }
-  for(const x of ['work','print','line','ships','pilots']){ $('tab-'+x).setAttribute('aria-selected', x===t); $('view-'+x).hidden = x!==t; } if(t==='work') fitAll(); if(t==='print'){ renderPrint(); renderDisp(); } if(t==='line'){ if(!$('lineSince').value) $('lineSince').value=fmtT(nowDt()); if(!BD || BD.date!==S.D) openBoard(S.D); else fitBoard(); } $('view-setup').hidden = t!=='setup'; hidePop(); }
+  for(const x of ['work','print','line','ships','pilots']){ $('tab-'+x).setAttribute('aria-selected', x===t); $('view-'+x).hidden = x!==t; }
+  $('dateNav').hidden = !(t==='line'||t==='work'); /* day strip only on แก้ไข / จัดตาราง; พิมพ์ prints the จัดตาราง day */ if(t==='work') fitAll(); if(t==='print'){ renderPrint(); renderDisp(); } if(t==='line'){ if(!$('lineSince').value) $('lineSince').value=fmtT(nowDt()); if(!BD || BD.date!==S.D) openBoard(S.D); else fitBoard(); } $('view-setup').hidden = t!=='setup'; hidePop(); }
 $('tab-work').addEventListener('click',()=>showTab('work')); $('tab-print').addEventListener('click',()=>showTab('print'));
 $('tab-line').addEventListener('click',()=>showTab('line'));
 $('tab-ships').addEventListener('click',()=>{ renderShips(); showTab('ships'); });
