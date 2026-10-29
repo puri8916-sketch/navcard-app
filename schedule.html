@@ -357,6 +357,16 @@ table.lsheet.board{width:100%;font-size:17px}
 .st input,.st input.dutyin,.st input.pname{line-height:1.9;padding-top:3px;padding-bottom:3px;overflow:visible}
 input,textarea{line-height:1.6}
 .dpop div{justify-content:center}
+
+/* phones: one-line tab bar that scrolls sideways, smaller controls, wide sheets scroll inside their box */
+@media (max-width:640px){
+  .tabs{margin-left:0;width:100%;box-sizing:border-box;overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  .tabs::-webkit-scrollbar{display:none}
+  .tabs button{white-space:nowrap;font-size:16px;padding:7px 12px;flex:none}
+  .btn{font-size:15px;padding:8px 12px}
+  .pgrid{grid-template-columns:minmax(0,1fr)}
+  .crop-stage{width:min(320px,80vw);height:min(320px,80vw)}
+}
 </style>
 <style>:root{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}body{margin:0}[hidden]{display:none!important}</style>
 </head>
