@@ -391,6 +391,19 @@ input,textarea{line-height:1.6}
 
 .hbar{position:fixed;bottom:0;z-index:60;height:18px;overflow-x:auto;overflow-y:hidden;background:rgb(255 255 255 / .92);border-top:1px solid var(--line)}
 .hbar>div{height:1px}
+
+/* phones: compact tool rows above the sheets (แก้ไข / จัดตาราง / พิมพ์) so the sheet gets more of the screen */
+@media (max-width:640px){
+  .ltool,.printbar{gap:5px 6px!important;margin-bottom:6px!important;padding-block:3px!important}
+  .ltool .grp{gap:4px}
+  .ltool .btn,.ltool .btn.tb,.printbar .btn{font-size:13px!important;padding:5px 8px!important;border-radius:7px;min-height:0;box-shadow:none}
+  #lineCopy{font-size:14px!important;padding:6px 10px!important;letter-spacing:0}
+  .fc-main{padding:2px 8px!important}.fcA{font-size:14px}.fcBar{width:16px;height:4px}
+  .fillsw{width:15px;height:15px}
+  label.since{font-size:13px}
+  input.since{width:76px;font-size:14px;padding:4px 6px}
+  .pzoom .btn{min-width:34px;font-size:16px!important}.pzv{min-width:40px;font-size:13px}
+}
 </style>
 <style>:root{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}body{margin:0}[hidden]{display:none!important}</style>
 </head>
