@@ -134,7 +134,7 @@
     start() {
       if (started) return ready;
       started = true; kick(0);
-      setInterval(() => { if (document.visibilityState !== "hidden") cycle(); }, window.__SYNC_POLL__ || 15000);
+      setInterval(() => { if (document.visibilityState !== "hidden") cycle(); }, window.__SYNC_POLL__ || 8000);
       setInterval(() => { fullPending = true; }, 5 * 60 * 1000);   // re-read the whole sheet every 5 minutes as well
       document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") cycle(); });
       window.addEventListener("online", () => cycle());

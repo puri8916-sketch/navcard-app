@@ -1502,6 +1502,16 @@ async function printPdf(){
 $('pdfBtn').addEventListener('click',downloadPdf);
 ['gUndo','gRedo'].forEach(id=>{ $(id).addEventListener('mousedown',e=>e.preventDefault()); }); $('gUndo').addEventListener('click',gUndo); $('gRedo').addEventListener('click',gRedo); $('gAutoBtn').addEventListener('click',gAuto);
 document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible' && S.init) refresh(false); });
+// changes made on other devices: ships every 15 s, everything (boards, pilots, register) every 60 s — only while this page is on screen
+let mvPollBusy=false;
+async function refreshMv(){
+  if(mvPollBusy || !S.init || !S.D || document.visibilityState==='hidden') return; mvPollBusy=true;
+  try{ const [from,to]=rangeFor(S.D); const list=await api('movements',{from,to});
+    if(JSON.stringify(list)!==JSON.stringify(S.mv)){ S.mv=list; S.loaded=[from,to]; cacheSet(); if(gridBusy()) pendingRender=true; else rerender(); } }
+  catch(e){ /* offline for a moment: try again next round */ }
+  finally{ mvPollBusy=false; } }
+setInterval(refreshMv,15000);
+setInterval(()=>{ if(document.visibilityState!=='hidden' && S.init) refresh(false).catch(()=>{}); },60000);
 
 /* ---------- จัดจ่ายแล้ว (snapshot) ---------- */
 function nowDt(){ const d=new Date(); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`; }
