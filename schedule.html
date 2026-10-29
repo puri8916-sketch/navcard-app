@@ -1326,11 +1326,11 @@ function dpShow(inp,all0){ const q=all0?'':inp.value.replace(/^P\.?/i,'').trim()
 function dpHide(){ dpEl().hidden=true; DP.inp=null; }
 function dpPick(i){ const inp=DP.inp; if(!inp||!DP.items[i]) return; inp.value=DP.items[i]; dpHide(); inp.dispatchEvent(new Event('change',{bubbles:true})); inp.blur(); }
 $('dutyBody').addEventListener('focusin',e=>{ const i=e.target.closest('[data-duty]'); if(i){ i.select(); dpShow(i,true); } });
-$('dutyBody').addEventListener('input',e=>{ const i=e.target.closest('[data-duty]'); if(i) dpShow(i); });
+$('dutyBody').addEventListener('input',e=>{ const i=e.target.closest('[data-duty]'); if(!i) return; if(!i.value.trim()){ dpHide(); DP.inp=i; return; } dpShow(i); });
 $('dutyBody').addEventListener('focusout',e=>{ if(e.target.closest('[data-duty]')) setTimeout(()=>{ if(DP.inp===e.target) dpHide(); },120); });
 $('dutyBody').addEventListener('keydown',e=>{ const i=e.target.closest('[data-duty]'); if(!i) return; const P=dpEl(), open=!P.hidden&&DP.inp===i;
   if(open&&(e.key==='ArrowDown'||e.key==='ArrowUp')){ e.preventDefault(); const n=DP.items.length; DP.act=(DP.act+(e.key==='ArrowDown'?1:-1)+n)%n; [...P.children].forEach((x,j)=>x.classList.toggle('act',j===DP.act)); return; }
-  if(e.key==='Enter'){ e.preventDefault(); const q=i.value.replace(/^P\.?/i,'').trim(); if(open&&DP.items.length&&DP.items[DP.act]&&(!q||DP.items[DP.act].startsWith(q)||i.selectionStart===0&&i.selectionEnd===i.value.length)) dpPick(DP.act); else { dpHide(); i.blur(); } return; }
+  if(e.key==='Enter'){ e.preventDefault(); const q=i.value.replace(/^P\.?/i,'').trim(); if(q&&open&&DP.items.length&&DP.items[DP.act]&&(DP.items[DP.act].startsWith(q)||i.selectionStart===0&&i.selectionEnd===i.value.length)) dpPick(DP.act); /* empty box + Enter = nobody on that slot */ else { dpHide(); i.blur(); } return; }
   if(e.key==='Escape'){ dpHide(); i.blur(); } });
 window.addEventListener('resize',()=>{ if(DP.inp) dpShow(DP.inp); });
 $('dutyBody').addEventListener('change',async e=>{ const sel=e.target.closest('[data-duty]'); if(!sel) return; const k=$('dutyMonth').value; if(!k) return;
