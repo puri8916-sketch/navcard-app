@@ -318,6 +318,27 @@ table.lsheet.board{width:100%;font-size:17px}
 .dpop div:hover{background:var(--head)}
 .dpop div.act{background:var(--accent)}.dpop div.act b,.dpop div.act span{color:#fff}
 .st input.dutyin:focus{outline:3px solid var(--accent);outline-offset:-3px;background:var(--surface)}
+
+/* pilots: profile pictures + names */
+.av{display:inline-grid;place-items:center;border-radius:50%;overflow:hidden;color:#fff;font:700 16px var(--f-num);flex:none;box-shadow:0 0 0 2px var(--surface),0 0 0 3px var(--line)}
+.av img{width:100%;height:100%;object-fit:cover;display:block}
+.avc{position:relative;text-align:center;padding:4px!important}
+.avbtn{border:0;background:transparent;padding:0;cursor:pointer;border-radius:50%}
+.avbtn:hover .av{box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--accent)}
+.avx{position:absolute;top:2px;right:4px;width:20px;height:20px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--muted);font-size:11px;cursor:pointer;opacity:0;padding:0}
+.avc:hover .avx{opacity:1}
+.st input.pname{font-size:16px;text-align:left;padding-left:8px}
+.pimpd{margin-top:12px}.pimpd summary{cursor:pointer;font-weight:600;font-size:16px;padding:6px 0}
+.pimpin textarea{width:100%;box-sizing:border-box;font:15px var(--f-num);padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink)}
+.pimpbar{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+.pimp td{text-align:center}.pimp td.pn{text-align:left;font-size:15px}
+.dpop div{gap:10px}.dpop .dpn{flex:1;font:15px var(--f-body,inherit);color:var(--ink);text-align:left}
+.dpop div.act .dpn{color:#fff}
+
+@media (min-width:1000px){.pgrid .panel.pilots{grid-column:span 2}}
+.dpop{min-width:460px}
+.dpop .dpn{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.dpop span:last-child{white-space:nowrap}
 </style>
 <style>:root{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}body{margin:0}[hidden]{display:none!important}</style>
 </head>
@@ -375,11 +396,15 @@ table.lsheet.board{width:100%;font-size:17px}
 
   <section id="view-pilots" hidden>
     <div class="pgrid">
-      <div class="panel">
+      <div class="panel pilots">
         <h2>เลขผก. และเบอร์โทร</h2>
-        <table class="st"><colgroup><col style="width:30%"><col style="width:52%"><col style="width:18%"></colgroup>
-          <thead><tr><th>เลขผก.</th><th>เบอร์โทร</th><th></th></tr></thead><tbody id="pilotBody"></tbody></table>
+        <table class="st"><colgroup><col style="width:72px"><col style="width:15%"><col><col style="width:28%"><col style="width:66px"></colgroup>
+          <thead><tr><th>รูป</th><th>เลขผก.</th><th>ชื่อ</th><th>เบอร์โทร</th><th></th></tr></thead><tbody id="pilotBody"></tbody></table>
         <form id="pilotAdd" class="padd" autocomplete="off"><input id="npNo" placeholder="เลขผก." inputmode="numeric" aria-label="เลขผก."><input id="npPhone" placeholder="เบอร์โทร" inputmode="tel" aria-label="เบอร์โทร"><button type="submit" class="btn primary">เพิ่ม</button></form>
+        <details class="pimpd"><summary>📥 นำเข้าเลขผก. / เบอร์ / ชื่อ / รูป</summary>
+          <div class="pimpin"><textarea id="pimpText" rows="3" placeholder="วางข้อความ เช่น P.178/095-9595392 หรือ 178 095-9595392 (บรรทัดละคน)"></textarea>
+          <div class="pimpbar"><button type="button" class="btn" id="pimpRead">อ่านข้อความ</button><button type="button" class="btn" id="pimpFileBtn">เลือกไฟล์ (.json / .xlsx / .csv)</button><input type="file" id="pimpFile" accept=".json,.xlsx,.csv,.txt" hidden></div></div>
+          <div id="pimpBox" hidden></div></details>
       </div>
       <div class="panel">
         <h2>เวรประจำเดือน</h2>
@@ -495,6 +520,7 @@ async function api(action, params={}, body=null){
     if(action==='movements') return demo.db.mv.filter(m=>m.datetime>=params.from && m.datetime<params.to);
     if(action==='saveMovement'){ const i=demo.db.mv.findIndex(x=>x.id===body.m.id); if(i>=0) demo.db.mv[i]=body.m; else demo.db.mv.push(body.m); demo.persist(); return body.m; }
     if(action==='deleteMovement'){ demo.db.mv=demo.db.mv.filter(x=>x.id!==body.id); demo.persist(); return true; }
+    if(action==='savePilotProfiles'){ demo.db.prof=demo.db.prof||{}; body.list.forEach(p=>{ const x=demo.db.prof[p.no]=demo.db.prof[p.no]||{}; if(p.photo!==undefined) x.photo=p.photo; if(p.name!==undefined) x.name=p.name; }); demo.persist(); return true; }
     if(action==='saveMovements'){ body.list.forEach(m=>demo.db.mv.push(m)); demo.persist(); return body.list.length; }
     if(action==='deleteMovements'){ demo.db.mv=demo.db.mv.filter(x=>!body.ids.includes(x.id)); demo.persist(); return true; }
     if(action==='saveShip'){ if(!demo.db.ships.some(x=>x.name===body.ship.name)) demo.db.ships.push(body.ship); demo.persist(); return body.ship; }
@@ -522,7 +548,7 @@ function cacheSet(){ try{ localStorage.setItem(CACHE_KEY(), JSON.stringify({init
 function applyInit(d){
   S.init=d;
   S.ships = d.ships.filter(s=>s.name); S.shipIdx = new Map(S.ships.map(s=>[s.name.toUpperCase(), s]));
-  S.berths = d.berths; S.agents = d.agents; S.pilots = d.pilots; S.duty = d.duty; S.fixed = d.fixed;
+  S.berths = d.berths; S.agents = d.agents; S.pilots = d.pilots; S.duty = d.duty; S.fixed = d.fixed; d.profiles=d.profiles||{}; d.profiles.photos=d.profiles.photos||{}; d.profiles.names=d.profiles.names||{}; S.photos=d.profiles.photos; S.names=d.profiles.names;
   S.settings = {...S.settings, ...d.settings};
   S.snaps = d.snapshots || {};
   S.boards = d.boards || {};
@@ -1227,8 +1253,8 @@ $('tab-pilots').addEventListener('click',()=>{ renderPilots(); showTab('pilots')
 const DUTY_LBL=['ผก.ประจำ 1','ผก.ประจำ 2','ผก.เวร 3','ผก.เวร 4'];
 function pilotList(){ return Object.keys(S.pilots).sort((a,b)=>(+a)-(+b)||a.localeCompare(b)); }
 function renderPilots(){
-  $('pilotBody').innerHTML = pilotList().map(p=>`<tr><td class="num" style="padding:8px;font-weight:700;color:var(--pilot)">${esc(p)}</td><td><input class="num" data-pphone="${esc(p)}" value="${esc(S.pilots[p])}" inputmode="tel" aria-label="เบอร์ ${esc(p)}"></td><td><button type="button" class="del" data-delpilot="${esc(p)}">ลบ</button></td></tr>`).join('')
-    || `<tr><td colspan="3" class="empty">ยังไม่มีเลขผก.</td></tr>`;
+  $('pilotBody').innerHTML = pilotList().map(p=>`<tr><td class="avc"><button type="button" class="avbtn" data-avpick="${esc(p)}" title="คลิกเพื่อเปลี่ยนรูป">${avatar(p,48)}</button>${photoOf(p)?`<button type="button" class="avx" data-avdel="${esc(p)}" title="ลบรูป">✕</button>`:''}</td><td class="num" style="padding:8px;font-weight:700;color:var(--pilot)">${esc(p)}</td><td><input class="pname" data-pname="${esc(p)}" value="${esc(nameOf(p))}" placeholder="ชื่อ" aria-label="ชื่อ ${esc(p)}"></td><td><input class="num" data-pphone="${esc(p)}" value="${esc(S.pilots[p])}" inputmode="tel" aria-label="เบอร์ ${esc(p)}"></td><td><button type="button" class="del" data-delpilot="${esc(p)}">ลบ</button></td></tr>`).join('')
+    || `<tr><td colspan="5" class="empty">ยังไม่มีเลขผก.</td></tr>`;
   if(!$('dutyMonth').value) $('dutyMonth').value=S.D.slice(0,7); dmLabel();
   const k=$('dutyMonth').value, cur=S.duty[k]||[];
   // type the pilot number (suggestions from the list on the left) — or pick from the list
@@ -1277,8 +1303,8 @@ function dpShow(inp,all0){ const q=all0?'':inp.value.replace(/^P\.?/i,'').trim()
   const it=all.filter(p=>!q||p.startsWith(q)).concat(q?all.filter(p=>!p.startsWith(q)&&p.includes(q)):[]);
   DP.inp=inp; DP.items=it; DP.act=all0?Math.max(0,it.indexOf(inp.value.trim())):0; const P=dpEl();
   if(!it.length){ P.hidden=true; return; }
-  P.innerHTML=it.map((p,i)=>`<div data-i="${i}" class="${i===DP.act?'act':''}"><b>${esc(p)}</b><span>${esc(S.pilots[p]||'')}</span></div>`).join('');
-  const r=inp.getBoundingClientRect(); P.style.left=(r.left+scrollX)+'px'; P.style.top=(r.bottom+scrollY)+'px'; P.style.width=r.width+'px'; P.hidden=false; }
+  P.innerHTML=it.map((p,i)=>`<div data-i="${i}" class="${i===DP.act?'act':''}">${avatar(p,38)}<b>${esc(p)}</b><span class="dpn">${esc(nameOf(p))}</span><span>${esc(S.pilots[p]||'')}</span></div>`).join('');
+  const r=inp.getBoundingClientRect(); P.style.left=(r.left+scrollX)+'px'; P.style.top=(r.bottom+scrollY)+'px'; P.style.width=Math.max(r.width,460)+"px"; P.style.left=(Math.max(8,Math.min(r.left,innerWidth-Math.max(r.width,460)-8))+scrollX)+"px"; P.hidden=false; }
 function dpHide(){ dpEl().hidden=true; DP.inp=null; }
 function dpPick(i){ const inp=DP.inp; if(!inp||!DP.items[i]) return; inp.value=DP.items[i]; dpHide(); inp.dispatchEvent(new Event('change',{bubbles:true})); inp.blur(); }
 $('dutyBody').addEventListener('focusin',e=>{ const i=e.target.closest('[data-duty]'); if(i){ i.select(); dpShow(i,true); } });
@@ -2026,6 +2052,71 @@ async function impRun(){
 (function(){const st=document.getElementById('shipSticky');if(!st)return;
   const put=()=>{const top=parseFloat(getComputedStyle(st).top)||0;document.getElementById('view-ships').style.setProperty('--shipTop',(top+st.offsetHeight)+'px')};
   try{new ResizeObserver(put).observe(st)}catch(e){}window.addEventListener('resize',put);put();})();
+
+/* ---------- ผก.: profile pictures + names, นำเข้าเลขผก./เบอร์/ชื่อ/รูป ---------- */
+const PH_LS='sched_pilot_profiles';   // fallback while the sheet script is the old one
+function lsProf(){ try{ return JSON.parse(localStorage.getItem(PH_LS)||'{}'); }catch(e){ return {}; } }
+function photoOf(p){ return (S.photos&&S.photos[p]) || (lsProf()[p]||{}).photo || ''; }
+function nameOf(p){ return (S.names&&S.names[p]) || (lsProf()[p]||{}).name || ''; }
+function avColor(p){ let h=0; for(const ch of String(p)) h=(h*31+ch.charCodeAt(0))%360; return `hsl(${h} 50% 40%)`; }
+function avatar(p,size){ const ph=photoOf(p), s=size||44;
+  return ph ? `<span class="av" style="width:${s}px;height:${s}px"><img src="${esc(ph)}" alt="ผก. ${esc(p)}"></span>`
+            : `<span class="av" style="width:${s}px;height:${s}px;background:${avColor(p)};font-size:${Math.round(s*.34)}px">${esc(p)}</span>`; }
+async function shrinkPhoto(file){
+  const url=URL.createObjectURL(file); const img=new Image(); img.src=url; await img.decode(); const n=220, c=document.createElement('canvas'); c.width=c.height=n;
+  const m=Math.min(img.naturalWidth,img.naturalHeight), sx=(img.naturalWidth-m)/2, sy=(img.naturalHeight-m)/2*0.6;   // square, a little above centre (faces)
+  c.getContext('2d').drawImage(img,sx,sy,m,m,0,0,n,n); URL.revokeObjectURL(url); return c.toDataURL('image/jpeg',0.82); }
+async function saveProfiles(list){   // [{no, photo?, name?}]
+  try{ await api('savePilotProfiles',{},{list}); cacheSet(); return true; }
+  catch(err){
+    if(/ไม่รู้จักคำสั่ง/.test(err.message)){ const o=lsProf(); list.forEach(p=>{ const x=o[p.no]=o[p.no]||{}; if(p.photo!==undefined) x.photo=p.photo; if(p.name!==undefined) x.name=p.name; });
+      try{ localStorage.setItem(PH_LS,JSON.stringify(o)); }catch(e){ toast('รูปใหญ่เกินกว่าจะเก็บในเครื่องนี้'); }
+      toast('เก็บรูป/ชื่อไว้ในเครื่องนี้ก่อน · อัปเดตสคริปต์ Schedule.gs เพื่อให้ทุกเครื่องเห็น'); return true; }
+    throw err; } }
+async function setPhoto(p,data){
+  S.photos=S.photos||{}; const old=S.photos[p]; if(data) S.photos[p]=data; else delete S.photos[p]; renderPilots();
+  try{ await saveProfiles([{no:p,photo:data||''}]); toast(data?`อัปเดตรูปผก. ${p} แล้ว`:`ลบรูปผก. ${p} แล้ว`); }
+  catch(err){ if(old) S.photos[p]=old; else delete S.photos[p]; renderPilots(); toast('บันทึกรูปไม่สำเร็จ: '+err.message); } }
+let phFor=null;
+(()=>{ const f=document.createElement('input'); f.type='file'; f.accept='image/*'; f.hidden=true; f.id='phFile'; document.body.appendChild(f);
+  f.addEventListener('change',async()=>{ const file=f.files[0]; f.value=''; if(!file||!phFor) return; try{ await setPhoto(phFor, await shrinkPhoto(file)); }catch(e){ toast('อ่านรูปไม่ได้'); } }); })();
+$('pilotBody').addEventListener('click',e=>{ const a=e.target.closest('[data-avpick]'); if(a){ phFor=a.dataset.avpick; $('phFile').click(); return; }
+  const r=e.target.closest('[data-avdel]'); if(r){ setPhoto(r.dataset.avdel,''); } });
+$('pilotBody').addEventListener('change',async e=>{ const i=e.target.closest('[data-pname]'); if(!i) return; const no=i.dataset.pname, v=i.value.trim(); S.names=S.names||{}; const old=S.names[no]; S.names[no]=v;
+  try{ await saveProfiles([{no,name:v}]); flash(i); }catch(err){ S.names[no]=old; i.value=old||''; toast('บันทึกชื่อไม่สำเร็จ: '+err.message); } });
+
+// import: JSON prepared by Claude ({pilots:[{no,phone,name,photo}]}), the old schedule workbook (P.178/095-9595392), CSV/text, or pasted text
+function parsePilots(text){ const out=new Map(); const add=(no,ph)=>{ no=String(no).replace(/\D/g,''); ph=String(ph||'').trim(); if(no.length<2||no.length>4) return; const o=out.get(no)||{no}; if(ph&&!o.phone) o.phone=ph; out.set(no,o); };
+  for(const m of text.matchAll(/P\s*\.?\s*(\d{2,4})\s*[\/:\-–]?\s*(0\d[\d\- ]{7,12}\d)?/gi)) add(m[1],(m[2]||'').replace(/\s+/g,''));
+  for(const line of text.split(/\r?\n/)){ const m=line.match(/^\s*(\d{2,4})\s*[,\t;: \/]\s*(0\d[\d\- ]{7,12}\d)\s*$/); if(m) add(m[1],m[2].replace(/\s+/g,'')); }
+  return out; }
+const fmtPhone=v=>{ const d=String(v||'').replace(/\D/g,''); return d.length===10? d.slice(0,3)+'-'+d.slice(3) : String(v||'').trim(); };   // 095-9595392 like the schedule
+function pimpShow(map){ const P=$('pimpBox'); const rows=[...map.values()].sort((a,b)=>a.no.localeCompare(b.no,undefined,{numeric:true}));
+  rows.forEach(r=>{ if(r.phone) r.phone=fmtPhone(r.phone); });
+  const what=r=>{ const w=[]; if(S.pilots[r.no]===undefined) w.push('ใหม่'); else if(r.phone&&S.pilots[r.no]!==r.phone) w.push('เปลี่ยนเบอร์');
+    if(r.name&&nameOf(r.no)!==r.name) w.push('ชื่อ'); if(r.photo&&photoOf(r.no)!==r.photo) w.push('รูป'); return w; };
+  P.innerHTML = rows.length ? `<table class="st pimp"><thead><tr><th></th><th></th><th>เลขผก.</th><th>ชื่อ</th><th>เบอร์โทร</th><th>จะทำ</th></tr></thead><tbody>${rows.map(r=>{ const w=what(r);
+      return `<tr><td><input type="checkbox" data-pno="${esc(r.no)}" ${w.length?'checked':''}></td><td>${r.photo?`<span class="av" style="width:40px;height:40px"><img src="${esc(r.photo)}" alt=""></span>`:''}</td><td class="num" style="color:var(--pilot);font-weight:700">${esc(r.no)}</td><td class="pn">${esc(r.name||'')}</td><td class="num">${esc(r.phone||'—')}</td><td>${w.length?w.map(x=>`<b>${x}</b>`).join(' · '):'<span class="muted">มีครบแล้ว</span>'}</td></tr>`; }).join('')}</tbody></table>
+      <div class="pimpbar"><button type="button" class="btn primary" id="pimpGo">นำเข้า</button><button type="button" class="btn" id="pimpX">ยกเลิก</button></div>`
+    : `<div class="empty">ไม่พบเลขผก. + เบอร์ในข้อมูลนี้ (เช่น P.178/095-9595392 หรือ 178 095-9595392)</div>`;
+  P.hidden=false;
+  const go=$('pimpGo'); if(go){ const cnt=()=>{ const n=P.querySelectorAll('[data-pno]:checked').length; go.textContent=`นำเข้า ${n} คน`; go.disabled=!n; };
+    P.querySelectorAll('[data-pno]').forEach(c=>c.onchange=cnt); cnt();
+    go.onclick=async()=>{ const pick=[...P.querySelectorAll('[data-pno]:checked')].map(c=>map.get(c.dataset.pno)); const oldP={...S.pilots}, oldPh={...(S.photos||{})}, oldN={...(S.names||{})};
+      S.photos=S.photos||{}; S.names=S.names||{}; const prof=[];
+      pick.forEach(r=>{ if(S.pilots[r.no]===undefined||r.phone) S.pilots[r.no]=r.phone||S.pilots[r.no]||'';
+        const x={no:r.no}; if(r.photo){ S.photos[r.no]=r.photo; x.photo=r.photo; } if(r.name){ S.names[r.no]=r.name; x.name=r.name; } if(x.photo||x.name) prof.push(x); });
+      renderPilots(); P.hidden=true; $('pimpText').value=''; go.disabled=true;
+      try{ await savePilots(); for(let i=0;i<prof.length;i+=6) await saveProfiles(prof.slice(i,i+6)); toast(`นำเข้าผก. ${pick.length} คนแล้ว`); }
+      catch(err){ S.pilots=oldP; S.photos=oldPh; S.names=oldN; renderPilots(); toast('นำเข้าไม่สำเร็จ: '+scriptOld(err)); } };
+    $('pimpX').onclick=()=>{ P.hidden=true; }; } }
+$('pimpRead').addEventListener('click',()=>{ const t=$('pimpText').value.trim(); if(!t){ $('pimpText').focus(); return; } pimpShow(/^[\[{]/.test(t)?pimpJson(JSON.parse(t)):parsePilots(t)); });
+$('pimpFileBtn').addEventListener('click',()=>$('pimpFile').click());
+function pimpJson(j){ const list=Array.isArray(j)?j:(j.pilots||[]); const m=new Map(); list.forEach(p=>{ const no=String(p.no||'').replace(/\D/g,''); if(no) m.set(no,{no,phone:p.phone||'',name:p.name||'',photo:p.photo||''}); }); return m; }
+$('pimpFile').addEventListener('change',async e=>{ const f=e.target.files[0]; e.target.value=''; if(!f) return;
+  try{ let map; if(/\.xlsx$/i.test(f.name)){ const sh=await xlsxRead(await f.arrayBuffer()); map=parsePilots(sh.map(x=>x.rows.map(r=>(r||[]).join('\t')).join('\n')).join('\n')); }
+       else { const t=(await f.text()).replace(/^﻿/,''); map=/^\s*[\[{]/.test(t)?pimpJson(JSON.parse(t)):parsePilots(t); }
+       pimpShow(map); }catch(err){ toast('อ่านไฟล์ไม่ได้: '+(err.message||err)); } });
 </script>
 
 </body>

@@ -35,6 +35,8 @@ function doPost(e) {
         case 'updateShip': return updateShip_(req.oldName, req.ship);
         case 'deleteShip': return deleteByCol_('Ships', 'ชื่อเรือ', req.name);
         case 'savePilots': return savePilots_(req.pilots);
+        case 'savePilotPhoto': return savePilotPhoto_(req.no, req.photo);
+        case 'savePilotProfiles': return savePilotProfiles_(req.list);
         case 'saveDuty': return saveDuty_(req.month, req.list);
         case 'saveFixed': return saveFixed_(req.fixed);
         case 'saveSnapshot': return saveSnapshot_(req.snap);
@@ -98,7 +100,7 @@ function init_() {
     ships: rows_('Ships').map(r => ({ name: str_(r['ชื่อเรือ']).toUpperCase(), loa: str_(r['LOA']), berth: str_(r['ท่าประจำ']), agent: str_(r['เอเย่นต์']), note: str_(r['หมายเหตุ']) })).filter(s => s.name),
     berths: rows_('Berths').map(r => str_(r['ท่า'])).filter(Boolean),
     agents: rows_('Agents').map(r => str_(r['เอเย่นต์'])).filter(Boolean),
-    pilots, duty,
+    pilots, duty, profiles: pilotProfiles_(),
     fixed: rows_('FixedContacts').map(r => ({ text: str_(r['ข้อความในตาราง']), group: Number(r['กลุ่ม']) || 1 })).filter(f => f.text),
     settings,
     snapshots: snapshots_(),
@@ -195,6 +197,31 @@ function rewrite_(name, rowsObj) {
   }
   return rowsObj.length;
 }
+// pilot profiles: picture (small JPEG data URL) + name, tab PilotPhotos (created on first use)
+function photoSheet_() {
+  const ss = SpreadsheetApp.getActive(); let s = ss.getSheetByName('PilotPhotos');
+  if (!s) { s = ss.insertSheet('PilotPhotos'); s.getRange(1, 1, 1, 3).setValues([['เลขผก.', 'รูป', 'ชื่อ']]); }
+  if (str_(s.getRange(1, 3).getValue()) !== 'ชื่อ') s.getRange(1, 3).setValue('ชื่อ');
+  return s;
+}
+function pilotProfiles_() {
+  const s = SpreadsheetApp.getActive().getSheetByName('PilotPhotos'); const photos = {}, names = {};
+  if (s) s.getDataRange().getValues().slice(1).forEach(r => { const no = str_(r[0]); if (!no) return; if (str_(r[1])) photos[no] = str_(r[1]); if (str_(r[2])) names[no] = str_(r[2]); });
+  return { photos: photos, names: names };
+}
+// list = [{no, photo?, name?}] — a field left undefined keeps what is there; '' clears it
+function savePilotProfiles_(list) {
+  const s = photoSheet_(); const v = s.getDataRange().getValues(); const at = {};
+  for (let i = 1; i < v.length; i++) at[str_(v[i][0])] = i + 1;
+  (list || []).forEach(p => {
+    const no = str_(p.no); if (!no) return; let r = at[no];
+    if (!r) { r = s.getLastRow() + 1; s.getRange(r, 1).setNumberFormat('@').setValue(no); at[no] = r; }
+    if (p.photo !== undefined) s.getRange(r, 2).setValue(p.photo || '');
+    if (p.name !== undefined) s.getRange(r, 3).setValue(p.name || '');
+  });
+  return true;
+}
+function savePilotPhoto_(no, photo) { return savePilotProfiles_([{ no: no, photo: photo || '' }]); }
 function savePilots_(list) {
   const fixed = ['178', '189'];
   return rewrite_('Pilots', (list || []).map(p => ({ 'เลขผก.': str_(p.no), 'เบอร์โทร': str_(p.phone), 'ประเภท': fixed.indexOf(str_(p.no)) >= 0 ? 'ประจำ' : 'หมุนเวียน' })));
