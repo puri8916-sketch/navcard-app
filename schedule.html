@@ -1818,7 +1818,32 @@ $('addBlk').addEventListener('click',e=>{ const b=e.target.closest('[data-addblk
   pushUndo(); const blk={date:d, label:longDate(d), rows:[blankRow(),blankRow(),blankRow()]};
   const at=BD.blocks.findIndex(x=>(x.date||'')>d); if(at<0) BD.blocks.push(blk); else BD.blocks.splice(at,0,blk);
   const bi=BD.blocks.indexOf(blk); SEL={b:bi,r1:1,c1:1,r2:1,c2:1}; boardSave(); renderBoard(); toast(`เพิ่มตาราง ${longDate(d)} แล้ว · พิมพ์เรือได้เลย`); });
-function renderBoard(){
+/* พ ships on the board ↔ จัดตาราง: a new พ ship is added there at once (late), a พ ship taken off the board is removed there */
+function lateHalves(){ const out=new Map();
+  for(const blk of BD.blocks){ const X=blk.date||BD.date;
+    for(const row of blk.rows) for(const [side,a] of [['L',0],['R',9]]){
+      if(String(row.c[a]||'').trim()!=='พ') continue; const g=k=>String(row.c[a+k]||'').trim(), ship=norm(g(1)); if(!ship) continue;
+      const dt=parseTime(g(4),X); if(!dt) continue;
+      const m={datetime:dt, ship, loa:g(2), drf:g(3), late:1, note:''};
+      if(side==='L'){ Object.assign(m,{type:'IN', from:'', to:norm(g(6)), pilot:g(7).replace(/^P\.?/i,''), agent:norm(g(8))}); m.pob=parseTime(g(5),X)||dt; }
+      else { const b=parseBerthR(g(5)); Object.assign(m,{type:b.type, from:b.from, to:b.to, pob:'', pilot:g(6).replace(/^P\.?/i,''), agent:norm(g(7))}); }
+      out.set(`${X}|${side}|${ship}`,{X,side,m}); } }
+  return out; }
+const sameLeg=(m,x)=>m.ship===x.m.ship && (x.side==='L'?m.type==='IN':m.type!=='IN') && schedOf(m.datetime)===x.X;
+function syncLate(){ if(!BD) return; const cur=lateHalves(), prev=BD.lateSnap; BD.lateSnap=cur; if(!prev) return;   /* first look: remember only */
+  let ch=false;
+  for(const [k,x] of cur){ if(prev.has(k)) continue;
+    const ex=S.mv.find(m=>sameLeg(m,x));
+    if(ex){ if(!+ex.late){ ex.late=1; persist(ex); ch=true; } }
+    else { const m={id:newId(), ...x.m}; S.mv.push(m); persist(m); ch=true; toast(`เพิ่ม ${m.ship} (พ) ในจัดตารางแล้ว`); } }
+  for(const [k,x] of prev){ if(cur.has(k) || !BD.blocks.some(b=>(b.date||BD.date)===x.X)) continue;
+    const ex=S.mv.find(m=>sameLeg(m,x) && +m.late); if(!ex) continue;
+    const still=BD.blocks.some(b=>(b.date||BD.date)===x.X && b.rows.some(row=>norm(row.c[x.side==='L'?1:10])===x.m.ship));
+    if(still){ ex.late=0; persist(ex); }   /* พ taken off but the ship stays → a normal leg again */
+    else { S.mv=S.mv.filter(m=>m.id!==ex.id); api('deleteMovement',{},{id:ex.id}).catch(err=>toast('ลบไม่สำเร็จ: '+err.message)); toast(`งด ${ex.ship} (พ) · เอาออกจากจัดตารางแล้ว`); }
+    ch=true; }
+  if(ch){ cacheSet(); renderAll(); } }
+function renderBoard(){ setTimeout(syncLate,0);
   if(!BD) return; renderAddBlk();
   const keep=SEL;
   BD.blocks.forEach(ensureTrailing);
@@ -1904,6 +1929,7 @@ BOARD.addEventListener('change',e=>{ const i=e.target.closest('.ce'); if(!i||!BD
       if(!row.c[loa]) row.c[loa]=s.loa||''; if(!row.c[ag]) row.c[ag]=s.agent||'';
       if(!row.c[be]) row.c[be]= c===1 ? (s.berth||'') : (lastBerth(s.name, `${BD.date} 23:59`)||s.berth||'');
       boardSave(); renderBoard(); } } }
+  if((c===1||c===10) && !i.value.trim() && clearSides(b,[[r,c]])){ boardSave(); renderBoard(); return; }
   if((c===1||c===10) && i.value.trim()){ const tc=c===1?4:13;   /* ship name typed → ETA/ETD starts with the day ("30-"), type the time after it */
     if(!String(row.c[tc]||'').trim()){ const base=BD.blocks[b].date||BD.date; row.c[tc]=`${+addDays(base,1).slice(8)}-`; boardSave(); renderBoard(); return; } }
   if((c===4||c===5||c===13) && i.value.trim()){   /* ETA / POB / ETD: 1600 → 30-1600; ETA and POB fill each other when the other is empty */
@@ -1916,7 +1942,7 @@ BOARD.addEventListener('change',e=>{ const i=e.target.closest('.ce'); if(!i||!BD
     const blk=BD.blocks[b]; const base=blk.date||BD.date;
     if(parseTime(i.value,base)){ const pos=relayout(b,r,c); boardSave(); if(pos){ SEL={b,r1:pos.r,c1:c,r2:pos.r,c2:c}; } renderBoard(); return; }
   }
-  boardSave(); });
+  boardSave(); syncLate(); });
 
 /* time changed → put that ship back in time order (NO. and colours travel with it) */
 function relayout(bi, r0, c0){
@@ -1948,7 +1974,14 @@ function relayout(bi, r0, c0){
 /* range operations */
 function eachSel(fn){ const R=rect(); if(!R) return; for(let r=R.r0;r<=R.r1;r++) for(let c=R.c0;c<=R.c1;c++) fn(BD.blocks[R.b].rows[r],r,c); }
 function needSel(){ if(!SEL){ toast('คลิกช่องในตารางก่อน'); return false; } return true; }
-function clearSel(){ if(!needSel()) return; pushUndo(); eachSel((row,r,c)=>{ row.c[c]=''; setH(row,c,''); }); boardSave(); renderBoard(); }
+function clearSel(){ if(!needSel()) return; pushUndo(); const R=rect(), names=[]; eachSel((row,r,c)=>{ row.c[c]=''; setH(row,c,''); if(c===1||c===10) names.push([r,c]); }); clearSides(R.b,names); boardSave(); renderBoard(); }
+/* a ship name deleted → that ship's whole side of the row is cleared; a row left empty on both sides → rows re-arranged */
+function clearSides(bi, list){ const blk=BD.blocks[bi]; if(!blk||!list.length) return false; let any=false, empty=false;
+  for(const [r,c] of list){ const row=blk.rows[r]; if(!row || String(row.c[c]||'').trim()) continue; const a=c===1?0:9, z=c===1?9:17;
+    for(let k=a;k<z;k++){ if(String(row.c[k]||'').trim()||row.r[k]||hOf(row,k)) any=true; row.c[k]=''; row.r[k]=''; setH(row,k,''); if(row.g) row.g[k]=''; if(row.w) row.w[k]=''; }
+    if(rowEmpty(row)) empty=true; }
+  if(empty){ relayout(bi,-1,-1); SEL=null; any=true; }
+  return any; }
 function setColor(col){
   if(!needSel()) return;
   // part of the text inside one cell selected → colour only those letters
