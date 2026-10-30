@@ -417,6 +417,34 @@ input,textarea{line-height:1.6}
 body{padding-bottom:64px}
 .hbar{bottom:var(--dnH,0px)!important}
 
+
+/* ---------- แจ้งเรือขาดย้ายท่า (own menu: window.__ONLY__='notice') ---------- */
+#view-notice{display:none;max-width:860px;margin:0 auto;padding:8px 4px 40px}
+html.only-notice #view-notice{display:block}
+html.only-notice header.top,html.only-notice main>section:not(#view-notice),html.only-notice #dateNav,html.only-notice #iosFoot,html.only-notice .hbar{display:none!important}
+html.only-notice body{padding-bottom:0!important}
+.nt-h{text-align:center;font-size:24px;margin:6px 0 14px}
+.nt-card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:12px}
+.nt-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:19px}
+.nt-row+.nt-row{margin-top:8px}
+.nt-card input{font-size:19px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);box-sizing:border-box;text-transform:uppercase}
+.nt-card input:focus{outline:3px solid var(--accent);outline-offset:-2px}
+.nt-ship{flex:1 1 220px;min-width:0;font-weight:700}
+.nt-ref{flex:1 1 200px;min-width:0}
+.nt-n{width:72px;text-align:center;font-weight:700}
+.nt-slash{font-weight:700;font-size:22px}
+.nt-del{margin-left:auto;font-size:18px}
+.nt-legs{margin-top:10px;border-top:1px dashed var(--line);padding-top:8px}
+.nt-leg .lab{min-width:44px;font-weight:600}
+.nt-dt{width:120px;text-align:center;font-family:var(--f-num,monospace)}
+.nt-b{width:150px}
+.nt-bar{display:flex;gap:10px;justify-content:center;margin:4px 0 16px}
+.nt-bar .btn,.nt-copy{font-size:18px;padding:10px 18px}
+.nt-add{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:700}
+.nt-out{background:var(--surface);border:2px solid var(--accent);border-radius:12px;padding:12px}
+.nt-outh{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:18px;margin-bottom:8px}
+#ntText{margin:0;white-space:pre-wrap;font:18px/1.5 "Tahoma","Leelawadee UI","Noto Sans Thai",sans-serif;background:#C5F2A5;color:#111;border-radius:10px;padding:12px;min-height:60px}
+@media (max-width:640px){ .nt-row{font-size:17px} .nt-card input{font-size:17px} .nt-b{width:calc(50% - 40px)} .nt-dt{width:104px} }
 /* iOS app shell (see the script before the main one) */
 html.ios,html.ios body{height:100%;overflow:hidden;overscroll-behavior:none}
 html.ios body{display:flex;flex-direction:column;padding-bottom:0!important}
@@ -524,6 +552,19 @@ html.ios .hbar{position:absolute;bottom:100%!important}
         <h2>เบอร์ติดต่อ (คอลัมน์ PILOT ON DUTY)</h2>
         <textarea id="fixedText" rows="12" spellcheck="false" aria-label="เบอร์ติดต่อ บรรทัดว่างคั่นกลุ่ม"></textarea>
       </div>
+    </div>
+  </section>
+
+  <section id="view-notice">
+    <h2 class="nt-h">แจ้งเรือขาดย้ายท่า</h2>
+    <div id="ntList"></div>
+    <div class="nt-bar">
+      <button type="button" class="btn nt-add" id="ntAdd">+ เพิ่มเรือ</button>
+      <button type="button" class="btn" id="ntClear">ล้างทั้งหมด</button>
+    </div>
+    <div class="nt-out">
+      <div class="nt-outh"><b>ข้อความที่จะส่ง LINE</b><button type="button" class="btn primary nt-copy" id="ntCopy">📋 คัดลอกข้อความ</button></div>
+      <pre id="ntText"></pre>
     </div>
   </section>
 
@@ -2369,6 +2410,63 @@ window.addEventListener('resize',()=>fitBoardWidth(false));
 $('dstrip').addEventListener('click',()=>setTimeout(()=>{ window.__boardPinched=false; fitBoardWidth(true); },200));
 setTimeout(()=>fitBoardWidth(false),600);
 
+
+/* ---------- แจ้งเรือขาดย้ายท่า ---------- */
+(function(){
+  const LS='sched_notice', N=$('ntList');
+  let D; try{ D=JSON.parse(localStorage.getItem(LS)||'null'); }catch(e){}
+  if(!Array.isArray(D)||!D.length) D=[{ship:'',ref:'',n:'',legs:[]}];
+  const save=()=>{ try{ localStorage.setItem(LS,JSON.stringify(D)); }catch(e){} };
+  const up=v=>String(v||'').toUpperCase().replace(/\s+/g,' ').trim();
+  const fitLegs=x=>{ const n=Math.max(0,Math.min(20,parseInt(x.n,10)||0)); while(x.legs.length<n) x.legs.push({t:'',f:'',to:''}); x.legs.length=n; };
+  function text(){ const out=[];
+    D.forEach(x=>{ if(!up(x.ship)) return; const n=parseInt(x.n,10)||0;
+      out.push([up(x.ship),'/',up(x.ref),n?`ขาดย้าย ${n} ขา`:''].filter(Boolean).join(' '));
+      x.legs.forEach(l=>out.push(['ย้าย',l.t.trim(),(up(l.f)||up(l.to))?`${up(l.f)}<>${up(l.to)}`:''].filter(Boolean).join(' '))); });
+    return out.join('\n\n'); }
+  const showText=()=>{ $('ntText').textContent=text()||'—'; };
+  function render(){
+    N.innerHTML=D.map((x,i)=>`<div class="nt-card" data-i="${i}">
+      <div class="nt-row"><input class="nt-ship" data-f="ship" data-k="ship" value="${esc(x.ship)}" placeholder="ชื่อเรือ" autocomplete="off" aria-label="ชื่อเรือ">
+        <span class="nt-slash">/</span><input class="nt-ref" data-k="ref" value="${esc(x.ref)}" placeholder="RICM…" autocomplete="off" aria-label="เลขอ้างอิง">
+        <span>ขาดย้าย</span><input class="nt-n" data-k="n" type="text" inputmode="numeric" value="${esc(x.n)}" placeholder="0" aria-label="จำนวนขา"><span>ขา</span>
+        ${D.length>1?`<button type="button" class="btn nt-del" data-del="${i}" title="ลบเรือลำนี้">✕</button>`:''}</div>
+      ${x.legs.length?`<div class="nt-legs">${x.legs.map((l,j)=>`<div class="nt-row nt-leg" data-j="${j}"><span class="lab">ย้าย</span>
+        <input class="nt-dt" data-k="t" value="${esc(l.t)}" placeholder="วว-ชชนน" inputmode="numeric" autocomplete="off" aria-label="วันเวลา ขา ${j+1}">
+        <input class="nt-b" data-f="berth" data-k="f" value="${esc(l.f)}" placeholder="จากท่า" autocomplete="off" aria-label="จากท่า">
+        <span>&lt;&gt;</span><input class="nt-b" data-f="berth" data-k="to" value="${esc(l.to)}" placeholder="ไปท่า" autocomplete="off" aria-label="ไปท่า"></div>`).join('')}</div>`:''}
+    </div>`).join('');
+    showText(); }
+  function setVal(inp,done){ const c=inp.closest('.nt-card'); if(!c) return; const x=D[+c.dataset.i], k=inp.dataset.k, lg=inp.closest('.nt-leg');
+    if(lg){ const j=+lg.dataset.j, L=x.legs[j], nx=x.legs[j+1]; L[k]=inp.value; if(k==='f') L.auto=false;
+      if(done&&k==='to'&&nx&&(!nx.f||nx.auto)){ nx.f=up(inp.value); nx.auto=true; const nf=c.querySelector(`.nt-leg[data-j="${j+1}"] [data-k="f"]`); if(nf) nf.value=nx.f; } }   /* next leg starts where this one ends (until edited by hand) */
+    else x[k]=inp.value;
+    save(); showText(); }
+  N.addEventListener('input',e=>{ const i=e.target.closest('input'); if(!i) return;
+    if(i.dataset.k==='t'){ let d=i.value.replace(/\D/g,'').slice(0,6); i.value=d.length>2?d.slice(0,2)+'-'+d.slice(2):d; }   /* 30-0800 */
+    if(i.dataset.k==='n'){ i.value=i.value.replace(/\D/g,'').slice(0,2); }
+    setVal(i); if(i.dataset.f) buildPop(i); });
+  N.addEventListener('change',e=>{ const i=e.target.closest('input'); if(!i||!i.isConnected) return; if(i.dataset.f||i.dataset.k==='ref') i.value=up(i.value); setVal(i,true);
+    if(i.dataset.k==='n'){ const c=i.closest('.nt-card'), ci=c.dataset.i, x=D[+ci], was=x.legs.length; fitLegs(x); save(); if(x.legs.length===was) return;
+      setTimeout(()=>{ render(); const f=N.querySelector(`.nt-card[data-i="${ci}"] .nt-dt`); if(f) f.focus(); },0); } });
+  N.addEventListener('focusin',e=>{ const i=e.target.closest('input'); if(i) hidePop(); });
+  N.addEventListener('focusout',e=>{ const i=e.target.closest('input'); if(i) setTimeout(()=>{ if(cb.inp===i&&document.activeElement!==i) hidePop(); },120); });
+  N.addEventListener('keydown',e=>{ const i=e.target.closest('input'); if(!i) return; const open=!pop.hidden&&cb.inp===i;
+    if(open&&(e.key==='ArrowDown'||e.key==='ArrowUp')){ e.preventDefault(); const n=cb.items.length; cb.act=(cb.act+(e.key==='ArrowDown'?1:-1)+n)%n; pop.querySelectorAll('.opt').forEach((o,k)=>o.classList.toggle('act',k===cb.act)); return; }
+    if(e.key==='Escape'&&open){ hidePop(); return; }
+    if(e.key==='Enter'){ e.preventDefault(); if(open&&cb.act>=0) pick(cb.act); else i.dispatchEvent(new Event('change',{bubbles:true}));
+      if(i.dataset.k!=='n'){ const all=[...N.querySelectorAll('input')], nx=all[all.indexOf(i)+1]; if(nx) nx.focus(); } } });
+  N.addEventListener('click',e=>{ const b=e.target.closest('[data-del]'); if(!b) return; const x=D[+b.dataset.del];
+    if((x.ship||x.legs.some(l=>l.t||l.f||l.to))&&!confirm(`ลบ ${x.ship||'เรือลำนี้'} ?`)) return; D.splice(+b.dataset.del,1); save(); render(); });
+  $('ntAdd').addEventListener('click',()=>{ D.push({ship:'',ref:'',n:'',legs:[]}); save(); render(); const l=N.querySelectorAll('.nt-ship'); l[l.length-1].focus(); });
+  $('ntClear').addEventListener('click',()=>{ if(!confirm('ล้างข้อมูลทั้งหมด ?')) return; D=[{ship:'',ref:'',n:'',legs:[]}]; save(); render(); N.querySelector('.nt-ship').focus(); });
+  $('ntCopy').addEventListener('click',async()=>{ const t=text(); if(!t){ toast('ยังไม่มีข้อความ'); return; }
+    let ok=false; try{ await navigator.clipboard.writeText(t); ok=true; }catch(e){}
+    if(!ok){ const ta=document.createElement('textarea'); ta.value=t; ta.style.cssText='position:fixed;left:-9999px;top:0'; document.body.appendChild(ta); ta.select(); try{ ok=document.execCommand('copy'); }catch(e){} ta.remove(); }
+    toast(ok?'คัดลอกแล้ว · ไปวางในแชท LINE ได้เลย':'คัดลอกไม่ได้ · กดค้างที่ข้อความเพื่อคัดลอก'); });
+  D.forEach(fitLegs); render();
+  if(window.__ONLY__==='notice') document.documentElement.classList.add('only-notice');
+})();
 /* keep the pinned sideways scrollbar just above the bottom day strip */
 (function(){ const dn=$('dateNav'); const put=()=>{ if(document.getElementById('iosFoot')) return; const h=dn.hidden?0:dn.offsetHeight; document.documentElement.style.setProperty('--dnH',h+'px'); document.body.style.paddingBottom=(h+18)+'px'; };
   try{ new ResizeObserver(put).observe(dn); }catch(e){} new MutationObserver(put).observe(dn,{attributes:true,attributeFilter:['hidden']}); window.addEventListener('resize',put); put(); })();

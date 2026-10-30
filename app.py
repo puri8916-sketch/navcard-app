@@ -114,7 +114,8 @@ def _sync_script():
 
 
 _P_LOG, _P_SCHED, _P_CLOSE = "📒 บันทึกเรือ", "🗓 จัดตารางเรือ", "📑 ปิดการ์ดประจำวัน"
-_PAGES = [_P_SCHED, _P_LOG, _P_CLOSE]   # จัดตารางเรือ first: the page the site opens on
+_P_NOTICE = "📣 แจ้งเรือขาดย้ายท่า"
+_PAGES = [_P_SCHED, _P_NOTICE, _P_LOG, _P_CLOSE]   # จัดตารางเรือ first: the page the site opens on
 if st.session_state.get("page_choice") not in _PAGES:
     st.session_state["page_choice"] = _PAGES[0]
 
@@ -182,7 +183,7 @@ if _page == _P_LOG:
     components.html(_log_html, height=1100, scrolling=True)
     st.stop()
 
-if _page == _P_SCHED:
+if _page in (_P_SCHED, _P_NOTICE):
     # Ship's schedule for printing (replaces the per-day tabs + แก้ไข tab of the schedule workbook).
     # Data lives in its own Google Sheet (ShipSchedule_DB) via apps_script/Schedule.gs.
     with open(os.path.join(_HERE, "schedule.html"), encoding="utf-8") as _f:
@@ -195,7 +196,7 @@ if _page == _P_SCHED:
     except Exception:
         pass
     _inject = ("window.__SCHED__=" + json.dumps(_sched_cfg, ensure_ascii=False).replace("</", "<\\/") + ";"
-               "window.__CAN_PRINT__=true;")
+               "window.__CAN_PRINT__=true;" + ("window.__ONLY__='notice';" if _page == _P_NOTICE else ""))
     _sched_theme = {_THEME_OPTIONS[0]: "light", _THEME_OPTIONS[1]: "dark"}.get(_theme_choice)
     if _sched_theme:
         _inject += "window.__THEME__='" + _sched_theme + "';"
