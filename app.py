@@ -118,7 +118,7 @@ def _sync_script():
             "<script>" + js + "</script>\n")
 
 
-_P_LOG, _P_SCHED, _P_CLOSE = "สมุดบันทึกเรือ", "จัดตารางเรือ", "ปิดการ์ดประจำวัน"
+_P_LOG, _P_SCHED, _P_CLOSE = "สมุดบันทึกเรือ", "จัดตารางเรือ", "ปิดการ์ด"
 _P_NOTICE = "แจ้งเรือขาดย้ายท่า"
 _PAGES = [_P_SCHED, _P_LOG, _P_CLOSE, _P_NOTICE]   # จัดตารางเรือ first: the page the site opens on
 if st.session_state.get("page_choice") not in _PAGES:
