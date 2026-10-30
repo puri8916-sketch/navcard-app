@@ -131,7 +131,10 @@ def _go(p):
 
 # Streamlit hides the sidebar's collapse (<<) button until hover; keep it visible so the
 # menu can be hidden for more room, and make the reopen (>>) button easy to see.
+st.logo(os.path.join(_HERE, "md_logo.png"), size="large")   # กรมเจ้าท่า, top-left of the menu
 st.markdown("""<style>
+[data-testid="stSidebarLogo"],[data-testid="stHeaderLogo"]{height:48px!important;max-height:48px!important;width:auto!important;max-width:none!important}
+[data-testid="stSidebarHeader"]{margin-left:-14px!important;padding-left:0!important;padding-top:6px!important;height:auto!important;align-items:flex-start!important}
 [data-testid="stSidebarCollapseButton"],[data-testid="stSidebarCollapseButton"] *{opacity:1!important;visibility:visible!important;display:inline-flex!important}
 [data-testid="stSidebar"] .stButton button{min-height:48px;padding:8px 14px;border-radius:10px}
 [data-testid="stSidebar"] .stButton button p{font-size:19px!important;font-weight:700!important;letter-spacing:.2px;line-height:1.3}
@@ -150,7 +153,6 @@ with st.sidebar:
       else if(sb||++n>40)clearInterval(t)},100)})();
     </script>""", height=0)
     _theme_choice = _THEME_OPTIONS[0]   # always light (the light/dark switch was removed)
-    st.image(os.path.join(_HERE, "md_logo.png"), width=160)   # กรมเจ้าท่า
     st.markdown("### เมนู")
     for _i, _p in enumerate(_PAGES):
         st.button(_p, key=f"nav_{_i}", on_click=_go, args=(_p,), width="stretch",
