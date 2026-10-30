@@ -138,17 +138,19 @@ st.markdown("""<style>
 [data-testid="stHeader"] button,[data-testid="stHeader"] img{pointer-events:auto}
 [data-testid="stToolbar"],[data-testid="stToolbar"] *{background:transparent!important}
 [data-testid="stToolbar"],[data-testid="stToolbar"] div:has([data-testid="stHeaderLogo"]){align-items:flex-start!important;height:auto!important}
-div:has(> div > div > [data-testid="stHeaderLogo"]){flex-direction:column!important;align-items:flex-start!important;gap:6px!important}
-[data-testid="stExpandSidebarButton"]{background:#fff!important;border:1.5px solid #9aa6b2!important;border-radius:8px!important;padding:2px 10px!important;min-height:38px;box-shadow:0 1px 3px rgb(0 0 0 / .12)}
+div:has(> div > div > [data-testid="stHeaderLogo"]){flex-direction:row!important;align-items:center!important;gap:10px!important}
+div:has(> [data-testid="stExpandSidebarButton"]){order:-1!important;align-self:center!important;margin-top:4px}
+[data-testid="stExpandSidebarButton"]{background:transparent!important;border:0!important;border-radius:8px!important;padding:2px 6px!important;min-height:40px}
+[data-testid="stExpandSidebarButton"]:hover{background:rgba(0,0,0,.06)!important}
 [data-testid="stExpandSidebarButton"] [data-testid="stIconMaterial"]{font-size:0!important;width:auto!important}
-[data-testid="stExpandSidebarButton"] [data-testid="stIconMaterial"]::after{content:"☰";font:700 26px/1 system-ui,"Segoe UI Symbol",sans-serif;color:#1d2730}
+[data-testid="stExpandSidebarButton"] [data-testid="stIconMaterial"]::after{content:"☰";font:700 30px/1 system-ui,"Segoe UI Symbol",sans-serif;color:#1d2730}
 [data-testid="stSidebarLogo"],[data-testid="stHeaderLogo"]{height:48px!important;max-height:48px!important;width:auto!important;max-width:none!important}
 [data-testid="stSidebarHeader"]{margin-left:-14px!important;padding-left:0!important;padding-top:6px!important;height:auto!important;align-items:flex-start!important}
 [data-testid="stSidebarCollapseButton"],[data-testid="stSidebarCollapseButton"] *{opacity:1!important;visibility:visible!important;display:inline-flex!important}
 [data-testid="stSidebar"] .stButton button{min-height:48px;padding:8px 14px;border-radius:10px}
 [data-testid="stSidebar"] .stButton button p{font-size:19px!important;font-weight:700!important;letter-spacing:.2px;line-height:1.3}
 [data-testid="stSidebar"] .stButton button[kind="secondary"]{color:#1d2730;border:1.5px solid #b9c3cc}
-[data-testid="stSidebarCollapseButton"] button,[data-testid="stExpandSidebarButton"]{border:1px solid rgba(128,128,128,.45)!important;border-radius:8px!important}
+[data-testid="stSidebarCollapseButton"] button{border:1px solid rgba(128,128,128,.45)!important;border-radius:8px!important}
 </style>""", unsafe_allow_html=True)
 
 # Start every page load with the menu hidden. Streamlit remembers the last open/closed state in
@@ -196,7 +198,7 @@ if _page == _P_LOG:
     if _log_theme:
         _inject += "window.__THEME__='" + _log_theme + "';"
     _log_html = _log_html.replace("<script>", "<script>" + _inject + "</script>\n" + _sync_script() + "<script>", 1)
-    st.markdown("""<style>[data-testid="stMainBlockContainer"],[data-testid="block-container"],.block-container,section.main>div{padding-top:3.6rem !important;padding-bottom:0 !important;padding-left:.75rem !important;padding-right:.75rem !important;max-width:100% !important}iframe[data-testid="stIFrame"][scrolling="auto"]{height:calc(100vh - 112px) !important;height:calc(100dvh - 112px) !important;display:block}[data-testid="stAppViewContainer"] [data-testid="stMain"],section.main{overflow:hidden}</style>""",
+    st.markdown("""<style>[data-testid="stMainBlockContainer"],[data-testid="block-container"],.block-container,section.main>div{padding-top:.5rem !important;padding-bottom:0 !important;padding-left:.75rem !important;padding-right:.75rem !important;max-width:100% !important}iframe[data-testid="stIFrame"][scrolling="auto"]{height:calc(100vh - 68px) !important;height:calc(100dvh - 68px) !important;display:block}[data-testid="stAppViewContainer"] [data-testid="stMain"],section.main{overflow:hidden}</style>""",
                 unsafe_allow_html=True)
     components.html(_log_html, height=1100, scrolling=True)
     st.stop()
