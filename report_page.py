@@ -294,6 +294,3 @@ def month_and_settings(ctx):
                             st.rerun()
                         except Exception as e:
                             st.error(f"นำเข้าไม่สำเร็จ: {e}")
-    if st.button("🔄 โหลดข้อมูลจากชีตใหม่"):
-        _load(db, force=True)
-        st.rerun()
