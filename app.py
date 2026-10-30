@@ -143,7 +143,7 @@ def _pw_ok(stored, given):
     return _hmac.compare_digest(stored, given)
 
 
-def _token(user, users, days=30):
+def _token(user, users, days=3650):   # ~10 years = until logout or a password change
     exp = int(_time.time()) + days * 86400
     msg = f"{user}|{exp}"
     sig = _hmac.new(_auth_secret(users), msg.encode("utf-8"), _hl.sha256).hexdigest()[:32]
@@ -213,7 +213,7 @@ def _login_gate():
     if user:
         tok = st.session_state.pop("_auth_set", None)
         if tok:
-            _remember_js(tok, 30 * 86400)
+            _remember_js(tok, 3650 * 86400)
         return user
     if not st.session_state.get("_auth_nocookie"):
         components.html(_RESTORE_JS, height=0)
@@ -223,7 +223,7 @@ def _login_gate():
     with st.form("login"):
         u = st.text_input("ชื่อผู้ใช้")
         p = st.text_input("รหัสผ่าน", type="password")
-        keep = st.checkbox("จำการเข้าสู่ระบบในเครื่องนี้ (30 วัน)", value=True)
+        keep = st.checkbox("จำการเข้าสู่ระบบในเครื่องนี้", value=True)
         go = st.form_submit_button("เข้าสู่ระบบ", type="primary", width="stretch")
     if go:
         u = u.strip()
