@@ -1896,9 +1896,15 @@ BOARD.addEventListener('change',e=>{ const i=e.target.closest('.ce'); if(!i||!BD
       if(!row.c[loa]) row.c[loa]=s.loa||''; if(!row.c[ag]) row.c[ag]=s.agent||'';
       if(!row.c[be]) row.c[be]= c===1 ? (s.berth||'') : (lastBerth(s.name, `${BD.date} 23:59`)||s.berth||'');
       boardSave(); renderBoard(); } } }
+  if((c===4||c===5||c===13) && i.value.trim()){   /* ETA / POB / ETD: 1600 → 30-1600; ETA and POB fill each other when the other is empty */
+    const base=BD.blocks[b].date||BD.date, dt=parseTime(i.value,base);
+    if(dt){ const t=fmtT(dt), old=(i._v0!==undefined?i._v0:i.defaultValue), o2=c===4?5:c===5?4:-1;
+      if(typingKey===null) pushUndo(); row.c[c]=t; i.value=t;
+      const filled = o2>=0 && (!String(row.c[o2]||'').trim() || row.c[o2]===old); if(filled) row.c[o2]=t;
+      if(c===5){ const pos=filled?relayout(b,r,4):null; boardSave(); if(pos){ SEL={b,r1:pos.r,c1:c,r2:pos.r,c2:c}; } renderBoard(); return; } } }
   if((c===4||c===13) && i.value.trim()){
     const blk=BD.blocks[b]; const base=blk.date||BD.date;
-    if(parseTime(i.value,base)){ if(typingKey===null) pushUndo(); const pos=relayout(b,r,c); boardSave(); if(pos){ SEL={b,r1:pos.r,c1:c,r2:pos.r,c2:c}; } renderBoard(); return; }
+    if(parseTime(i.value,base)){ const pos=relayout(b,r,c); boardSave(); if(pos){ SEL={b,r1:pos.r,c1:c,r2:pos.r,c2:c}; } renderBoard(); return; }
   }
   boardSave(); });
 
