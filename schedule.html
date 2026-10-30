@@ -1112,6 +1112,7 @@ function makeOut(id){
 const pop=$('pop'); const cb={inp:null,items:[],act:-1};
 function optsFor(inp){
   const f=inp.dataset.f;
+  if(f==='ship' && inp.closest('#view-notice')) return S.ships.map(s=>({v:s.name}));   /* แจ้งเรือขาดย้ายท่า: names only */
   if(f==='ship') return S.ships.map(s=>({v:s.name, meta:[s.loa&&`LOA ${s.loa}`, s.berth, s.agent].filter(Boolean).join(' · ')}));
   if(f==='berth') return S.berths.map(v=>({v}));
   if(f==='agent') return S.agents.map(v=>({v}));
