@@ -1818,7 +1818,7 @@ $('addBlk').addEventListener('click',e=>{ const b=e.target.closest('[data-addblk
   pushUndo(); const blk={date:d, label:longDate(d), rows:[blankRow(),blankRow(),blankRow()]};
   const at=BD.blocks.findIndex(x=>(x.date||'')>d); if(at<0) BD.blocks.push(blk); else BD.blocks.splice(at,0,blk);
   const bi=BD.blocks.indexOf(blk); SEL={b:bi,r1:1,c1:1,r2:1,c2:1}; boardSave(); renderBoard(); toast(`เพิ่มตาราง ${longDate(d)} แล้ว · พิมพ์เรือได้เลย`); });
-/* พ ships on the board ↔ จัดตาราง: a new พ ship is added there at once (late), a พ ship taken off the board is removed there */
+/* พ ships on the board → จัดตาราง: a new พ ship is added there at once (late). Removed there only when its Drf says งด and คัดลอกส่งLINE is pressed (cutLate) */
 function lateHalves(){ const out=new Map();
   for(const blk of BD.blocks){ const X=blk.date||BD.date;
     for(const row of blk.rows) for(const [side,a] of [['L',0],['R',9]]){
@@ -1832,17 +1832,15 @@ function lateHalves(){ const out=new Map();
 const sameLeg=(m,x)=>m.ship===x.m.ship && (x.side==='L'?m.type==='IN':m.type!=='IN') && schedOf(m.datetime)===x.X;
 function syncLate(){ if(!BD) return; const cur=lateHalves(), prev=BD.lateSnap; BD.lateSnap=cur; if(!prev) return;   /* first look: remember only */
   let ch=false;
-  for(const [k,x] of cur){ if(prev.has(k)) continue;
+  for(const [k,x] of cur){ if(prev.has(k) || x.m.drf==='งด') continue;
     const ex=S.mv.find(m=>sameLeg(m,x));
     if(ex){ if(!+ex.late){ ex.late=1; persist(ex); ch=true; } }
     else { const m={id:newId(), ...x.m}; S.mv.push(m); persist(m); ch=true; toast(`เพิ่ม ${m.ship} (พ) ในจัดตารางแล้ว`); } }
-  for(const [k,x] of prev){ if(cur.has(k) || !BD.blocks.some(b=>(b.date||BD.date)===x.X)) continue;
-    const ex=S.mv.find(m=>sameLeg(m,x) && +m.late); if(!ex) continue;
-    const still=BD.blocks.some(b=>(b.date||BD.date)===x.X && b.rows.some(row=>norm(row.c[x.side==='L'?1:10])===x.m.ship));
-    if(still){ ex.late=0; persist(ex); }   /* พ taken off but the ship stays → a normal leg again */
-    else { S.mv=S.mv.filter(m=>m.id!==ex.id); api('deleteMovement',{},{id:ex.id}).catch(err=>toast('ลบไม่สำเร็จ: '+err.message)); toast(`งด ${ex.ship} (พ) · เอาออกจากจัดตารางแล้ว`); }
-    ch=true; }
   if(ch){ cacheSet(); renderAll(); } }
+function cutLate(){ if(!BD) return; const gone=[];
+  for(const x of lateHalves().values()){ if(x.m.drf!=='งด') continue; const ex=S.mv.find(m=>sameLeg(m,x) && +m.late); if(!ex) continue;
+    S.mv=S.mv.filter(m=>m.id!==ex.id); api('deleteMovement',{},{id:ex.id}).catch(err=>toast('ลบไม่สำเร็จ: '+err.message)); gone.push(ex.ship); }
+  if(gone.length){ cacheSet(); renderAll(); setTimeout(()=>toast(`งด ${gone.join(', ')} (พ) · เอาออกจากจัดตารางแล้ว`),1500); } }
 function renderBoard(){ setTimeout(syncLate,0);
   if(!BD) return; renderAddBlk();
   const keep=SEL;
@@ -2154,7 +2152,7 @@ async function lineCanvas(){
 }
 function lineName(){ const [y,m,d]=S.D.split('-').map(Number); const t=new Date(); return `SCHEDULE ${d}-${m}-${String((y+543)%100).padStart(2,'0')} ${pad(t.getHours())}${pad(t.getMinutes())}.png`; }
 $('lineCopy').addEventListener('click',async()=>{
-  const b=$('lineCopy'); b.disabled=true;
+  const b=$('lineCopy'); b.disabled=true; cutLate();   /* พ ships marked งด in Drf leave จัดตาราง */
   try{
     const canvas=await lineCanvas();
     const blob=await new Promise(r=>canvas.toBlob(r,'image/png'));
