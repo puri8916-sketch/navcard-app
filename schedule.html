@@ -445,6 +445,23 @@ html.only-notice body{padding-bottom:0!important}
 .nt-outh{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:18px;margin-bottom:8px}
 #ntText{margin:0;white-space:pre-wrap;font:18px/1.5 "Tahoma","Leelawadee UI","Noto Sans Thai",sans-serif;background:#C5F2A5;color:#111;border-radius:10px;padding:12px;min-height:60px}
 @media (max-width:640px){ .nt-row{font-size:17px} .nt-card input{font-size:17px} .nt-b{width:calc(50% - 40px)} .nt-dt{width:104px} }
+/* compact header + toolbars (more room for the sheet, still easy to read) */
+@media (min-width:641px) and (min-height:521px){
+  .top{padding-block:4px;gap:6px 12px}
+  .tabs{padding:2px;gap:2px;border-radius:8px}
+  .tabs button{padding:4px 14px;font-size:16px;border-radius:6px}
+  .ltool{gap:6px 10px;margin-bottom:6px;padding-block:3px;top:calc(env(safe-area-inset-top,0px) + 42px)}
+  .ltool .grp{gap:4px}
+  .ltool .btn,.btn.tb{padding:4px 10px;font-size:15px;border-radius:7px}
+  #lineCopy{padding:5px 14px;font-size:16px;border-radius:8px;box-shadow:0 2px 6px rgb(6 199 85 / .4)}
+  .ltool label.since{font-size:14px}
+  .ltool input.since{padding:4px 8px;font-size:15px;width:96px}
+  .fc-main{padding-block:2px!important}
+  #linePull{padding:5px 12px;font-size:15px}
+  #gAutoBtn,#impBtn,#printBtn,#dispBtn{padding:5px 12px;font-size:15px}
+  main{padding-top:6px}
+  .shipsticky{top:calc(env(safe-area-inset-top,0px) + 42px)}
+}
 /* iOS app shell (see the script before the main one) */
 html.ios,html.ios body{height:100%;overflow:hidden;overscroll-behavior:none}
 html.ios body{display:flex;flex-direction:column;padding-bottom:0!important}
