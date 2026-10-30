@@ -463,6 +463,14 @@ html.ios .hbar{position:absolute;bottom:100%!important}
 .datenav .dchip.on .d{color:#107C41;font-weight:700}
 .datenav .dchip.today:not(.on) .d{text-decoration:underline dotted;text-underline-offset:3px}
 @media (max-width:640px){.datenav .dchip{min-width:72px;padding:5px 8px}.datenav .dchip .d{font-size:14px}}
+/* phone on its side (short screen): slim day strip, and it slides away while scrolling down (back when scrolling up) */
+@media (max-height:520px){
+  .datenav{padding-top:0!important;padding-bottom:0!important;padding-left:4px!important}
+  .datenav .iconbtn{width:30px;font-size:17px;padding:0;min-height:0}
+  .datenav .dchip{min-width:60px;padding:3px 6px 2px}
+  .datenav .dchip .d{font-size:13px}
+  .datenav.dn-away{display:none!important}
+}
 
 /* "พ" (late ship) mark: bold red */
 .lsheet td.pw,.lsheet td.pw .ce{font-weight:700;color:#FF0000}
@@ -2468,6 +2476,13 @@ setTimeout(()=>fitBoardWidth(false),600);
   D.forEach(fitLegs); render();
   if(window.__ONLY__==='notice') document.documentElement.classList.add('only-notice');
 })();
+/* short screens: hide the day strip while scrolling down, show it again when scrolling up or at the top */
+(function(){ const dn=$('dateNav'); let last=0;
+  document.addEventListener('scroll',e=>{ const t=e.target, el=(t===document||t===document.documentElement)?document.scrollingElement:t;
+    if(!el||!(el===document.scrollingElement||el.id==='iosScroll')) return;
+    if(innerHeight>520){ dn.classList.remove('dn-away'); return; }
+    const y=el.scrollTop, d=y-last; last=y;
+    if(y<30||d<-6) dn.classList.remove('dn-away'); else if(d>6) dn.classList.add('dn-away'); },true); })();
 /* keep the pinned sideways scrollbar just above the bottom day strip */
 (function(){ const dn=$('dateNav'); const put=()=>{ if(document.getElementById('iosFoot')) return; const h=dn.hidden?0:dn.offsetHeight; document.documentElement.style.setProperty('--dnH',h+'px'); document.body.style.paddingBottom=(h+18)+'px'; };
   try{ new ResizeObserver(put).observe(dn); }catch(e){} new MutationObserver(put).observe(dn,{attributes:true,attributeFilter:['hidden']}); window.addEventListener('resize',put); put(); })();
