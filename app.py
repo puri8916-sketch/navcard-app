@@ -152,6 +152,10 @@ with st.sidebar:
     let n=0;const t=setInterval(()=>{const sb=P.document.querySelector('[data-testid="stSidebar"]');
       if(sb&&sb.getAttribute("aria-expanded")==="true"){const b=P.document.querySelector('[data-testid="stSidebarCollapseButton"] button');if(b){b.click();clearInterval(t)}}
       else if(sb||++n>40)clearInterval(t)},100)})();
+    /* Streamlit Cloud badge (Created by … / Hosted with Streamlit) sits in the outer page: hide it there */
+    (()=>{const hide=w=>{try{const D=w.document;if(D.getElementById("navHideBadge"))return;const s=D.createElement("style");s.id="navHideBadge";
+      s.textContent='[class*="viewerBadge"],[class*="ViewerBadge"],[class*="profileContainer"],[class*="profilePreview"],[data-testid="appCreatorAvatar"],a[href*="streamlit.io/cloud"],a[href*="share.streamlit.io/user"]{display:none!important}';
+      D.head.appendChild(s)}catch(e){}};let w=window;for(let i=0;i<4&&w;i++){hide(w);if(w===w.parent)break;w=w.parent}})();
     </script>""", height=0)
     _theme_choice = _THEME_OPTIONS[0]   # always light (the light/dark switch was removed)
     st.markdown("### ระบบนำร่องสงขลา")
