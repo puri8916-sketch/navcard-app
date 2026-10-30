@@ -9,6 +9,11 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 import nav_core as nc
+import importlib as _importlib
+# Streamlit Cloud re-runs app.py after an update but keeps the old helper modules in memory;
+# reload them when they are older than this app.py (missing new functions -> AttributeError)
+if not hasattr(nc, "auto_remarks"):
+    nc = _importlib.reload(nc)
 
 st.set_page_config(page_title="Navigation Card Merger", layout="wide",
                    initial_sidebar_state="collapsed")
