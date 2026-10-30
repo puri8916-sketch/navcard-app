@@ -134,6 +134,14 @@ def _go(p):
 st.logo(os.path.join(_HERE, "md_logo.png"), size="large")   # กรมเจ้าท่า, top-left of the menu
 st.markdown("""<style>
 [data-testid="stToolbarActions"],[data-testid="stToolbarActionButton"],[data-testid="stAppDeployButton"],[data-testid="stMainMenu"]{display:none!important}
+.stApp header[data-testid="stHeader"],[data-testid="stHeader"]{height:auto!important;background:transparent!important;pointer-events:none;width:auto!important;right:auto!important}
+[data-testid="stHeader"] button,[data-testid="stHeader"] img{pointer-events:auto}
+[data-testid="stToolbar"],[data-testid="stToolbar"] *{background:transparent!important}
+[data-testid="stToolbar"],[data-testid="stToolbar"] div:has([data-testid="stHeaderLogo"]){align-items:flex-start!important;height:auto!important}
+div:has(> div > div > [data-testid="stHeaderLogo"]){flex-direction:column!important;align-items:flex-start!important;gap:6px!important}
+[data-testid="stExpandSidebarButton"]{background:#fff!important;border:1.5px solid #9aa6b2!important;border-radius:8px!important;padding:2px 10px!important;min-height:38px;box-shadow:0 1px 3px rgb(0 0 0 / .12)}
+[data-testid="stExpandSidebarButton"] [data-testid="stIconMaterial"]{font-size:0!important;width:auto!important}
+[data-testid="stExpandSidebarButton"] [data-testid="stIconMaterial"]::after{content:"☰";font:700 26px/1 system-ui,"Segoe UI Symbol",sans-serif;color:#1d2730}
 [data-testid="stSidebarLogo"],[data-testid="stHeaderLogo"]{height:48px!important;max-height:48px!important;width:auto!important;max-width:none!important}
 [data-testid="stSidebarHeader"]{margin-left:-14px!important;padding-left:0!important;padding-top:6px!important;height:auto!important;align-items:flex-start!important}
 [data-testid="stSidebarCollapseButton"],[data-testid="stSidebarCollapseButton"] *{opacity:1!important;visibility:visible!important;display:inline-flex!important}
@@ -188,7 +196,7 @@ if _page == _P_LOG:
     if _log_theme:
         _inject += "window.__THEME__='" + _log_theme + "';"
     _log_html = _log_html.replace("<script>", "<script>" + _inject + "</script>\n" + _sync_script() + "<script>", 1)
-    st.markdown("""<style>[data-testid="stMainBlockContainer"],[data-testid="block-container"],.block-container,section.main>div{padding-top:.5rem !important;padding-bottom:0 !important;padding-left:.75rem !important;padding-right:.75rem !important;max-width:100% !important}iframe[data-testid="stIFrame"][scrolling="auto"]{height:calc(100vh - 68px) !important;height:calc(100dvh - 68px) !important;display:block}[data-testid="stAppViewContainer"] [data-testid="stMain"],section.main{overflow:hidden}</style>""",
+    st.markdown("""<style>[data-testid="stMainBlockContainer"],[data-testid="block-container"],.block-container,section.main>div{padding-top:3.6rem !important;padding-bottom:0 !important;padding-left:.75rem !important;padding-right:.75rem !important;max-width:100% !important}iframe[data-testid="stIFrame"][scrolling="auto"]{height:calc(100vh - 112px) !important;height:calc(100dvh - 112px) !important;display:block}[data-testid="stAppViewContainer"] [data-testid="stMain"],section.main{overflow:hidden}</style>""",
                 unsafe_allow_html=True)
     components.html(_log_html, height=1100, scrolling=True)
     st.stop()
