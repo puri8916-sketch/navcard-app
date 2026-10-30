@@ -181,11 +181,7 @@ def _remember_js(value, max_age):
                     "try{window.top.sessionStorage.removeItem('navauth_try')}catch(e){}})()</script>", height=0)
 
 
-_RESTORE_JS = ("<script>(()=>{try{const t=localStorage.getItem('" + _AUTH_COOKIE + "');const ss=window.top.sessionStorage;"
-               "if(!t||ss.getItem('navauth_try'))return;ss.setItem('navauth_try','1');"
-               "const T=window.top,d=T.document,x=d.createElement('script');"   # runs in the top page: a sandboxed frame may not navigate it
-               "x.textContent='(function(){var u=new URL(location.href);u.searchParams.set(\\'auth\\','+JSON.stringify(t)+');location.replace(u.toString())})()';"
-               "d.head.appendChild(x)}catch(e){}})()</script>")
+_auth_ls = components.declare_component("auth_ls", path=os.path.join(_HERE, "auth_component"))
 
 
 def _login_gate():
@@ -210,13 +206,24 @@ def _login_gate():
                 pass
         if user:
             st.session_state.auth_user = user
+    if not user and not st.session_state.get("_auth_nocookie") and not st.session_state.get("_auth_ls_done"):
+        # this browser's remembered sign-in, read by a tiny component in the same session (no reload)
+        got = _auth_ls(key="auth_ls", default=None)
+        if got is None:
+            st.markdown("<div style='text-align:center;margin-top:30vh;color:#6b7884;font-size:18px'>กำลังเข้าสู่ระบบ…</div>",
+                        unsafe_allow_html=True)
+            st.stop()
+        st.session_state._auth_ls_done = True
+        user = _check_token((got or {}).get("t", ""), users)
+        if user:
+            st.session_state.auth_user = user
+        elif (got or {}).get("t"):
+            _remember_js("", 0)   # expired / password changed: forget it
     if user:
         tok = st.session_state.pop("_auth_set", None)
         if tok:
             _remember_js(tok, 3650 * 86400)
         return user
-    if not st.session_state.get("_auth_nocookie"):
-        components.html(_RESTORE_JS, height=0)
     st.markdown("<style>[data-testid='stSidebar'],[data-testid='stExpandSidebarButton']{display:none!important}"
                 ".block-container{max-width:460px!important;padding-top:14vh!important}</style>", unsafe_allow_html=True)
     st.markdown("<h2 style='text-align:center;white-space:nowrap;margin-bottom:.5rem'>ระบบนำร่องสงขลา</h2>", unsafe_allow_html=True)
