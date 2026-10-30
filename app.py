@@ -267,6 +267,7 @@ with _main:
         st.session_state.remark_texts = {}
         st.session_state.loa_overrides = {}
         st.session_state.data_fixes = {}
+        st.session_state.auto_off = set()
         st.session_state.row_overrides = {}
 
     workdir = st.session_state.workdir
@@ -376,6 +377,7 @@ with _main:
         st.session_state.remark_texts = {}
         st.session_state.loa_overrides = {}
         st.session_state.data_fixes = {}
+        st.session_state.auto_off = set()
         st.session_state.row_overrides = {}
 
     if recheck_clicked and st.session_state.report is not None:
@@ -501,6 +503,28 @@ with _main:
                     st.session_state.remark_texts.pop(cn, None)
                     st.rerun()
 
+        # automatic Remarks for the special cases (CAP / ยาวเกิน 173 ม. / แยกใบแจ้งหนี้ / ลากบาส)
+        _auto, _auto_warn = nc.auto_remarks(report, st.session_state.loa_overrides)
+        _off = st.session_state.setdefault("auto_off", set())
+        st.subheader("🤖 Remark อัตโนมัติ")
+        if _auto:
+            st.caption("ระบบใส่ให้เองตามกรณีพิเศษ · ถ้าการ์ดใบไหนมี Remark ที่พิมพ์เองด้านบน จะใช้ของที่พิมพ์เองแทน")
+            for cn, texts in _auto.items():
+                c1, c2 = st.columns([5, 1])
+                _manual = cn in st.session_state.remarks
+                _state = " (ใช้ที่พิมพ์เองแทน)" if _manual else (" (ปิดอยู่)" if cn in _off else "")
+                c1.markdown(f"**{cn}** — {report['ship_names'].get(cn, '')}{_state}")
+                c1.text("\n".join(texts))
+                if cn in _off:
+                    if c2.button("ใช้", key=f"auto_on_{cn}"):
+                        _off.discard(cn); st.rerun()
+                elif c2.button("ไม่ใช้", key=f"auto_off_{cn}"):
+                    _off.add(cn); st.rerun()
+        else:
+            st.caption("ไม่มีการ์ดเข้ากรณีพิเศษ")
+        for _w in _auto_warn:
+            st.warning("⚠️ " + _w)
+
         st.divider()
         can_build = complete or st.checkbox(
             "ยืนยันสร้าง PDF ทั้งที่ข้อมูลยังไม่ครบ (การ์ดที่ขาดข้อมูลจะถูกข้ามหรือเว้นว่างบางส่วน)"
@@ -514,7 +538,9 @@ with _main:
             nc.build_pdf(
                 card_dir, report,
                 loa_overrides=st.session_state.loa_overrides,
-                remarks=st.session_state.remarks,
+                remarks={**{cn: [ln for t in texts for ln in nc.wrap_thai(t, 100)]
+                            for cn, texts in _auto.items() if cn not in _off},
+                         **st.session_state.remarks},
                 data_fixes=st.session_state.data_fixes,
                 row_count_overrides=st.session_state.row_overrides,
                 output_path=out_path,

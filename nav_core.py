@@ -6,6 +6,7 @@ import csv
 import io
 import os
 import re
+import math
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 
@@ -259,7 +260,8 @@ def parse_ships(xlsx_path):
         if cardno and str(cardno).startswith('SGZ'):
             if cur:
                 ships.append(cur)
-            cur = {'card_no': cardno, 'rows': []}
+            cur = {'card_no': cardno, 'rows': [],
+                   'agent': str(r[1] or '').strip(), 'ship': str(r[2] or '').strip()}
         if cur is not None and r[7] and r[7] != 'Date':
             datestr = r[7]
             item, rest = datestr.split(':', 1)
@@ -407,6 +409,9 @@ def analyze_batch(card_dir, xlsx_path, csv_paths, ship_memory=None):
 
     loa_map = {}
     loa_source = {}
+    loa_key = {}          # name the length was found under (e.g. "TUG+BARGE" for a tow)
+    csv_all = {}          # every named CSV length, for looking up a barge's own length
+    raw_name = {}         # normalized -> name as typed (keeps the '+' of a tow)
     unmatched_ships = []
     unused_csv = {}
     no_csv_at_all = not csv_paths
@@ -419,6 +424,8 @@ def analyze_batch(card_dir, xlsx_path, csv_paths, ship_memory=None):
             csv_by_name = defaultdict(list)
             for name, val in loa_rows:
                 csv_by_name[normalize_name(name)].append(float(val))
+                csv_all.setdefault(normalize_name(name), float(val))
+                raw_name.setdefault(normalize_name(name), str(name).strip())
 
             for s in ships:
                 cn = s['card_no']
@@ -432,6 +439,8 @@ def analyze_batch(card_dir, xlsx_path, csv_paths, ship_memory=None):
                 if bucket:
                     loa_map[cn] = bucket.pop(0)
                     loa_source[cn] = 'csv'
+                    _k = next((k for k, b in csv_by_name.items() if b is bucket), nm)
+                    loa_key[cn] = raw_name.get(_k, _k)
                 else:
                     loa_map[cn] = None
             unused_csv = {nm: vals for nm, vals in csv_by_name.items() if vals}
@@ -460,6 +469,7 @@ def analyze_batch(card_dir, xlsx_path, csv_paths, ship_memory=None):
     for k, v in (ship_memory or {}).items():
         try:
             mem[normalize_name(k)] = float(v)
+            raw_name[normalize_name(k)] = str(k).strip()
         except (TypeError, ValueError):
             continue
     for s in ships:
@@ -468,16 +478,19 @@ def analyze_batch(card_dir, xlsx_path, csv_paths, ship_memory=None):
             continue
         nm = normalize_name(ship_names.get(cn))
         val = None
+        key = None
         if nm:
             val = mem.get(nm)
+            key = nm
             if val is None:                      # e.g. combined tow entry "SHIP+TOWNAME"
-                for key, v in mem.items():
-                    if key.startswith(nm):
-                        val = v
+                for k, v in mem.items():
+                    if k.startswith(nm):
+                        val, key = v, k
                         break
         if val is not None:
             loa_map[cn] = val
             loa_source[cn] = 'memory'
+            loa_key[cn] = raw_name.get(key, key)
 
     unmatched_ships = [(s['card_no'], ship_names.get(s['card_no']))
                        for s in ships if loa_map.get(s['card_no']) is None]
@@ -495,6 +508,8 @@ def analyze_batch(card_dir, xlsx_path, csv_paths, ship_memory=None):
         'unmatched_loa_ships': unmatched_ships,
         'unused_csv_entries': unused_csv,
         'no_csv_at_all': no_csv_at_all,
+        'loa_key': loa_key,
+        'lengths': {**csv_all, **mem},   # every known length by name (calculator wins)
     }
     return report
 
@@ -597,3 +612,88 @@ def load_default_ships(path):
         out[name] = {'value': r[iV].strip(), 'result': f"{round(v * 3.2808, 4):,}",
                      'time': r[iT].strip() if iT is not None and len(r) > iT else ''}
     return out
+
+
+# ---------- automatic Remarks for the special cases (rules given by the user) ----------
+LOA_LIMIT = 173.0
+_TXT_CAP = {'EN': '**เรือขาเข้ายกเว้นนำร่อง**', 'SA': '**เรือขาออกยกเว้นนำร่อง**'}
+_TXT_SPLIT_IN = '**แยกใบแจ้งหนี้เรือออก/ไม่มีเรือออก**'
+_TXT_SPLIT_OUT = 'แจ้งเรือออก: เปลี่ยนบริษัทหรือตัวแทนสายเรือ*แยกใบแจ้งหนี้เรือเข้า/ไม่มีเรือเข้า*'
+
+
+def _num_txt(v):
+    return fmt_num(round(float(v), 2))
+
+
+def _agent_key(a):
+    return re.sub(r'[^A-Z0-9]', '', str(a or '').upper())
+
+
+def auto_remarks(report, loa_overrides=None):
+    """Return ({card_no: [remark text, ...]}, [warning text, ...]).
+
+    1. EN/SA leg with pilot 000 (-CAP-)  -> **เรือขาเข้า/ขาออกยกเว้นนำร่อง** (warn if that leg's draft is not 0.00)
+    2. LOA (m, as written on the card) > 173 -> เรือยาวเกินข้อกำหนดขนาด n เมตร
+    3. same ship, 2 agents: card with EN (and SH) but no SA + card with only SA -> split-invoice texts
+    4. length found under "TUG+BARGE" -> ลากB.BARGE ยาว m เมตร (ft ปัดขึ้น ฟุต) เข้ามาด้วย.
+    """
+    loa_overrides = loa_overrides or {}
+    out, warns = defaultdict(list), []
+    ships = report['ships']
+    names = report.get('ship_names', {})
+    lengths = report.get('lengths', {})
+    for s in ships:
+        cn = s['card_no']
+        # 1. -CAP-
+        for r in s['rows']:
+            if str(r.get('pilot')) == '000' and r['item'] in _TXT_CAP:
+                if _TXT_CAP[r['item']] not in out[cn]:
+                    out[cn].append(_TXT_CAP[r['item']])
+                try:
+                    dr = float(r.get('draft') or 0)
+                except (TypeError, ValueError):
+                    dr = None
+                if dr != 0:
+                    leg = 'ขาเข้า' if r['item'] == 'EN' else 'ขาออก'
+                    warns.append(f"{cn}: {leg} -CAP- แต่ดราฟ = {r.get('draft')} (ควรเป็น 0.00)")
+        # 2. too long
+        loa = loa_overrides.get(cn, report['loa_map'].get(cn))
+        if loa is not None and float(loa) > LOA_LIMIT + 1e-9:
+            out[cn].append(f"เรือยาวเกินข้อกำหนดขนาด {_num_txt(float(loa) - LOA_LIMIT)} เมตร")
+        # 4. tug + barge
+        key = report.get('loa_key', {}).get(cn) or ''
+        if '+' in key:
+            barge = key.split('+', 1)[1].strip()
+            bl = lengths.get(normalize_name(barge))
+            if bl is None:
+                warns.append(f"{cn}: ลากบาส {barge} แต่ยังไม่มีความยาวของบาส — เพิ่ม '{barge}' ในเครื่องคิดเลข แล้วกดตรวจสอบอีกครั้ง")
+            else:
+                ft = math.ceil(round(float(bl) * 3.2808, 6))
+                out[cn].append(f"ลากB.{barge} ยาว {_num_txt(bl)} เมตร ({ft} ฟุต) เข้ามาด้วย.")
+    # 3. split invoice (change of agent)
+    by_ship = defaultdict(list)
+    for s in ships:
+        nm = normalize_name(s.get('ship') or names.get(s['card_no']) or '')
+        if nm:
+            by_ship[nm].append(s)
+    for nm, cards in by_ship.items():
+        if len({_agent_key(c.get('agent')) for c in cards}) < 2:
+            continue
+        cards = sorted(cards, key=lambda c: card_sort_key(c['card_no']))
+        its = {c['card_no']: {r['item'] for r in c['rows']} for c in cards}
+        used = set()
+        for ci in cards:                     # in-card (EN, maybe SH, no SA) -> next out-only card of another agent
+            if not ('EN' in its[ci['card_no']] and 'SA' not in its[ci['card_no']]):
+                continue
+            for co in cards:
+                if (co['card_no'] not in used and its[co['card_no']] == {'SA'}
+                        and card_sort_key(co['card_no']) > card_sort_key(ci['card_no'])
+                        and _agent_key(co.get('agent')) != _agent_key(ci.get('agent'))):
+                    used.add(co['card_no'])
+                    out[ci['card_no']].append(_TXT_SPLIT_IN)
+                    out[co['card_no']].append(_TXT_SPLIT_OUT)
+                    break
+    for cn, t in out.items():
+        if len(t) > 1:
+            warns.append(f"{cn}: เข้าหลายกรณีพร้อมกัน ({len(t)} ข้อความ) — ตรวจสอบ Remark")
+    return dict(out), warns
