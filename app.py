@@ -153,7 +153,7 @@ with st.sidebar:
       else if(sb||++n>40)clearInterval(t)},100)})();
     </script>""", height=0)
     _theme_choice = _THEME_OPTIONS[0]   # always light (the light/dark switch was removed)
-    st.markdown("### เมนู")
+    st.markdown("### ระบบนำร่องสงขลา")
     for _i, _p in enumerate(_PAGES):
         st.button(_p, key=f"nav_{_i}", on_click=_go, args=(_p,), width="stretch",
                   type="primary" if st.session_state["page_choice"] == _p else "secondary")
