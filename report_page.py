@@ -184,7 +184,7 @@ def month_and_settings(ctx):
     # ------------------------------------------------------------ the month file
     months = sorted({_month_key(d) for d in days}, reverse=True)
     if not months:
-        st.caption("ยังไม่มีข้อมูล — วางไฟล์ด้านบน หรือ นำเข้าไฟล์เดือนเดิม (ด้านล่าง)")
+        st.caption("ยังไม่มีข้อมูล — วางไฟล์ด้านบน")
     else:
         ym = st.selectbox("เดือน", months, format_func=_month_title, key="rep_month")
         mdays = sorted(d for d in days if d.startswith(ym))
@@ -262,36 +262,38 @@ def month_and_settings(ctx):
                 st.rerun()
             except Exception as e:
                 st.error(str(e))
-    with st.expander("นำเข้าไฟล์รายงานเดือนเดิม (เช่น ต.ค.69.xlsx) — ใช้ครั้งแรก"):
-        st.caption("อ่านทุกแท็บ (d-m) พร้อมสถานะแท็บเขียว = ส่งการเงินแล้ว, ผู้เซ็นของแต่ละแท็บ และรูปลายเซ็นในไฟล์ "
-                   "แท็บวันที่ซ้ำจะถูกแทนที่")
-        mf = st.file_uploader("ไฟล์รายงานเดือน", type=["xlsx"], key="rep_month_up", label_visibility="collapsed")
-        if mf is not None:
-            try:
-                tabs, msig = rc.parse_month(mf.getvalue())
-            except Exception as e:
-                st.error(f"อ่านไฟล์ไม่ได้: {e}")
-                tabs, msig = [], None
-            if tabs:
-                last = (sorted(tabs, key=lambda t: t["date"])[-1].get("signer") or rc.DEFAULT_SIGNER)
-                st.write(f"พบ {len(tabs)} แท็บ: " + ", ".join(_label(t["date"]) + ("✅" if t["sent"] else "")
-                                                            for t in sorted(tabs, key=lambda t: t["date"]))
-                         + f" · ผู้เซ็น {last['rank']} ({last['name']})"
-                         + (" · มีรูปลายเซ็น" if msig else " · ไม่พบรูปลายเซ็น"))
-                if st.button("นำเข้า", type="primary", key="rep_import"):
-                    try:
-                        sid = signer.get("id", "")
-                        if msig:
-                            sid = db.put_signer(last["rank"], last["name"], msig, sid,
-                                                int(signer.get("dx", rc.SIG_DX)), int(signer.get("dy", 0)))
-                        for t in tabs:
-                            t["signer"] = dict(rc.DEFAULT_SIGNER, **(t.get("signer") or {}), id=sid)
-                        db.put_days(tabs)
-                        st.session_state.rep_msg = f"นำเข้าแล้ว {len(tabs)} แท็บ"
-                        _load(db, force=True)
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"นำเข้าไม่สำเร็จ: {e}")
+    _SHOW_MONTH_IMPORT = False   # one-time import of an old month workbook: no longer needed (True brings it back)
+    if _SHOW_MONTH_IMPORT:
+        with st.expander("นำเข้าไฟล์รายงานเดือนเดิม (เช่น ต.ค.69.xlsx) — ใช้ครั้งแรก"):
+            st.caption("อ่านทุกแท็บ (d-m) พร้อมสถานะแท็บเขียว = ส่งการเงินแล้ว, ผู้เซ็นของแต่ละแท็บ และรูปลายเซ็นในไฟล์ "
+                       "แท็บวันที่ซ้ำจะถูกแทนที่")
+            mf = st.file_uploader("ไฟล์รายงานเดือน", type=["xlsx"], key="rep_month_up", label_visibility="collapsed")
+            if mf is not None:
+                try:
+                    tabs, msig = rc.parse_month(mf.getvalue())
+                except Exception as e:
+                    st.error(f"อ่านไฟล์ไม่ได้: {e}")
+                    tabs, msig = [], None
+                if tabs:
+                    last = (sorted(tabs, key=lambda t: t["date"])[-1].get("signer") or rc.DEFAULT_SIGNER)
+                    st.write(f"พบ {len(tabs)} แท็บ: " + ", ".join(_label(t["date"]) + ("✅" if t["sent"] else "")
+                                                                for t in sorted(tabs, key=lambda t: t["date"]))
+                             + f" · ผู้เซ็น {last['rank']} ({last['name']})"
+                             + (" · มีรูปลายเซ็น" if msig else " · ไม่พบรูปลายเซ็น"))
+                    if st.button("นำเข้า", type="primary", key="rep_import"):
+                        try:
+                            sid = signer.get("id", "")
+                            if msig:
+                                sid = db.put_signer(last["rank"], last["name"], msig, sid,
+                                                    int(signer.get("dx", rc.SIG_DX)), int(signer.get("dy", 0)))
+                            for t in tabs:
+                                t["signer"] = dict(rc.DEFAULT_SIGNER, **(t.get("signer") or {}), id=sid)
+                            db.put_days(tabs)
+                            st.session_state.rep_msg = f"นำเข้าแล้ว {len(tabs)} แท็บ"
+                            _load(db, force=True)
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"นำเข้าไม่สำเร็จ: {e}")
     if st.button("🔄 โหลดข้อมูลจากชีตใหม่"):
         _load(db, force=True)
         st.rerun()
