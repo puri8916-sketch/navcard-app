@@ -150,11 +150,7 @@ def _token(user, users, days=30):
     return f"{msg}|{sig}"
 
 
-def _cookie_user(users):
-    try:
-        raw = st.context.cookies.get(_AUTH_COOKIE, "")
-    except Exception:
-        raw = ""
+def _check_token(raw, users):
     from urllib.parse import unquote
     parts = unquote(raw or "").split("|")
     if len(parts) != 3:
@@ -166,11 +162,30 @@ def _cookie_user(users):
     return None
 
 
-def _cookie_js(value, max_age):
+def _cookie_user(users):
+    try:
+        return _check_token(st.context.cookies.get(_AUTH_COOKIE, ""), users)
+    except Exception:
+        return None
+
+
+def _remember_js(value, max_age):
+    """Keep the sign-in on this device: a cookie (read by the server) + localStorage (fallback when the
+    hosting proxy does not pass cookies through: the login page sends it back as ?auth=…)."""
     from urllib.parse import quote
-    components.html("<script>try{window.parent.document.cookie='" + _AUTH_COOKIE + "=" + quote(value, safe="") +
-                    "; path=/; max-age=" + str(int(max_age)) + "; SameSite=Lax" +
-                    ("; Secure" if True else "") + "'}catch(e){}</script>", height=0)
+    v = json.dumps(value)
+    components.html("<script>(()=>{const v=" + v + ";"
+                    "try{window.parent.document.cookie='" + _AUTH_COOKIE + "='+encodeURIComponent(v)+'; path=/; max-age=" +
+                    str(int(max_age)) + "; SameSite=Lax; Secure'}catch(e){}"
+                    "try{if(v)localStorage.setItem('" + _AUTH_COOKIE + "',v);else localStorage.removeItem('" + _AUTH_COOKIE + "')}catch(e){}"
+                    "try{window.top.sessionStorage.removeItem('navauth_try')}catch(e){}})()</script>", height=0)
+
+
+_RESTORE_JS = ("<script>(()=>{try{const t=localStorage.getItem('" + _AUTH_COOKIE + "');const ss=window.top.sessionStorage;"
+               "if(!t||ss.getItem('navauth_try'))return;ss.setItem('navauth_try','1');"
+               "const T=window.top,d=T.document,x=d.createElement('script');"   # runs in the top page: a sandboxed frame may not navigate it
+               "x.textContent='(function(){var u=new URL(location.href);u.searchParams.set(\\'auth\\','+JSON.stringify(t)+');location.replace(u.toString())})()';"
+               "d.head.appendChild(x)}catch(e){}})()</script>")
 
 
 def _login_gate():
@@ -179,17 +194,29 @@ def _login_gate():
     if not users:
         return None
     if st.session_state.pop("_auth_clear", False):
-        _cookie_js("", 0)
+        _remember_js("", 0)
     user = st.session_state.get("auth_user")
     if not user and not st.session_state.get("_auth_nocookie"):
         user = _cookie_user(users)
+        if not user and st.query_params.get("auth"):          # sent back from this device's localStorage
+            user = _check_token(st.query_params.get("auth"), users)
+            if user:
+                st.session_state._auth_set = st.query_params.get("auth")
+            else:
+                _remember_js("", 0)                            # expired / changed password: forget it
+            try:
+                del st.query_params["auth"]
+            except Exception:
+                pass
         if user:
             st.session_state.auth_user = user
     if user:
         tok = st.session_state.pop("_auth_set", None)
         if tok:
-            _cookie_js(tok, 30 * 86400)
+            _remember_js(tok, 30 * 86400)
         return user
+    if not st.session_state.get("_auth_nocookie"):
+        components.html(_RESTORE_JS, height=0)
     st.markdown("<style>[data-testid='stSidebar'],[data-testid='stExpandSidebarButton']{display:none!important}"
                 ".block-container{max-width:460px!important;padding-top:14vh!important}</style>", unsafe_allow_html=True)
     st.markdown("<h2 style='text-align:center;white-space:nowrap;margin-bottom:.5rem'>ระบบนำร่องสงขลา</h2>", unsafe_allow_html=True)
@@ -203,6 +230,7 @@ def _login_gate():
         name = next((k for k in users if k.lower() == u.lower()), None)
         if name and _pw_ok(users[name], p):
             st.session_state.auth_user = name
+            st.session_state.pop("_auth_nocookie", None)
             if keep:
                 st.session_state._auth_set = _token(name, users)
             st.rerun()
