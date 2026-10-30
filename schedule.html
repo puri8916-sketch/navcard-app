@@ -1687,6 +1687,8 @@ const isBold=(row,c)=>{ const w=row.w&&row.w[c]; return w==='b' || (w!=='n' && P
 const wCls=(row,c)=>{ const w=row.w&&row.w[c]; return w==='b'?'wb':w==='n'?'wn':''; };
 function setH(row,c,v){ if(!row.h) row.h=Array(17).fill(''); row.h[c]=v; }
 const cellHTML=(row,c)=>hOf(row,c)||esc(row.c[c]);
+const DAYPFX=/^\d{1,2}-$/;   /* a time cell holding only the day ("30-") */
+const cellOut=(row,c)=>([4,5,13].includes(c)&&DAYPFX.test(String(row.c[c]||'').trim()))?'':cellHTML(row,c);   /* image: an unfinished "30-" stays blank */
 // keep only text + colour spans from an edited cell
 function cleanHTML(el){
   let colored=false;
@@ -1880,6 +1882,8 @@ document.addEventListener('mouseup',()=>{ if(dragging){ dragging=false; BOARD.cl
 
 /* editing */
 BOARD.addEventListener('focusin',e=>{ const i=e.target.closest('.ce'); if(!i) return; i.select(); typingKey=null; i._v0=i.value;
+  if(['4','5','13'].includes(i.dataset.c) && DAYPFX.test(i.value.trim())){ const end=()=>{ if(document.activeElement!==i) return; const g=document.createRange(); g.selectNodeContents(i); g.collapse(false); const w=getSelection(); w.removeAllRanges(); w.addRange(g); };
+    end(); setTimeout(end,0); i.addEventListener('mouseup',()=>setTimeout(end,0),{once:true}); }   /* "30-": caret after the day */
   if(i.dataset.r!==undefined && !dragging && !quietFocus){ const {b,r,c}=cellOf(i); const R=rect(); const inside=R && R.b===b && r>=R.r0 && r<=R.r1 && c>=R.c0 && c<=R.c1; if(!SEL || !(inside && (multi()||rightDown))) { if(!(SEL && SEL.b===b && SEL.r1===r && SEL.c1===c)) setSel(b,r,c,false); } }
   hidePop(); });   // the list opens when typing, so dragging across cells is not blocked
 BOARD.addEventListener('input',e=>{ const i=e.target.closest('.ce'); if(!i||!BD) return;
@@ -1896,6 +1900,8 @@ BOARD.addEventListener('change',e=>{ const i=e.target.closest('.ce'); if(!i||!BD
       if(!row.c[loa]) row.c[loa]=s.loa||''; if(!row.c[ag]) row.c[ag]=s.agent||'';
       if(!row.c[be]) row.c[be]= c===1 ? (s.berth||'') : (lastBerth(s.name, `${BD.date} 23:59`)||s.berth||'');
       boardSave(); renderBoard(); } } }
+  if((c===1||c===10) && i.value.trim()){ const tc=c===1?4:13;   /* ship name typed → ETA/ETD starts with the day ("30-"), type the time after it */
+    if(!String(row.c[tc]||'').trim()){ const base=BD.blocks[b].date||BD.date; row.c[tc]=`${+addDays(base,1).slice(8)}-`; boardSave(); renderBoard(); return; } }
   if((c===4||c===5||c===13) && i.value.trim()){   /* ETA / POB / ETD: 1600 → 30-1600; ETA and POB fill each other when the other is empty */
     const base=BD.blocks[b].date||BD.date, dt=parseTime(i.value,base);
     if(dt){ const t=fmtT(dt), old=(i._v0!==undefined?i._v0:i.defaultValue), o2=c===4?5:c===5?4:-1;
@@ -2091,7 +2097,7 @@ function boardStaticHTML(){
     h+=`<tr><td class="date" colspan="2">${esc(b.label)}</td><td class="title" colspan="15">SHIP'S&nbsp;&nbsp;&nbsp;SCHEDULE&nbsp;&nbsp;FOR&nbsp;&nbsp;SONGKHLA&nbsp;&nbsp;&nbsp;PILOT</td></tr>`;
     h+=`<tr><td class="h-in" colspan="9">ENTERING</td><td class="h-out" colspan="8">SAILING &amp; SHIFTING</td></tr>`;
     h+=`<tr>${LHEAD.map(t=>`<td class="hd">${t}</td>`).join('')}</tr>`;
-    for(const row of oneTrailing(b.rows)) h+=`<tr>${row.c.map((v,c)=>`<td class="${[c===1||c===10?'l':'', PILOT_COLS.includes(c)?'pc':'', (c===0||c===9)&&String(v||'').trim()==='พ'?'pw':'', wCls(row,c)].filter(Boolean).join(' ')}"${tdStyle(row,c)}>${cellHTML(row,c)}</td>`).join('')}</tr>`;
+    for(const row of oneTrailing(b.rows)) h+=`<tr>${row.c.map((v,c)=>`<td class="${[c===1||c===10?'l':'', PILOT_COLS.includes(c)?'pc':'', (c===0||c===9)&&String(v||'').trim()==='พ'?'pw':'', wCls(row,c)].filter(Boolean).join(' ')}"${tdStyle(row,c)}>${cellOut(row,c)}</td>`).join('')}</tr>`;
     return h+'</table>';
   }).join('');
 }
