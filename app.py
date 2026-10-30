@@ -479,9 +479,8 @@ with _main:
             st.write(f"- **{cn}** — {name} — LOA: {loa_display} — {len(s['rows'])} legs")
 
         st.divider()
-        _SHOW_MANUAL_REMARK = False   # hidden: Remarks are filled automatically now (set True to bring the box back)
-        if _SHOW_MANUAL_REMARK:
-            st.subheader("✏️ เพิ่ม Remark (ถ้ามี)")
+        # typed Remarks: folded away by default (automatic Remarks below); click to open
+        with st.expander("✏️ เพิ่ม Remark เอง (ถ้ามี) — กดเพื่อแสดง/ซ่อน", expanded=bool(st.session_state.remarks)):
             st.caption("วางได้หลายบรรทัดพร้อมกัน บรรทัดละ 1 การ์ด รูปแบบ: เลขการ์ด เว้นวรรค ข้อความ "
                        "— ระบบตัดบรรทัด ใส่สีแดงและฟอนต์ลายมือไทยให้เอง")
             st.text_area(
@@ -515,7 +514,7 @@ with _main:
         _off = st.session_state.setdefault("auto_off", set())
         st.subheader("🤖 Remark อัตโนมัติ")
         if _auto:
-            st.caption("ระบบใส่ให้เองตามกรณีพิเศษ · กด “ไม่ใช้” เพื่อเอาออกจากการ์ดใบนั้น")
+            st.caption("ระบบใส่ให้เองตามกรณีพิเศษ · กด “ไม่ใช้” เพื่อเอาออกจากการ์ดใบนั้น · ถ้าการ์ดใบไหนมี Remark ที่พิมพ์เอง จะใช้ของที่พิมพ์เองแทน")
             for cn, texts in _auto.items():
                 c1, c2 = st.columns([5, 1])
                 _manual = cn in st.session_state.remarks
