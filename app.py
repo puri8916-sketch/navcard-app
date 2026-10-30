@@ -479,41 +479,43 @@ with _main:
             st.write(f"- **{cn}** — {name} — LOA: {loa_display} — {len(s['rows'])} legs")
 
         st.divider()
-        st.subheader("✏️ เพิ่ม Remark (ถ้ามี)")
-        st.caption("วางได้หลายบรรทัดพร้อมกัน บรรทัดละ 1 การ์ด รูปแบบ: เลขการ์ด เว้นวรรค ข้อความ "
-                   "— ระบบตัดบรรทัด ใส่สีแดงและฟอนต์ลายมือไทยให้เอง")
-        st.text_area(
-            "เลขการ์ด + ข้อความ Remark", key="remark_bulk_input", height=140,
-            placeholder="SGZ40/70 **แยกใบแจ้งหนี้เรือออก/ไม่มีเรือออก**\n"
-                        "SGZ41/70 แจ้งเรือออก: เปลี่ยนบริษัทหรือตัวแทนสายเรือ*แยกใบแจ้งหนี้เรือเข้า/ไม่มีเรือเข้า*",
-        )
-        st.button("➕ เพิ่ม Remark ทั้งหมดที่วาง", on_click=_add_remarks)
+        _SHOW_MANUAL_REMARK = False   # hidden: Remarks are filled automatically now (set True to bring the box back)
+        if _SHOW_MANUAL_REMARK:
+            st.subheader("✏️ เพิ่ม Remark (ถ้ามี)")
+            st.caption("วางได้หลายบรรทัดพร้อมกัน บรรทัดละ 1 การ์ด รูปแบบ: เลขการ์ด เว้นวรรค ข้อความ "
+                       "— ระบบตัดบรรทัด ใส่สีแดงและฟอนต์ลายมือไทยให้เอง")
+            st.text_area(
+                "เลขการ์ด + ข้อความ Remark", key="remark_bulk_input", height=140,
+                placeholder="SGZ40/70 **แยกใบแจ้งหนี้เรือออก/ไม่มีเรือออก**\n"
+                            "SGZ41/70 แจ้งเรือออก: เปลี่ยนบริษัทหรือตัวแทนสายเรือ*แยกใบแจ้งหนี้เรือเข้า/ไม่มีเรือเข้า*",
+            )
+            st.button("➕ เพิ่ม Remark ทั้งหมดที่วาง", on_click=_add_remarks)
 
-        _msg = st.session_state.pop("remark_msg", None)
-        if _msg:
-            if _msg["added"]:
-                st.success("เพิ่มแล้ว: " + ", ".join(_msg["added"])
-                           + (f"  (แทนที่ของเดิม: {', '.join(_msg['replaced'])})" if _msg["replaced"] else ""))
-            for _n in _msg["notes"]:
-                st.warning(_n)
+            _msg = st.session_state.pop("remark_msg", None)
+            if _msg:
+                if _msg["added"]:
+                    st.success("เพิ่มแล้ว: " + ", ".join(_msg["added"])
+                               + (f"  (แทนที่ของเดิม: {', '.join(_msg['replaced'])})" if _msg["replaced"] else ""))
+                for _n in _msg["notes"]:
+                    st.warning(_n)
 
-        if st.session_state.remarks:
-            st.write("Remark ที่ตั้งไว้:")
-            for cn, lines in list(st.session_state.remarks.items()):
-                c1, c2 = st.columns([5, 1])
-                c1.markdown(f"**{cn}**")
-                c1.text(st.session_state.remark_texts.get(cn, " ".join(lines)))
-                if c2.button("ลบ", key=f"del_remark_{cn}"):
-                    del st.session_state.remarks[cn]
-                    st.session_state.remark_texts.pop(cn, None)
-                    st.rerun()
+            if st.session_state.remarks:
+                st.write("Remark ที่ตั้งไว้:")
+                for cn, lines in list(st.session_state.remarks.items()):
+                    c1, c2 = st.columns([5, 1])
+                    c1.markdown(f"**{cn}**")
+                    c1.text(st.session_state.remark_texts.get(cn, " ".join(lines)))
+                    if c2.button("ลบ", key=f"del_remark_{cn}"):
+                        del st.session_state.remarks[cn]
+                        st.session_state.remark_texts.pop(cn, None)
+                        st.rerun()
 
         # automatic Remarks for the special cases (CAP / ยาวเกิน 173 ม. / แยกใบแจ้งหนี้ / ลากบาส)
         _auto, _auto_warn = nc.auto_remarks(report, st.session_state.loa_overrides)
         _off = st.session_state.setdefault("auto_off", set())
         st.subheader("🤖 Remark อัตโนมัติ")
         if _auto:
-            st.caption("ระบบใส่ให้เองตามกรณีพิเศษ · ถ้าการ์ดใบไหนมี Remark ที่พิมพ์เองด้านบน จะใช้ของที่พิมพ์เองแทน")
+            st.caption("ระบบใส่ให้เองตามกรณีพิเศษ · กด “ไม่ใช้” เพื่อเอาออกจากการ์ดใบนั้น")
             for cn, texts in _auto.items():
                 c1, c2 = st.columns([5, 1])
                 _manual = cn in st.session_state.remarks
