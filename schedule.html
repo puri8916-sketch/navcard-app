@@ -430,6 +430,10 @@ body{padding-bottom:64px}
 
 /* "พ" (late ship) mark: bold red */
 .lsheet td.pw,.lsheet td.pw .ce{font-weight:700;color:#FF0000}
+
+.lsheet.board td.wb .ce,.lsheet td.wb{font-weight:700}
+.lsheet.board td.wn .ce,.lsheet td.wn{font-weight:400}
+.boldbtn b{font:800 18px serif}
 </style>
 <style>:root{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}body{margin:0}[hidden]{display:none!important}</style>
 </head>
@@ -459,7 +463,7 @@ body{padding-bottom:64px}
     <div class="ltool">
       <div class="grp"><button class="btn primary" id="lineCopy">คัดลอกส่งLINE</button></div>
       <div class="grp"><button class="btn tb" data-bact="undo" title="Ctrl+Z">↶ ย้อนกลับ</button><button class="btn tb" data-bact="redo" title="Ctrl+Y">↷ ทำซ้ำ</button></div>
-      <div class="grp fcolor"><button class="btn tb fc-main" data-bact="color" title="สีตัวอักษร"><span class="fcA">A</span><span class="fcBar" id="fcBar"></span></button><button class="btn tb fc-drop" id="fcDrop" title="เลือกสี" aria-label="เลือกสีตัวอักษร">▾</button><div class="fc-pal" id="fcPal" hidden></div></div><div class="grp"><button class="btn tb fillbtn" data-bact="togglefill" title="พื้นหลังเทาอ่อน (กดซ้ำเพื่อล้าง)"><span class="fillsw"></span>พื้นเทา</button></div>
+      <div class="grp fcolor"><button class="btn tb fc-main" data-bact="color" title="สีตัวอักษร"><span class="fcA">A</span><span class="fcBar" id="fcBar"></span></button><button class="btn tb fc-drop" id="fcDrop" title="เลือกสี" aria-label="เลือกสีตัวอักษร">▾</button><div class="fc-pal" id="fcPal" hidden></div></div><div class="grp"><button class="btn tb fillbtn" data-bact="togglefill" title="พื้นหลังเทาอ่อน (กดซ้ำเพื่อล้าง)"><span class="fillsw"></span>พื้นเทา</button></div><div class="grp"><button class="btn tb boldbtn" data-bact="bold" title="ตัวหนา (Ctrl+B)"><b>B</b> ตัวหนา</button></div>
       <div class="grp" id="addBlk"></div>
       <div class="grp"><label class="since" for="lineSince">ตั้งแต่</label><input id="lineSince" class="since num" autocomplete="off" aria-label="ดึงเรือตั้งแต่เวลา"><button class="btn" id="linePull">⟳ ดึงจากจัดตารางใหม่</button><span class="note" id="boardInfo" hidden></span></div>
     </div>
@@ -1610,6 +1614,9 @@ const FILL='#C8C8C8';   // พื้นหลังเทา (cells saved with t
 const bgOf=(row,c)=>{ const v=(row.g&&row.g[c])||''; return v==='#E0E0E0'?FILL:v; };
 const tdStyle=(row,c)=>{ const k=colOf(row,c), g=bgOf(row,c); const st=(k?`color:${k};`:'')+(g?`background:${g};`:''); return st?` style="${st}"`:''; };
 const hOf=(row,c)=>(row.h&&row.h[c])||'';
+// bold per cell: row.w[c] = 'b' bold / 'n' not bold / '' default (Pilot columns are bold by default)
+const isBold=(row,c)=>{ const w=row.w&&row.w[c]; return w==='b' || (w!=='n' && PILOT_COLS.includes(c)); };
+const wCls=(row,c)=>{ const w=row.w&&row.w[c]; return w==='b'?'wb':w==='n'?'wn':''; };
 function setH(row,c,v){ if(!row.h) row.h=Array(17).fill(''); row.h[c]=v; }
 const cellHTML=(row,c)=>hOf(row,c)||esc(row.c[c]);
 // keep only text + colour spans from an edited cell
@@ -1724,7 +1731,7 @@ function boardTable(b,bi){
   b.rows.forEach((row,ri)=>{
     h+=`<tr data-b="${bi}" data-r="${ri}">`;
     for(let c=0;c<17;c++){
-      const f=LF[c]; const cls=[c===1||c===10?'l':'', PILOT_COLS.includes(c)?'pc':'', (c===0||c===9)&&String(row.c[c]||'').trim()==='พ'?'pw':''].filter(Boolean).join(' ');
+      const f=LF[c]; const cls=[c===1||c===10?'l':'', PILOT_COLS.includes(c)?'pc':'', (c===0||c===9)&&String(row.c[c]||'').trim()==='พ'?'pw':'', wCls(row,c)].filter(Boolean).join(' ');
       h+=`<td class="${cls}" data-b="${bi}" data-r="${ri}" data-c="${c}"${tdStyle(row,c)}><div class="ce" contenteditable="true"${colOf(row,c)?` style="color:${colOf(row,c)}"`:''} data-b="${bi}" data-r="${ri}" data-c="${c}"${f?` data-f="${f[0]}" data-side="${f[1]}"`:''} spellcheck="false">${cellHTML(row,c)}</div></td>`;
     }
     h+='</tr>';
@@ -1834,7 +1841,7 @@ function relayout(bi, r0, c0){
   rows.forEach((row,ri)=>{
     for(const [side,a,z,tc] of [['L',0,9,4],['R',9,17,13]]){
       const c=row.c.slice(a,z); if(!c.some(v=>String(v).trim())) continue;
-      const hf={side, c, r:row.r.slice(a,z), h:Array.from({length:z-a},(x,k)=>hOf(row,a+k)), g:Array.from({length:z-a},(x,k)=>bgOf(row,a+k)), dt:parseTime(row.c[tc],base)||'', ord:halves.length};
+      const hf={side, c, r:row.r.slice(a,z), h:Array.from({length:z-a},(x,k)=>hOf(row,a+k)), g:Array.from({length:z-a},(x,k)=>bgOf(row,a+k)), w:Array.from({length:z-a},(x,k)=>(row.w&&row.w[a+k])||''), dt:parseTime(row.c[tc],base)||'', ord:halves.length};
       if(ri===r0 && c0>=a && c0<z) moved=hf;
       halves.push(hf);
     }
@@ -1842,7 +1849,7 @@ function relayout(bi, r0, c0){
   const timed=halves.filter(x=>x.dt).sort((x,y)=>x.dt<y.dt?-1:x.dt>y.dt?1:(berthRank(x.c[x.side==='L'?6:5])-berthRank(y.c[y.side==='L'?6:5]))||x.ord-y.ord), untimed=halves.filter(x=>!x.dt);
   const out=[blankRow()]; let prev=null; const slots=[];
   for(const x of timed){ const s=slots[slots.length-1]; if(s && s.dt===x.dt) s.items.push(x); else slots.push({dt:x.dt, items:[x]}); }
-  const place=(L,R)=>{ const row=blankRow(); for(const [hf,a] of [[L,0],[R,9]]) if(hf){ hf.c.forEach((v,k)=>{ row.c[a+k]=v; row.r[a+k]=hf.r[k]; row.h[a+k]=hf.h[k]; if(hf.g[k]){ if(!row.g) row.g=Array(17).fill(''); row.g[a+k]=hf.g[k]; } }); hf.at=out.length; } out.push(row); };
+  const place=(L,R)=>{ const row=blankRow(); for(const [hf,a] of [[L,0],[R,9]]) if(hf){ hf.c.forEach((v,k)=>{ row.c[a+k]=v; row.r[a+k]=hf.r[k]; row.h[a+k]=hf.h[k]; if(hf.g[k]){ if(!row.g) row.g=Array(17).fill(''); row.g[a+k]=hf.g[k]; } if(hf.w&&hf.w[k]){ if(!row.w) row.w=Array(17).fill(''); row.w[a+k]=hf.w[k]; } }); hf.at=out.length; } out.push(row); };
   for(const s of slots){
     if(needGap(prev, s.dt)) out.push(blankRow());
     const ins=s.items.filter(x=>x.side==='L'), outs=s.items.filter(x=>x.side==='R');
@@ -1874,6 +1881,8 @@ function setColor(col){
   pushUndo(); eachSel((row,r,c)=>{ row.r[c]=col; setH(row,c,''); }); boardSave(); renderBoard();
 }
 function setFill(on){ if(!needSel()) return; pushUndo(); eachSel((row,r,c)=>{ if(!row.g) row.g=Array(17).fill(''); row.g[c]=on?FILL:''; }); boardSave(); renderBoard(); }
+function toggleBold(){ if(!needSel()) return; let all=true; eachSel((row,r,c)=>{ if(!isBold(row,c)) all=false; });
+  pushUndo(); eachSel((row,r,c)=>{ if(!row.w) row.w=Array(17).fill(''); row.w[c]=all?'n':'b'; }); boardSave(); renderBoard(); }
 function toggleFill(){ if(!needSel()) return; let all=true; eachSel((row,r,c)=>{ if(!bgOf(row,c)) all=false; }); setFill(!all); }
 function pickColor(col){ if(col) { curColor=col; $('fcBar').style.background=col; } setColor(col); $('fcPal').hidden=true; }
 function insRows(where){ if(!needSel()) return; const R=rect(); const n=R.r1-R.r0+1; pushUndo(); const rows=BD.blocks[R.b].rows;
@@ -1924,6 +1933,7 @@ async function menuCopy(cut){ if(!needSel()) return; const t=selTSV(); CLIP=t; t
 /* keyboard */
 BOARD.addEventListener('keydown',e=>{ const i=e.target.closest('.ce'); if(!i) return;
   const open=!pop.hidden && cb.inp===i; const k=e.key, mod=e.ctrlKey||e.metaKey;
+  if(mod && !e.shiftKey && (e.key==='b'||e.key==='B'||e.code==='KeyB')){ e.preventDefault(); toggleBold(); return; }
   if(mod && isZ(e) && !e.shiftKey){ e.preventDefault(); undo(); return; }
   if(mod && (isY(e) || (isZ(e) && e.shiftKey))){ e.preventDefault(); redo(); return; }
   if(open && (k==='ArrowDown'||k==='ArrowUp')){ e.preventDefault(); const n=cb.items.length; cb.act=(cb.act+(k==='ArrowDown'?1:-1)+n)%n;
@@ -1952,7 +1962,7 @@ BOARD.addEventListener('focusout',e=>{ const i=e.target.closest('.ce'); if(i && 
 const MENU=$('cmenu');
 const MENU_ITEMS=[
   ['undo','↶ ย้อนกลับ','Ctrl+Z'],['redo','↷ ทำซ้ำ','Ctrl+Y'],['-'],
-  ['colors'],['fill','▦ พื้นหลังเทาอ่อน',''],['nofill','ล้างพื้นหลัง',''],['-'],
+  ['colors'],['bold','𝐁 ตัวหนา / ยกเลิกตัวหนา','Ctrl+B'],['fill','▦ พื้นหลังเทาอ่อน',''],['nofill','ล้างพื้นหลัง',''],['-'],
   ['cut','ตัด','Ctrl+X'],['copy','คัดลอก','Ctrl+C'],['paste','วาง','Ctrl+V'],['clear','ลบข้อมูล','Delete'],['delblock','เอาตารางวันนี้ออกทั้งตาราง',''],['-'],
   ['insup','แทรกแถวด้านบน',''],['insdown','แทรกแถวด้านล่าง',''],['delrow','ลบแถว','']];
 MENU.innerHTML = MENU_ITEMS.map(x=>x[0]==='-'?'<hr>':x[0]==='colors'?`<div class="mcol"><span>สีตัวอักษร</span><div>${FC.map(k=>`<button type="button" data-col="${k}" style="background:${k}" title="${k}"></button>`).join('')}<button type="button" data-col="" class="auto" title="อัตโนมัติ (ดำ)">A</button></div></div>`:`<button type="button" data-m="${x[0]}" class="${x[3]||''}"><span>${x[1]}</span><kbd>${x[2]}</kbd></button>`).join('');
@@ -1972,7 +1982,7 @@ document.addEventListener('scroll',()=>hideMenu(),true);
 function boardAct(a){
   if(!BD) return;
   ({undo, redo, cut:()=>menuCopy(true), copy:()=>menuCopy(false), paste:menuPaste, clear:clearSel,
-    color:()=>setColor(curColor), fill:()=>setFill(true), nofill:()=>setFill(false), togglefill:toggleFill, delblock:()=>{ if(SEL) delBlock(SEL.b); },
+    color:()=>setColor(curColor), fill:()=>setFill(true), nofill:()=>setFill(false), togglefill:toggleFill, bold:toggleBold, delblock:()=>{ if(SEL) delBlock(SEL.b); },
     insup:()=>insRows('up'), insdown:()=>insRows('down'), delrow:delRows,
     rowup:()=>moveSel(-1,true), rowdown:()=>moveSel(1,true), selup:()=>moveSel(-1,false), seldown:()=>moveSel(1,false)}[a]||(()=>{}))();
 }
@@ -2007,7 +2017,7 @@ function boardStaticHTML(){
     h+=`<tr><td class="date" colspan="2">${esc(b.label)}</td><td class="title" colspan="15">SHIP'S&nbsp;&nbsp;&nbsp;SCHEDULE&nbsp;&nbsp;FOR&nbsp;&nbsp;SONGKHLA&nbsp;&nbsp;&nbsp;PILOT</td></tr>`;
     h+=`<tr><td class="h-in" colspan="9">ENTERING</td><td class="h-out" colspan="8">SAILING &amp; SHIFTING</td></tr>`;
     h+=`<tr>${LHEAD.map(t=>`<td class="hd">${t}</td>`).join('')}</tr>`;
-    for(const row of oneTrailing(b.rows)) h+=`<tr>${row.c.map((v,c)=>`<td class="${[c===1||c===10?'l':'', PILOT_COLS.includes(c)?'pc':'', (c===0||c===9)&&String(v||'').trim()==='พ'?'pw':''].filter(Boolean).join(' ')}"${tdStyle(row,c)}>${cellHTML(row,c)}</td>`).join('')}</tr>`;
+    for(const row of oneTrailing(b.rows)) h+=`<tr>${row.c.map((v,c)=>`<td class="${[c===1||c===10?'l':'', PILOT_COLS.includes(c)?'pc':'', (c===0||c===9)&&String(v||'').trim()==='พ'?'pw':'', wCls(row,c)].filter(Boolean).join(' ')}"${tdStyle(row,c)}>${cellHTML(row,c)}</td>`).join('')}</tr>`;
     return h+'</table>';
   }).join('');
 }
