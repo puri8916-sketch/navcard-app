@@ -247,9 +247,6 @@ with _main:
         if isinstance(_d, dict) and _d.get("hidden"):
             _ship_memory.pop(_nm, None)
 
-    st.caption("โยนไฟล์ zip ชุดการ์ด (NavigationCard PDFs + ReportCardIsClosedDaily.xlsx + CSV ตัวเลข) ทีเดียว "
-               "— หลายวันใส่หลาย zip พร้อมกันได้ — แล้วทำทีละขั้น: 1) รายงานการปิดการ์ด 2) รวมการ์ดเป็น PDF เดียว "
-               "(ใส่แค่ ReportCardIsClosedDaily.xlsx ก็ได้ถ้าจะทำเฉพาะขั้นที่ 1)")
 
     def _add_remarks():
         """Button callback: parse the pasted '<card no> <message>' lines."""
