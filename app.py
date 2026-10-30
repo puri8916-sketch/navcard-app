@@ -514,7 +514,6 @@ with _main:
         _off = st.session_state.setdefault("auto_off", set())
         st.subheader("🤖 Remark อัตโนมัติ")
         if _auto:
-            st.caption("ระบบใส่ให้เองตามกรณีพิเศษ · กด “ไม่ใช้” เพื่อเอาออกจากการ์ดใบนั้น · ถ้าการ์ดใบไหนมี Remark ที่พิมพ์เอง จะใช้ของที่พิมพ์เองแทน")
             for cn, texts in _auto.items():
                 c1, c2 = st.columns([5, 1])
                 _manual = cn in st.session_state.remarks
