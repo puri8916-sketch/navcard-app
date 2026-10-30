@@ -71,7 +71,7 @@ def setup(store):
         if store is None:
             st.caption("⏳ กำลังอ่านการเชื่อมต่อ Google Sheet ของเครื่องนี้…")
         else:
-            st.error("ยังไม่ได้เชื่อมต่อ Google Sheet — ไปที่เมนู 📒 บันทึกเรือ › ตั้งค่า › เชื่อมต่อ Google Sheet ก่อน "
+            st.error("ยังไม่ได้เชื่อมต่อ Google Sheet — ไปที่เมนู สมุดบันทึกเรือ › ตั้งค่า › เชื่อมต่อ Google Sheet ก่อน "
                      "(รายงานเก็บไว้ในชีตเดียวกัน ทุกเครื่องเห็นเหมือนกัน)")
         return None
     db = rc.SheetStore(*cfg)
