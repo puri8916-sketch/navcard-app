@@ -17,12 +17,13 @@
   function getCfg() {
     let c = null;
     try { c = JSON.parse(ls.get(CFG) || "null"); } catch (e) {}
-    if (c && c.off) return { url: "", key: "" };   // disconnected on purpose: ignore the server-injected sheet too
     const inj = window.__SYNC__ || {};
+    if (inj.managed && inj.url) return { url: inj.url.trim(), key: (inj.key || "").trim() };   // signed-in site: the server's sheet always wins
+    if (c && c.off) return { url: "", key: "" };   // disconnected on purpose: ignore the server-injected sheet too
     return { url: ((c && c.url) || inj.url || "").trim(), key: ((c && c.key) || inj.key || "").trim() };
   }
   // remember a server-injected config so every menu on this device (incl. the merge page) can use it
-  (function () { const inj = window.__SYNC__; if (inj && inj.url && !ls.get(CFG)) ls.set(CFG, JSON.stringify({ url: inj.url, key: inj.key || "" })); })();
+  (function () { const inj = window.__SYNC__; if (inj && inj.url && (inj.managed || !ls.get(CFG))) ls.set(CFG, JSON.stringify({ url: inj.url, key: inj.key || "" })); })();
 
   function load() {
     try { const c = JSON.parse(ls.get(CACHE) || "null"); if (c) S = Object.assign(S, c); } catch (e) {}

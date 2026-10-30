@@ -8,9 +8,10 @@ import report_core as rc
 
 def _cfg(store):
     try:
-        sec = st.secrets.get("sync", {})
-        if sec.get("url"):
-            return str(sec["url"]), str(sec.get("key", ""))
+        for name in ("app", "sync"):   # [app] = the one merged script for every menu
+            sec = st.secrets.get(name, {})
+            if sec.get("url"):
+                return str(sec["url"]), str(sec.get("key", ""))
     except Exception:
         pass
     c = (store or {}).get("cfg")

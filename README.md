@@ -4,6 +4,26 @@
 ReportCardIsClosedDaily.xlsx + CSV ตัวเลข) เป็น PDF เดียว 2 การ์ด/หน้า
 พร้อมตรวจสอบความครบถ้วนอัตโนมัติ
 
+
+## ติดตั้งแบบรวม: ล็อกอินครั้งเดียว ใช้ Google Sheet เดียว (แนะนำ)
+
+1. เปิดชีต **ShipSchedule_DB** › ส่วนขยาย › Apps Script › ลบโค้ดเดิมทั้งหมด แล้ววางโค้ดจาก `apps_script/Navcard.gs`
+   - `KEYS`: ใส่รหัสเดิมของทั้ง 2 สคริปต์ เช่น `['รหัสจัดตาราง', 'รหัสบันทึกเรือ']`
+   - `OLD_LOG_SHEET_ID`: ID ของชีตบันทึกเรือเดิม (ใน URL ระหว่าง `/d/` กับ `/edit`)
+2. เลือกฟังก์ชัน `importOldLogSheet` › Run (อนุญาตสิทธิ์) — ย้ายข้อมูลสมุดบันทึกเรือ/เครื่องคิดเลข/รายงานปิดการ์ดมาแท็บ `data`
+3. Deploy › Manage deployments › ✏️ › Version: New version › Deploy (URL เดิมของจัดตารางเรือใช้ต่อ)
+4. Streamlit Cloud › App › Settings › Secrets:
+```toml
+[app]
+url = "https://script.google.com/macros/s/…/exec"   # URL เดียวกับ [schedule] เดิม
+key = "รหัสจัดตาราง"
+
+[users]
+puri = "รหัสผ่าน"
+somchai = "รหัสผ่าน"
+```
+ไม่มี `[users]` = ไม่ต้องล็อกอิน · มี `[app]` = ทุกเมนูใช้ชีตนี้ ทุกเครื่องไม่ต้องกรอก URL เอง
+
 ## วิธีติดตั้ง (ทำครั้งเดียว)
 
 ต้องมี Python 3.9 ขึ้นไปในเครื่อง (ดาวน์โหลดได้ที่ python.org ถ้ายังไม่มี)

@@ -101,17 +101,120 @@ def apply_theme(choice):
 _HERE = os.path.dirname(os.path.abspath(__file__))
 
 
+def _cfg_for(kind):
+    """Sheet web-app URL/key: [app] (one merged script for everything) wins, else the old per-menu section."""
+    try:
+        for name in ("app", kind):
+            sec = st.secrets.get(name, {})
+            if sec.get("url"):
+                return {"url": str(sec.get("url")).strip(), "key": str(sec.get("key", "")).strip(),
+                        "managed": name == "app"}
+    except Exception:
+        pass
+    return {}
+
+
+# ---------- login (users in Streamlit secrets [users] name = "password"; none set → no login) ----------
+import hashlib as _hl
+import hmac as _hmac
+import time as _time
+
+_AUTH_COOKIE = "navauth"
+
+
+def _users():
+    try:
+        return {str(k).strip(): str(v) for k, v in st.secrets.get("users", {}).items()}
+    except Exception:
+        return {}
+
+
+def _auth_secret(users):
+    try:
+        x = str(st.secrets.get("auth_secret", ""))
+    except Exception:
+        x = ""
+    return (x or "navcard|" + "|".join(f"{k}={v}" for k, v in sorted(users.items()))).encode("utf-8")
+
+
+def _pw_ok(stored, given):
+    if stored.startswith("sha256:"):
+        return _hmac.compare_digest(stored[7:].lower(), _hl.sha256(given.encode("utf-8")).hexdigest())
+    return _hmac.compare_digest(stored, given)
+
+
+def _token(user, users, days=30):
+    exp = int(_time.time()) + days * 86400
+    msg = f"{user}|{exp}"
+    sig = _hmac.new(_auth_secret(users), msg.encode("utf-8"), _hl.sha256).hexdigest()[:32]
+    return f"{msg}|{sig}"
+
+
+def _cookie_user(users):
+    try:
+        raw = st.context.cookies.get(_AUTH_COOKIE, "")
+    except Exception:
+        raw = ""
+    from urllib.parse import unquote
+    parts = unquote(raw or "").split("|")
+    if len(parts) != 3:
+        return None
+    user, exp, sig = parts
+    good = _hmac.new(_auth_secret(users), f"{user}|{exp}".encode("utf-8"), _hl.sha256).hexdigest()[:32]
+    if user in users and exp.isdigit() and int(exp) > _time.time() and _hmac.compare_digest(sig, good):
+        return user
+    return None
+
+
+def _cookie_js(value, max_age):
+    from urllib.parse import quote
+    components.html("<script>try{window.parent.document.cookie='" + _AUTH_COOKIE + "=" + quote(value, safe="") +
+                    "; path=/; max-age=" + str(int(max_age)) + "; SameSite=Lax" +
+                    ("; Secure" if True else "") + "'}catch(e){}</script>", height=0)
+
+
+def _login_gate():
+    """Stop here with a login form until someone signs in. Returns the user name."""
+    users = _users()
+    if not users:
+        return None
+    if st.session_state.pop("_auth_clear", False):
+        _cookie_js("", 0)
+    user = st.session_state.get("auth_user")
+    if not user and not st.session_state.get("_auth_nocookie"):
+        user = _cookie_user(users)
+        if user:
+            st.session_state.auth_user = user
+    if user:
+        tok = st.session_state.pop("_auth_set", None)
+        if tok:
+            _cookie_js(tok, 30 * 86400)
+        return user
+    st.markdown("<style>[data-testid='stSidebar'],[data-testid='stExpandSidebarButton']{display:none!important}"
+                ".block-container{max-width:460px!important;padding-top:14vh!important}</style>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align:center;white-space:nowrap;margin-bottom:.5rem'>ระบบนำร่องสงขลา</h2>", unsafe_allow_html=True)
+    with st.form("login"):
+        u = st.text_input("ชื่อผู้ใช้")
+        p = st.text_input("รหัสผ่าน", type="password")
+        keep = st.checkbox("จำการเข้าสู่ระบบในเครื่องนี้ (30 วัน)", value=True)
+        go = st.form_submit_button("เข้าสู่ระบบ", type="primary", width="stretch")
+    if go:
+        u = u.strip()
+        name = next((k for k in users if k.lower() == u.lower()), None)
+        if name and _pw_ok(users[name], p):
+            st.session_state.auth_user = name
+            if keep:
+                st.session_state._auth_set = _token(name, users)
+            st.rerun()
+        st.error("ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง")
+    st.stop()
+
+
 def _sync_script():
     """<script> tags that give a page the shared Google Sheet sync client (sync_client.js).
     The sheet URL/key can come from Streamlit secrets ([sync] url=..., key=...) or be typed
     in once per device under บันทึกประจำวัน › ตั้งค่า."""
-    cfg = {}
-    try:
-        sec = st.secrets.get("sync", {})
-        if sec.get("url"):
-            cfg = {"url": str(sec.get("url")), "key": str(sec.get("key", ""))}
-    except Exception:
-        pass
+    cfg = _cfg_for("sync")
     with open(os.path.join(_HERE, "sync_client.js"), encoding="utf-8") as f:
         js = f.read()
     return ("<script>window.__SYNC__=" + json.dumps(cfg, ensure_ascii=False).replace("</", "<\\/") + ";</script>\n"
@@ -133,6 +236,9 @@ def _go(p):
 # menu can be hidden for more room, and make the reopen (>>) button easy to see.
 st.logo(os.path.join(_HERE, "md_logo.png"), size="large")   # กรมเจ้าท่า, top-left of the menu
 st.markdown("""<style>
+[data-testid="stMain"] [data-testid="stElementContainer"]:has(iframe[srcdoc*="navauth"]){position:absolute!important;width:0!important;height:0!important;overflow:hidden}
+.st-key-logout_btn{position:fixed!important;top:10px;right:16px;z-index:999990;width:auto!important}
+.st-key-logout_btn button{min-height:34px;padding:2px 12px;border-radius:8px;font-weight:600}
 [data-testid="stToolbarActions"],[data-testid="stToolbarActionButton"],[data-testid="stAppDeployButton"],[data-testid="stMainMenu"]{display:none!important}
 .stApp header[data-testid="stHeader"],[data-testid="stHeader"]{height:auto!important;background:transparent!important;pointer-events:none;width:auto!important;right:auto!important}
 [data-testid="stHeader"] button,[data-testid="stHeader"] img{pointer-events:auto}
@@ -155,6 +261,14 @@ div:has(> [data-testid="stExpandSidebarButton"]){order:-1!important;align-self:c
 
 # Start every page load with the menu hidden. Streamlit remembers the last open/closed state in
 # localStorage (stSidebarCollapsed-*), which overrides initial_sidebar_state, so reset it once per load.
+_AUTH_USER = _login_gate()
+if _AUTH_USER:
+    if st.button(f"👤 {_AUTH_USER} · ออกจากระบบ", key="logout_btn"):
+        st.session_state.pop("auth_user", None)
+        st.session_state._auth_clear = True
+        st.session_state._auth_nocookie = True   # this session's request still carries the old cookie
+        st.rerun()
+
 with st.sidebar:
     components.html("""<script>
     (()=>{const P=window.parent;if(!P||P.__navSbInit)return;P.__navSbInit=true;
@@ -208,13 +322,7 @@ if _page in (_P_SCHED, _P_NOTICE):
     # Data lives in its own Google Sheet (ShipSchedule_DB) via apps_script/Schedule.gs.
     with open(os.path.join(_HERE, "schedule.html"), encoding="utf-8") as _f:
         _sched_html = _f.read()
-    _sched_cfg = {}
-    try:
-        _sec = st.secrets.get("schedule", {})
-        if _sec.get("url"):
-            _sched_cfg = {"url": str(_sec.get("url")), "key": str(_sec.get("key", ""))}
-    except Exception:
-        pass
+    _sched_cfg = {k: v for k, v in _cfg_for("schedule").items() if k in ("url", "key")}
     _inject = ("window.__SCHED__=" + json.dumps(_sched_cfg, ensure_ascii=False).replace("</", "<\\/") + ";"
                "window.__CAN_PRINT__=true;" + ("window.__ONLY__='notice';" if _page == _P_NOTICE else ""))
     _sched_theme = {_THEME_OPTIONS[0]: "light", _THEME_OPTIONS[1]: "dark"}.get(_theme_choice)
