@@ -427,6 +427,10 @@ body{padding-bottom:64px}
 .datenav .dchip.on .d{color:#107C41;font-weight:700}
 .datenav .dchip.today:not(.on) .d{text-decoration:underline dotted;text-underline-offset:3px}
 @media (max-width:640px){.datenav .dchip{min-width:72px;padding:5px 8px}.datenav .dchip .d{font-size:14px}}
+
+/* "พ" (late ship) mark: big bold Thai letter like the Excel sheet */
+.lsheet td.pw,.lsheet td.pw .ce{font-family:Tahoma,"Leelawadee UI","Leelawadee","Noto Sans Thai",sans-serif!important;font-size:26px!important;font-weight:700;color:#FF0000;padding:0}
+.lsheet.xl td.pw{font-size:34px!important}
 </style>
 <style>:root{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}body{margin:0}[hidden]{display:none!important}</style>
 </head>
@@ -1721,7 +1725,7 @@ function boardTable(b,bi){
   b.rows.forEach((row,ri)=>{
     h+=`<tr data-b="${bi}" data-r="${ri}">`;
     for(let c=0;c<17;c++){
-      const f=LF[c]; const cls=[c===1||c===10?'l':'', PILOT_COLS.includes(c)?'pc':''].filter(Boolean).join(' ');
+      const f=LF[c]; const cls=[c===1||c===10?'l':'', PILOT_COLS.includes(c)?'pc':'', (c===0||c===9)&&String(row.c[c]||'').trim()==='พ'?'pw':''].filter(Boolean).join(' ');
       h+=`<td class="${cls}" data-b="${bi}" data-r="${ri}" data-c="${c}"${tdStyle(row,c)}><div class="ce" contenteditable="true"${colOf(row,c)?` style="color:${colOf(row,c)}"`:''} data-b="${bi}" data-r="${ri}" data-c="${c}"${f?` data-f="${f[0]}" data-side="${f[1]}"`:''} spellcheck="false">${cellHTML(row,c)}</div></td>`;
     }
     h+='</tr>';
@@ -2004,7 +2008,7 @@ function boardStaticHTML(){
     h+=`<tr><td class="date" colspan="2">${esc(b.label)}</td><td class="title" colspan="15">SHIP'S&nbsp;&nbsp;&nbsp;SCHEDULE&nbsp;&nbsp;FOR&nbsp;&nbsp;SONGKHLA&nbsp;&nbsp;&nbsp;PILOT</td></tr>`;
     h+=`<tr><td class="h-in" colspan="9">ENTERING</td><td class="h-out" colspan="8">SAILING &amp; SHIFTING</td></tr>`;
     h+=`<tr>${LHEAD.map(t=>`<td class="hd">${t}</td>`).join('')}</tr>`;
-    for(const row of oneTrailing(b.rows)) h+=`<tr>${row.c.map((v,c)=>`<td class="${[c===1||c===10?'l':'', PILOT_COLS.includes(c)?'pc':''].filter(Boolean).join(' ')}"${tdStyle(row,c)}>${cellHTML(row,c)}</td>`).join('')}</tr>`;
+    for(const row of oneTrailing(b.rows)) h+=`<tr>${row.c.map((v,c)=>`<td class="${[c===1||c===10?'l':'', PILOT_COLS.includes(c)?'pc':'', (c===0||c===9)&&String(v||'').trim()==='พ'?'pw':''].filter(Boolean).join(' ')}"${tdStyle(row,c)}>${cellHTML(row,c)}</td>`).join('')}</tr>`;
     return h+'</table>';
   }).join('');
 }
