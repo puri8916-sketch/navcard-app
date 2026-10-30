@@ -133,6 +133,9 @@ def _go(p):
 # menu can be hidden for more room, and make the reopen (>>) button easy to see.
 st.markdown("""<style>
 [data-testid="stSidebarCollapseButton"],[data-testid="stSidebarCollapseButton"] *{opacity:1!important;visibility:visible!important;display:inline-flex!important}
+[data-testid="stSidebar"] .stButton button{min-height:48px;padding:8px 14px;border-radius:10px}
+[data-testid="stSidebar"] .stButton button p{font-size:19px!important;font-weight:700!important;letter-spacing:.2px;line-height:1.3}
+[data-testid="stSidebar"] .stButton button[kind="secondary"]{color:#1d2730;border:1.5px solid #b9c3cc}
 [data-testid="stSidebarCollapseButton"] button,[data-testid="stExpandSidebarButton"]{border:1px solid rgba(128,128,128,.45)!important;border-radius:8px!important}
 </style>""", unsafe_allow_html=True)
 
