@@ -115,7 +115,7 @@ def _sync_script():
 
 _P_LOG, _P_SCHED, _P_CLOSE = "📒 บันทึกเรือ", "🗓 จัดตารางเรือ", "📑 ปิดการ์ดประจำวัน"
 _P_NOTICE = "📣 แจ้งเรือขาดย้ายท่า"
-_PAGES = [_P_SCHED, _P_NOTICE, _P_LOG, _P_CLOSE]   # จัดตารางเรือ first: the page the site opens on
+_PAGES = [_P_SCHED, _P_LOG, _P_CLOSE, _P_NOTICE]   # จัดตารางเรือ first: the page the site opens on
 if st.session_state.get("page_choice") not in _PAGES:
     st.session_state["page_choice"] = _PAGES[0]
 
