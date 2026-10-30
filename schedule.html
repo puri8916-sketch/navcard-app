@@ -18,7 +18,7 @@
   --f-ui:"Atkinson Hyperlegible","Sarabun","Noto Sans Thai","Leelawadee UI",Tahoma,sans-serif;
   --f-num:"Atkinson Hyperlegible Mono","Sarabun",ui-monospace,Consolas,monospace;
   --f-read:"Atkinson Hyperlegible","Sarabun",Tahoma,sans-serif;
-  --f-sheet:"Book Antiqua","Palatino Linotype",Palatino,"TH Sarabun New","Tahoma",serif;
+  --f-sheet:"Book Antiqua","Palatino Linotype",Palatino,"Tahoma","Leelawadee UI","Noto Sans Thai",serif;
   --r:10px;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
@@ -428,9 +428,8 @@ body{padding-bottom:64px}
 .datenav .dchip.today:not(.on) .d{text-decoration:underline dotted;text-underline-offset:3px}
 @media (max-width:640px){.datenav .dchip{min-width:72px;padding:5px 8px}.datenav .dchip .d{font-size:14px}}
 
-/* "พ" (late ship) mark: big bold Thai letter like the Excel sheet */
-.lsheet td.pw,.lsheet td.pw .ce{font-family:Tahoma,"Leelawadee UI","Leelawadee","Noto Sans Thai",sans-serif!important;font-size:26px!important;font-weight:700;color:#FF0000;padding:0}
-.lsheet.xl td.pw{font-size:34px!important}
+/* "พ" (late ship) mark: bold red */
+.lsheet td.pw,.lsheet td.pw .ce{font-weight:700;color:#FF0000}
 </style>
 <style>:root{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}body{margin:0}[hidden]{display:none!important}</style>
 </head>
