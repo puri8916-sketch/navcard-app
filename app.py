@@ -133,6 +133,7 @@ def _go(p):
 # menu can be hidden for more room, and make the reopen (>>) button easy to see.
 st.logo(os.path.join(_HERE, "md_logo.png"), size="large")   # กรมเจ้าท่า, top-left of the menu
 st.markdown("""<style>
+[data-testid="stToolbarActions"],[data-testid="stToolbarActionButton"],[data-testid="stAppDeployButton"],[data-testid="stMainMenu"]{display:none!important}
 [data-testid="stSidebarLogo"],[data-testid="stHeaderLogo"]{height:48px!important;max-height:48px!important;width:auto!important;max-width:none!important}
 [data-testid="stSidebarHeader"]{margin-left:-14px!important;padding-left:0!important;padding-top:6px!important;height:auto!important;align-items:flex-start!important}
 [data-testid="stSidebarCollapseButton"],[data-testid="stSidebarCollapseButton"] *{opacity:1!important;visibility:visible!important;display:inline-flex!important}
