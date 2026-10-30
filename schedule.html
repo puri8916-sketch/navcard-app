@@ -417,6 +417,14 @@ input,textarea{line-height:1.6}
 body{padding-bottom:64px}
 .hbar{bottom:var(--dnH,0px)!important}
 
+/* iOS app shell (see the script before the main one) */
+html.ios,html.ios body{height:100%;overflow:hidden;overscroll-behavior:none}
+html.ios body{display:flex;flex-direction:column;padding-bottom:0!important}
+html.ios #iosScroll{flex:1 1 auto;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding-bottom:20px}
+html.ios #iosFoot{flex:none;position:relative}
+html.ios .datenav{position:static;box-shadow:none}
+html.ios .hbar{position:absolute;bottom:100%!important}
+
 /* bottom day strip = Excel sheet tabs: 29-10-69, active tab white with a green underline */
 .datenav{background:#F3F3F3}
 .datenav .dstrip{gap:0;align-items:stretch}
@@ -558,6 +566,16 @@ body{padding-bottom:64px}
 <div class="cmenu" id="gmenu" role="menu" hidden></div>
 <div class="toast" id="toast" hidden></div>
 
+<script>
+/* iOS: fixed bars float over the sheet (keyboard / zoom / bounce), so there the page becomes an app shell:
+   header+content scroll in #iosScroll, the day strip sits below it as a normal block (like Android looks) */
+(function(){ const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+  if(!ios&&!/[?&]ios=1/.test(location.search)) return; document.documentElement.classList.add('ios');
+  const sc=document.createElement('div'); sc.id='iosScroll'; const ft=document.createElement('div'); ft.id='iosFoot';
+  const hd=document.querySelector('header.top'), mn=document.querySelector('main');
+  hd.parentNode.insertBefore(sc,hd); sc.appendChild(hd); sc.appendChild(mn);
+  sc.after(ft); ft.appendChild(document.getElementById('dateNav')); })();
+</script>
 <script>
 /* การเชื่อมต่อ: จาก Streamlit secrets [schedule] (window.__SCHED__) หรือที่กรอกในหน้า ตั้งค่า (เก็บในเครื่องนี้) */
 const CFG_KEY='shipsched_cfg';
@@ -2308,11 +2326,11 @@ window.addEventListener('resize',()=>{ fitHeads($('board')); fitHeads($('grid'))
   apply(); })();
 
 /* wide sheets: a sideways scrollbar pinned to the bottom of the screen (like Excel), so you don't have to scroll down to the sheet's own bar */
-(function(){ const bar=document.createElement('div'); bar.className='hbar'; bar.hidden=true; bar.innerHTML='<div></div>'; document.body.appendChild(bar);
+(function(){ const bar=document.createElement('div'); bar.className='hbar'; bar.hidden=true; bar.innerHTML='<div></div>'; (document.getElementById('iosFoot')||document.body).appendChild(bar);
   let cur=null, lock=false;
   const pick=()=>[...document.querySelectorAll('.vfit')].find(el=>el.offsetParent!==null)||null;
   function upd(){ cur=pick(); if(!cur){ bar.hidden=true; return; }
-    const r=cur.getBoundingClientRect(), over=cur.scrollWidth>cur.clientWidth+2, ownBarSeen=r.bottom<=innerHeight, onScreen=r.top<innerHeight-30&&r.bottom>0;
+    const r=cur.getBoundingClientRect(), over=cur.scrollWidth>cur.clientWidth+2, vb=document.getElementById('iosFoot')?document.getElementById('iosFoot').getBoundingClientRect().top:innerHeight, ownBarSeen=r.bottom<=vb, onScreen=r.top<vb-30&&r.bottom>0;
     bar.hidden=!(over&&onScreen&&!ownBarSeen); if(bar.hidden) return;
     bar.style.left=Math.max(0,r.left)+'px'; bar.style.width=Math.min(innerWidth,r.right)-Math.max(0,r.left)+'px';
     bar.firstChild.style.width=cur.scrollWidth+'px'; lock=true; bar.scrollLeft=cur.scrollLeft; lock=false; }
@@ -2352,7 +2370,7 @@ $('dstrip').addEventListener('click',()=>setTimeout(()=>{ window.__boardPinched=
 setTimeout(()=>fitBoardWidth(false),600);
 
 /* keep the pinned sideways scrollbar just above the bottom day strip */
-(function(){ const dn=$('dateNav'); const put=()=>{ const h=dn.hidden?0:dn.offsetHeight; document.documentElement.style.setProperty('--dnH',h+'px'); document.body.style.paddingBottom=(h+18)+'px'; };
+(function(){ const dn=$('dateNav'); const put=()=>{ if(document.getElementById('iosFoot')) return; const h=dn.hidden?0:dn.offsetHeight; document.documentElement.style.setProperty('--dnH',h+'px'); document.body.style.paddingBottom=(h+18)+'px'; };
   try{ new ResizeObserver(put).observe(dn); }catch(e){} new MutationObserver(put).observe(dn,{attributes:true,attributeFilter:['hidden']}); window.addEventListener('resize',put); put(); })();
 </script>
 
