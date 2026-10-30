@@ -313,7 +313,7 @@ with _main:
     st.subheader("ขั้นที่ 1 · รายงานการปิดการ์ดนำร่อง")
     _ctx = report_page.setup(_store)
     if not uploads:
-        st.caption("วางไฟล์ด้านบนเพื่อเริ่ม")
+        pass
     elif not _xlsx:
         st.error("ไม่พบ ReportCardIsClosedDaily.xlsx ในไฟล์ที่วาง")
     elif _ctx:
