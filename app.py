@@ -361,7 +361,7 @@ with st.sidebar:
       })();`;D.head.appendChild(x)})();
     /* Streamlit Cloud badge (Created by … / Hosted with Streamlit) sits in the outer page: hide it there */
     (()=>{const hide=w=>{try{const D=w.document;if(D.getElementById("navHideBadge"))return;const s=D.createElement("style");s.id="navHideBadge";
-      s.textContent='[class*="viewerBadge"],[class*="ViewerBadge"],[class*="profileContainer"],[class*="profilePreview"],[data-testid="appCreatorAvatar"],a[href*="streamlit.io/cloud"],a[href*="share.streamlit.io/user"]{display:none!important}';
+      s.textContent='[class*="viewerBadge"],[class*="ViewerBadge"],[class*="profileContainer"],[class*="profilePreview"],[data-testid="appCreatorAvatar"],a[href*="streamlit.io/cloud"],a[href*="share.streamlit.io/user"],[data-testid="manage-app-button"],[data-testid="stManageAppButton"],[class*="manageApp"],[class*="ManageApp"]{display:none!important}';
       D.head.appendChild(s)}catch(e){}};let w=window;for(let i=0;i<4&&w;i++){hide(w);if(w===w.parent)break;w=w.parent}})();
     </script>""", height=0)
     _theme_choice = _THEME_OPTIONS[0]   # always light (the light/dark switch was removed)
