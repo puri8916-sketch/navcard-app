@@ -2253,7 +2253,7 @@ async function writeLog(list){
   for(const h of list){ const dt=parseTime(h.t,h.X); const T=lt(dt), date=dt.slice(0,10);
     if(h.side==='L'){
       if(calls.some(c=>norm(c.vessel)===h.ship && c.eta===T)) continue;
-      const pob=parseTime(h.pob,h.X); const c={id:'c'+Date.now().toString(36)+Math.random().toString(36).slice(2,6), ...blank(date,h), eta:T, order:pob&&pob!==dt?lt(pob):'', pilotIn:pil(h.pilot), berth:h.berth, draughtIn:h.drf};
+      const pob=parseTime(h.pob,h.X); const c={id:'c'+Date.now().toString(36)+Math.random().toString(36).slice(2,6), ...blank(date,h), eta:T, order:lt(pob||dt), pilotIn:pil(h.pilot), berth:h.berth, draughtIn:h.drf};
       calls.push(c); touched.set(c.id,c); continue; }
     const shift=String(h.berth).includes('<>');
     let c=open(h.ship);
