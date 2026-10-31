@@ -206,8 +206,9 @@ table.sheet{border-collapse:collapse;table-layout:fixed;width:100%;font-family:v
 #printRoot{display:none}
 .disp{font-size:16px;font-weight:600;padding:4px 10px;border-radius:99px;background:var(--warn);color:var(--warn-ink)}
 .disp.ok{background:var(--ok);color:var(--ok-ink)}
-label.since{font-size:17px;color:var(--muted)}
-input.since{width:120px;font-size:18px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);text-align:center}
+label.since{font-size:17px;color:#B42318;font-weight:800}
+input.since{width:64px;font-size:22px;font-weight:800;padding:6px 8px;border:2.5px solid #D93025;border-radius:10px;background:#FFF4CC;color:#B42318;text-align:center;box-shadow:0 0 0 3px rgb(217 48 37 / .15)}
+input.since:focus{outline:none;box-shadow:0 0 0 4px rgb(217 48 37 / .35)}
 .linepaper{width:1600px;padding:0}
 /* like Excel's hair border: fine grey dots, one line between cells */
 table.lsheet{border-collapse:separate;border-spacing:0;border-top:1px dotted #8C8C8C;border-left:1px dotted #8C8C8C;table-layout:fixed;width:1600px;font-family:var(--f-sheet);font-size:19px;color:#000;background:#fff}
@@ -401,7 +402,7 @@ input,textarea{line-height:1.6}
   .fc-main{padding:2px 8px!important}.fcA{font-size:14px}.fcBar{width:16px;height:4px}
   .fillsw{width:15px;height:15px}
   label.since{font-size:13px}
-  input.since{width:76px;font-size:14px;padding:4px 6px}
+  input.since{width:48px;font-size:17px;padding:3px 4px}
   .pzoom .btn{min-width:34px;font-size:16px!important}.pzv{min-width:40px;font-size:13px}
 }
 
@@ -456,7 +457,7 @@ html.only-notice body{padding-bottom:0!important}
   .ltool .btn,.btn.tb{padding:4px 10px;font-size:15px;border-radius:7px}
   #lineCopy{padding:5px 14px;font-size:16px;border-radius:8px;box-shadow:0 2px 6px rgb(6 199 85 / .4)}
   .ltool label.since{font-size:14px}
-  .ltool input.since{padding:4px 8px;font-size:15px;width:96px}
+  .ltool input.since{padding:3px 6px;font-size:19px;width:56px}
   .fc-main{padding-block:2px!important}
   #linePull{padding:5px 12px;font-size:15px}
   #gAutoBtn,#impBtn,#printBtn,#dispBtn,#pdfBtn{padding:5px 12px;font-size:15px;border-width:2px}
@@ -527,7 +528,7 @@ html.ios .hbar{position:absolute;bottom:100%!important}
       <div class="grp"><button class="btn tb" data-bact="undo" title="Ctrl+Z">↶ ย้อนกลับ</button><button class="btn tb" data-bact="redo" title="Ctrl+Y">↷ ทำซ้ำ</button></div>
       <div class="grp fcolor"><button class="btn tb fc-main" data-bact="color" title="สีตัวอักษร"><span class="fcA">A</span><span class="fcBar" id="fcBar"></span></button><button class="btn tb fc-drop" id="fcDrop" title="เลือกสี" aria-label="เลือกสีตัวอักษร">▾</button><div class="fc-pal" id="fcPal" hidden></div></div><div class="grp"><button class="btn tb fillbtn" data-bact="togglefill" title="พื้นหลังเทาอ่อน (กดซ้ำเพื่อล้าง)"><span class="fillsw"></span>พื้นเทา</button></div><div class="grp"><button class="btn tb boldbtn" data-bact="bold" title="ตัวหนา (Ctrl+B)"><b>B</b> ตัวหนา</button></div>
       <div class="grp" id="addBlk"></div>
-      <div class="grp"><label class="since" for="lineSince">ตั้งแต่</label><input id="lineSince" class="since num" autocomplete="off" aria-label="ดึงเรือตั้งแต่เวลา"><button class="btn" id="linePull">⟳ ดึงจากจัดตารางใหม่</button><span class="note" id="boardInfo" hidden></span></div>
+      <div class="grp"><label class="since" for="lineSince">วันที่</label><input id="lineSince" class="since num" autocomplete="off" inputmode="numeric" maxlength="2" placeholder="วว" aria-label="ดึงเรือตั้งแต่วันที่"><button class="btn" id="linePull">⟳ ดึงจากจัดตารางใหม่</button><span class="note" id="boardInfo" hidden></span></div>
     </div>
     <div class="scrollx vfit"><div class="paper linepaper" id="board"></div></div>
   </section>
@@ -1452,7 +1453,7 @@ function showTab(t){ const g=tabGrp(t); if(!TD.line && !TD.work && S.D){ TD.line
     else if(TD[g]!==S.D){ const D=TD[g]; S.D=D; $('schedDate').value=D; renderAll();
       if(!covered(D)) loadMovements(D).then(()=>{ cacheSet(); renderAll(); if(!$('view-line').hidden && S.D===D) openBoard(D); }).catch(err=>toast('โหลดข้อมูลไม่สำเร็จ: '+err.message)); } }
   for(const x of ['work','print','line','ships','pilots']){ $('tab-'+x).setAttribute('aria-selected', x===t); $('view-'+x).hidden = x!==t; }
-  $('dateNav').hidden = !(t==='line'||t==='work'); /* day strip only on แก้ไข / จัดตาราง; พิมพ์ prints the จัดตาราง day */ if(t==='work') fitAll(); if(t==='print'){ renderPrint(); renderDisp(); } if(t==='line'){ if(!$('lineSince').value) $('lineSince').value=fmtT(nowDt()); if(!BD || BD.date!==S.D) openBoard(S.D); else fitBoard(); } $('view-setup').hidden = t!=='setup'; hidePop(); }
+  $('dateNav').hidden = !(t==='line'||t==='work'); /* day strip only on แก้ไข / จัดตาราง; พิมพ์ prints the จัดตาราง day */ if(t==='work') fitAll(); if(t==='print'){ renderPrint(); renderDisp(); } if(t==='line'){ if(!$('lineSince').value) $('lineSince').value=String(+todayYmd().slice(8)); if(!BD || BD.date!==S.D) openBoard(S.D); else fitBoard(); } $('view-setup').hidden = t!=='setup'; hidePop(); }
 $('tab-work').addEventListener('click',()=>showTab('work')); $('tab-print').addEventListener('click',()=>showTab('print'));
 $('tab-line').addEventListener('click',()=>showTab('line'));
 $('tab-ships').addEventListener('click',()=>{ renderShips(); showTab('ships'); });
@@ -1759,7 +1760,8 @@ function blockFromSchedule(D, items, snap){
 }
 function boardFromSchedule(D){
   const P=addDays(D,-1);
-  const since = parseTime($('lineSince').value||fmtT(nowDt()), P) || nowDt();
+  const dd=String($('lineSince').value||'').replace(/\D/g,'');   /* day of month only: ships from 00:00 of that day */
+  const since = (dd && parseTime(dd+'-0000', P)) || (todayYmd()+' 00:00');
   return { date:D, updated:Date.now(), blocks:[
     blockFromSchedule(P, S.mv.filter(m=>inWin(m,P) && m.datetime>=since), snapOf(P)),
     blockFromSchedule(D, S.mv.filter(m=>inWin(m,D) && !+m.late), snapOf(D)) ] };
@@ -2142,6 +2144,7 @@ function delBlock(bi){
   BD.blocks.splice(bi,1); SEL=null; boardSave(); renderBoard(); toast(`เอาตาราง ${lab} ออกแล้ว · กด ↶ ย้อนกลับ ถ้าต้องการคืน`);
 }
 BOARD.addEventListener('click',e=>{ const b=e.target.closest('[data-delblk]'); if(b) delBlock(+b.dataset.delblk); });
+$('lineSince').addEventListener('input',e=>{ const i=e.target, v=i.value.replace(/\D/g,'').slice(0,2); if(i.value!==v) i.value=v; });   /* day number only */
 let pullArm=false;
 $('linePull').addEventListener('click',()=>{
   if(!pullArm){ pullArm=true; $('linePull').textContent='ยืนยัน: แทนที่ด้วยข้อมูลจัดตาราง'; $('linePull').classList.add('arm'); setTimeout(()=>{ pullArm=false; $('linePull').textContent='⟳ ดึงจากจัดตารางใหม่'; $('linePull').classList.remove('arm'); },3500); return; }
