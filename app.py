@@ -330,6 +330,22 @@ with st.sidebar:
     let n=0;const t=setInterval(()=>{const sb=P.document.querySelector('[data-testid="stSidebar"]');
       if(sb&&sb.getAttribute("aria-expanded")==="true"){const b=P.document.querySelector('[data-testid="stSidebarCollapseButton"] button');if(b){b.click();clearInterval(t)}}
       else if(sb||++n>40)clearInterval(t)},100)})();
+    /* phones: tap anywhere outside the open menu (or pick a menu item) to close it — the page itself runs in frames,
+       so a see-through cover over the page catches the tap. Installed once into the app page. */
+    (()=>{const P=window.parent,D=P.document;if(D.getElementById("navSbCover"))return;
+      const x=D.createElement("script");x.id="navSbCover";x.textContent=`(function(){
+        var cv=document.createElement("div");cv.style.cssText="position:fixed;inset:0;z-index:999980;background:rgba(0,0,0,.18);display:none;-webkit-tap-highlight-color:transparent";
+        document.body.appendChild(cv);
+        function sb(){return document.querySelector('[data-testid="stSidebar"]')}
+        function small(){return window.innerWidth<=768}
+        function open(){var s=sb();return !!s&&s.getAttribute("aria-expanded")==="true"}
+        function close(){var b=document.querySelector('[data-testid="stSidebarCollapseButton"] button');if(b)b.click()}
+        function upd(){cv.style.display=(small()&&open())?"block":"none"}
+        cv.addEventListener("click",function(e){e.preventDefault();close();cv.style.display="none"});
+        document.addEventListener("click",function(e){if(!small())return;var b=e.target.closest&&e.target.closest('[data-testid="stSidebar"] .stButton button');if(b)setTimeout(close,250)},true);
+        new MutationObserver(upd).observe(document.body,{subtree:true,attributes:true,attributeFilter:["aria-expanded"]});
+        window.addEventListener("resize",upd);setInterval(upd,800);upd();
+      })();`;D.head.appendChild(x)})();
     /* Streamlit Cloud badge (Created by … / Hosted with Streamlit) sits in the outer page: hide it there */
     (()=>{const hide=w=>{try{const D=w.document;if(D.getElementById("navHideBadge"))return;const s=D.createElement("style");s.id="navHideBadge";
       s.textContent='[class*="viewerBadge"],[class*="ViewerBadge"],[class*="profileContainer"],[class*="profilePreview"],[data-testid="appCreatorAvatar"],a[href*="streamlit.io/cloud"],a[href*="share.streamlit.io/user"]{display:none!important}';
