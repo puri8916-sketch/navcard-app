@@ -411,6 +411,7 @@ input,textarea{line-height:1.6}
 .datenav .iconbtn{width:40px;align-self:stretch}
 /* keep clear of Streamlit Cloud's corner buttons (bottom-right of the app) */
 .datenav{padding-right:calc(130px + env(safe-area-inset-right))!important}
+@media (max-width:640px){.datenav{padding-right:calc(10px + env(safe-area-inset-right))!important}.hbar{right:0}}
 .hbar{right:130px}
 .datenav .dchip{flex:1 0 58px;max-width:96px;padding:3px 2px;border-radius:8px;display:flex;gap:4px;align-items:baseline;justify-content:center}
 .datenav .dchip .d{font-size:19px}.datenav .dchip .m{font-size:12px}
@@ -1434,8 +1435,15 @@ function renderStrip(){
   const T=todayYmd(); let h='';
   for(let i=0;i<14;i++){ const d=addDays(stripBase,i), [,m,dd]=d.split('-').map(Number);
     h+=`<button type="button" class="dchip${d===S.D?' on':''}${d===T?' today':''}" data-sd="${d}" role="option" aria-selected="${d===S.D}"><span class="d">${dd}-${m}-${String(+d.slice(0,4)+543).slice(-2)}</span></button>`; }
-  $('dstrip').innerHTML=h;
+  $('dstrip').innerHTML=h; stripSeen=null; stripScroll();
 }
+/* keep the chosen day (or today) in view: on a phone only 2–3 day tabs fit the screen */
+let stripSeen=null;
+function stripScroll(){ const ds=$('dstrip'); if(!ds || !ds.clientWidth) return;
+  const want=S.D+'|'+stripBase; if(stripSeen===want) return;
+  const b=ds.querySelector('.dchip.on')||ds.querySelector('.dchip.today'); if(!b){ ds.scrollLeft=0; stripSeen=want; return; }
+  ds.scrollLeft=Math.max(0, b.offsetLeft-ds.offsetLeft-(ds.clientWidth-b.offsetWidth)/2); stripSeen=want; }
+try{ new ResizeObserver(stripScroll).observe($('dstrip')); }catch(e){}
 $('dstrip').addEventListener('click',e=>{ const b=e.target.closest('[data-sd]'); if(b && b.dataset.sd!==S.D) goDate(b.dataset.sd); });
 $('prevDay').addEventListener('click',()=>{ stripBase=addDays(stripBase||monOf(S.D),-7); renderStrip(); });
 $('nextDay').addEventListener('click',()=>{ stripBase=addDays(stripBase||monOf(S.D),7); renderStrip(); });
