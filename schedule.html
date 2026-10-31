@@ -1969,9 +1969,9 @@ BOARD.addEventListener('change',e=>{ const i=e.target.closest('.ce'); if(!i||!BD
     if(!String(row.c[tc]||'').trim()){ const base=BD.blocks[b].date||BD.date; row.c[tc]=`${+addDays(base,1).slice(8)}-`; boardSave(); renderBoard(); return; } }
   if((c===4||c===5||c===13) && i.value.trim()){   /* ETA / POB / ETD: 1600 → 30-1600; ETA and POB fill each other when the other is empty */
     const base=BD.blocks[b].date||BD.date, dt=parseTime(i.value,base);
-    if(dt){ const t=fmtT(dt), old=(i._old!==undefined?i._old:i.defaultValue), o2=c===4?5:c===5?4:-1;
+    if(dt){ const t=fmtT(dt), o2=c===4?5:c===5?4:-1;
       if(typingKey===null) pushUndo(); row.c[c]=t; i.value=t;
-      const filled = o2>=0 && (!String(row.c[o2]||'').trim() || row.c[o2]===old); if(filled) row.c[o2]=t;
+      const filled = o2>=0; if(filled){ row.c[o2]=t; setH(row,o2,''); }   /* ETA and POB always move together */
       if(c===5){ const pos=filled?relayout(b,r,4):null; boardSave(); if(pos){ SEL={b,r1:pos.r,c1:c,r2:pos.r,c2:c}; } renderBoard(); return; } } }
   if((c===4||c===13) && i.value.trim()){
     const blk=BD.blocks[b]; const base=blk.date||BD.date;
@@ -2066,7 +2066,8 @@ function pasteGrid(cells, red, hh){
   for(let i=0;i<h;i++){ const row=rows[R.r0+i]; if(!row) continue;
     for(let j=0;j<w;j++){ const c=R.c0+j; if(![4,5,13].includes(c)) continue; const v=String(row.c[c]||'').trim(); if(!v) continue;
       const dt=parseTime(v,base); if(!dt) continue; const t=fmtT(dt); if(t!==v){ row.c[c]=t; setH(row,c,''); } timed=true;
-      const o2=c===4?5:c===5?4:-1; if(o2>=0 && !String(row.c[o2]||'').trim()){ row.c[o2]=t; setH(row,o2,''); } } }
+      const o2=c===4?5:c===5?4:-1; if(o2>=0 && !(R.c0<=o2 && o2<R.c0+w)){ row.c[o2]=t; setH(row,o2,''); } } }
+  if([1,10].some(c=>R.c0<=c && c<R.c0+w)) timed=false;   /* a whole ship pasted somewhere: keep it where it was put */
   const pos = timed ? relayout(R.b,-1,-1) : null;
   SEL = timed ? null : {b:R.b, r1:R.r0, c1:R.c0, r2:R.r0+h-1, c2:Math.min(16,R.c0+w-1)}; boardSave(); renderBoard();
 }
