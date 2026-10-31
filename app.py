@@ -272,8 +272,10 @@ def _go(p):
 st.logo(os.path.join(_HERE, "md_logo.png"), size="large")   # กรมเจ้าท่า, top-left of the menu
 st.markdown("""<style>
 [data-testid="stMain"] [data-testid="stElementContainer"]:has(iframe[srcdoc*="navauth"]){position:absolute!important;width:0!important;height:0!important;overflow:hidden}
-.st-key-logout_btn{position:fixed!important;top:10px;right:16px;z-index:999990;width:auto!important}
-.st-key-logout_btn button{min-height:34px;padding:2px 12px;border-radius:8px;font-weight:600}
+.st-key-profile_pop{position:fixed!important;top:10px;right:16px;z-index:999990;width:auto!important}
+.st-key-profile_pop > div > button,.st-key-profile_pop button[data-testid="stPopoverButton"]{width:40px;height:40px;min-height:40px;padding:0!important;border-radius:50%!important;background:#1A56DB!important;border:0!important;box-shadow:0 1px 4px rgb(0 0 0 / .25)}
+.st-key-profile_pop button p{color:#fff!important;font-size:19px!important;font-weight:800!important;margin:0!important}
+.st-key-profile_pop button [data-testid="stIconMaterial"]{display:none!important}
 [data-testid="stToolbarActions"],[data-testid="stToolbarActionButton"],[data-testid="stAppDeployButton"],[data-testid="stMainMenu"]{display:none!important}
 .stApp header[data-testid="stHeader"],[data-testid="stHeader"]{height:auto!important;background:transparent!important;pointer-events:none;width:auto!important;right:auto!important}
 [data-testid="stHeader"] button,[data-testid="stHeader"] img{pointer-events:auto}
@@ -298,11 +300,13 @@ div:has(> [data-testid="stExpandSidebarButton"]){order:-1!important;align-self:c
 # localStorage (stSidebarCollapsed-*), which overrides initial_sidebar_state, so reset it once per load.
 _AUTH_USER = _login_gate()
 if _AUTH_USER:
-    if st.button(f"👤 {_AUTH_USER} · ออกจากระบบ", key="logout_btn"):
-        st.session_state.pop("auth_user", None)
-        st.session_state._auth_clear = True
-        st.session_state._auth_nocookie = True   # this session's request still carries the old cookie
-        st.rerun()
+    with st.popover(_AUTH_USER[:1].upper(), key="profile_pop", help=_AUTH_USER):   # round badge: first letter of the user
+        st.markdown(f"**{_AUTH_USER}**")
+        if st.button("ออกจากระบบ", key="logout_btn", width="stretch"):
+            st.session_state.pop("auth_user", None)
+            st.session_state._auth_clear = True
+            st.session_state._auth_nocookie = True   # this session's request still carries the old cookie
+            st.rerun()
 
 with st.sidebar:
     components.html("""<script>
