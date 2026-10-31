@@ -347,7 +347,8 @@ with st.sidebar:
         window.addEventListener("resize",upd);setInterval(upd,800);upd();
         /* full-page menus (จัดตาราง / สมุดบันทึก): the frame ends exactly at the bottom of the screen,
            whatever the header height is on this device (fixed CSS heights cut the bottom day strip off on phones) */
-        function fit(){var vh=(window.visualViewport&&window.visualViewport.height)||window.innerHeight;
+        function fit(){var vv=window.visualViewport,ih=window.innerHeight||document.documentElement.clientHeight,
+            vh=(vv&&vv.height<ih*0.75)?vv.height:Math.max(ih,document.documentElement.clientHeight,vv?vv.height:0);   /* keyboard open → visible part only */
           document.querySelectorAll('iframe[data-testid="stIFrame"][scrolling="auto"]').forEach(function(f){
             var t=f.getBoundingClientRect().top+(window.scrollY||0);if(t<0||t>vh-120)return;var h=Math.floor(vh-t-2)+"px";
             if(f.style.getPropertyValue("height")!==h)f.style.setProperty("height",h,"important")})}
