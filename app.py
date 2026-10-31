@@ -345,6 +345,14 @@ with st.sidebar:
         document.addEventListener("click",function(e){if(!small())return;var b=e.target.closest&&e.target.closest('[data-testid="stSidebar"] .stButton button');if(b)setTimeout(close,250)},true);
         new MutationObserver(upd).observe(document.body,{subtree:true,attributes:true,attributeFilter:["aria-expanded"]});
         window.addEventListener("resize",upd);setInterval(upd,800);upd();
+        /* full-page menus (จัดตาราง / สมุดบันทึก): the frame ends exactly at the bottom of the screen,
+           whatever the header height is on this device (fixed CSS heights cut the bottom day strip off on phones) */
+        function fit(){var vh=(window.visualViewport&&window.visualViewport.height)||window.innerHeight;
+          document.querySelectorAll('iframe[data-testid="stIFrame"][scrolling="auto"]').forEach(function(f){
+            var t=f.getBoundingClientRect().top+(window.scrollY||0);if(t<0||t>vh-120)return;var h=Math.floor(vh-t-2)+"px";
+            if(f.style.getPropertyValue("height")!==h)f.style.setProperty("height",h,"important")})}
+        window.addEventListener("resize",fit);if(window.visualViewport)window.visualViewport.addEventListener("resize",fit);
+        new MutationObserver(function(){requestAnimationFrame(fit)}).observe(document.body,{childList:true,subtree:true});setInterval(fit,1000);fit();
       })();`;D.head.appendChild(x)})();
     /* Streamlit Cloud badge (Created by … / Hosted with Streamlit) sits in the outer page: hide it there */
     (()=>{const hide=w=>{try{const D=w.document;if(D.getElementById("navHideBadge"))return;const s=D.createElement("style");s.id="navHideBadge";
