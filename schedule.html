@@ -464,6 +464,14 @@ html.only-notice body{padding-bottom:0!important}
   main{padding-top:6px}
   .shipsticky{top:calc(env(safe-area-inset-top,0px) + 42px)}
 }
+
+/* บันทึกลงสมุดบันทึกเรือ */
+.lg-box{max-width:560px;width:calc(100vw - 24px)}
+.lg-list{max-height:50vh;overflow:auto;margin:10px 0;border:1px solid var(--line);border-radius:8px}
+.lg-row{display:flex;gap:10px;align-items:center;padding:9px 12px;border-bottom:1px solid var(--line);font-size:17px;cursor:pointer}
+.lg-row:last-child{border-bottom:0}.lg-row input{width:20px;height:20px}
+.lg-row b{flex:1;min-width:0}.lg-row .pc{color:var(--pilot);font-weight:700}
+.lg-k{padding:1px 8px;border-radius:10px;font-size:14px;font-weight:700;color:#fff;background:#06C755}.lg-k.kย้าย{background:#E8710A}.lg-k.kออก{background:#1A56DB}
 /* iOS app shell (see the script before the main one) */
 html.ios,html.ios body{height:100%;overflow:hidden;overscroll-behavior:none}
 html.ios body{display:flex;flex-direction:column;padding-bottom:0!important}
@@ -1772,7 +1780,7 @@ function boardFromSchedule(D){
    (27's table is the bottom of view 27 and the top of view 28 — the same data) */
 const BKEY=D=>'shipsched_board:'+(CFG.API_URL||'demo')+':'+D;      // older per-view boards
 const KB=d=>'shipsched_day:'+(CFG.API_URL||'demo')+':'+d;
-const dayKey=b=>JSON.stringify([b.label,b.rows,!!b.hidden]);
+const dayKey=b=>JSON.stringify([b.label,b.rows,!!b.hidden,b.sent||null]);
 function dayLocal(d){ try{ return JSON.parse(localStorage.getItem(KB(d))||'null'); }catch(e){ return null; } }
 function dayRemote(d){ const x=(S.boards||{})[d]; return x && x.rows ? x : null; }
 function dayLegacy(d){
@@ -2181,7 +2189,7 @@ async function lineCanvas(){
 }
 function lineName(){ const [y,m,d]=S.D.split('-').map(Number); const t=new Date(); return `SCHEDULE ${d}-${m}-${String((y+543)%100).padStart(2,'0')} ${pad(t.getHours())}${pad(t.getMinutes())}.png`; }
 $('lineCopy').addEventListener('click',async()=>{
-  const b=$('lineCopy'); b.disabled=true; cutLate();   /* พ ships marked งด in Drf leave จัดตาราง */
+  const b=$('lineCopy'); b.disabled=true; cutLate(); logGone();   /* ships taken off since the last send = done → สมุดบันทึกเรือ */   /* พ ships marked งด in Drf leave จัดตาราง */
   try{
     const canvas=await lineCanvas();
     const blob=await new Promise(r=>canvas.toBlob(r,'image/png'));
@@ -2191,6 +2199,74 @@ $('lineCopy').addEventListener('click',async()=>{
   finally{ b.disabled=false; }
 });
 
+
+/* ---------- แก้ไข → สมุดบันทึกเรือ: a ship taken off the board between two "คัดลอกส่งLINE" has been done (in / shift / out)
+   at the time in its row → write it into the pilot log (collection calls of the same sheet) ---------- */
+function boardHalves(blk){ const X=blk.date||BD.date, out={};
+  for(const row of blk.rows) for(const [side,a] of [['L',0],['R',9]]){
+    const g=k=>String(row.c[a+k]||'').trim(), ship=norm(g(1)); if(!ship) continue;
+    const h = side==='L' ? {side,ship,X,no:g(0),loa:g(2),drf:g(3),t:g(4),pob:g(5),berth:g(6),pilot:g(7),agent:g(8)}
+                         : {side,ship,X,no:g(0),loa:g(2),drf:g(3),t:g(4),berth:g(5),pilot:g(6),agent:g(7)};
+    out[side+'|'+ship]=h; }
+  return out; }
+function logGone(){ if(!BD) return; const gone=[], all={};
+  BD.blocks.forEach(b=>Object.assign(all, boardHalves(b)));
+  for(const blk of BD.blocks){ const cur=boardHalves(blk), prev=blk.sent;
+    if(prev) for(const k in prev){ const h=prev[k]; if(cur[k] || all[k]) continue;
+      if(h.drf==='งด' || !parseTime(h.t, h.X)) continue;   /* cancelled / no time: nothing happened */
+      gone.push(h); }
+    blk.sent=cur; }
+  boardSave();
+  if(gone.length) setTimeout(()=>askLog(gone),600); }
+function askLog(list){
+  list.sort((a,b)=>parseTime(a.t,a.X)<parseTime(b.t,b.X)?-1:1);
+  const kind=h=>h.side==='L'?'เข้า':(String(h.berth).includes('<>')?'ย้าย':'ออก');
+  const M=document.createElement('div'); M.className='crop-m';
+  M.innerHTML=`<div class="crop-box lg-box" role="dialog" aria-label="บันทึกลงสมุดบันทึกเรือ"><h3>บันทึกลงสมุดบันทึกเรือ</h3>
+    <div class="crop-hint">เรือที่เอาออกจากตารางตั้งแต่ส่ง LINE ครั้งก่อน (ถือว่าทำแล้วตามเวลาในตาราง)</div>
+    <div class="lg-list">${list.map((h,i)=>`<label class="lg-row"><input type="checkbox" data-i="${i}" checked><b>${esc(h.ship)}</b><span class="lg-k k${kind(h)}">${kind(h)}</span><span class="num">${esc(h.t)}</span><span>${esc(h.berth)}</span><span class="pc">${esc(h.pilot)}</span></label>`).join('')}</div>
+    <div class="crop-row end"><button type="button" class="btn" data-a="no">ไม่บันทึก</button><button type="button" class="btn primary" data-a="ok">บันทึก</button></div></div>`;
+  document.body.appendChild(M);
+  M.addEventListener('click',async e=>{ const a=e.target.closest('[data-a]')?.dataset.a; if(e.target===M||a==='no'){ M.remove(); return; }
+    if(a!=='ok') return; const pick=[...M.querySelectorAll('input[data-i]:checked')].map(x=>list[+x.dataset.i]); M.remove();
+    if(!pick.length) return;
+    try{ const n=await writeLog(pick); toast(n?`บันทึกลงสมุดบันทึกเรือแล้ว ${n} รายการ`:'มีในสมุดบันทึกเรือแล้ว'); }
+    catch(err){ toast('บันทึกลงสมุดไม่สำเร็จ: '+err.message); } }); }
+async function syncApi(method, q, ops){
+  if(!CFG.API_URL) throw new Error('ยังไม่ได้เชื่อม Google Sheet');
+  const sep=CFG.API_URL.includes('?')?'&':'?';
+  const r = method==='GET' ? await fetch(CFG.API_URL+sep+q+'&key='+encodeURIComponent(CFG.TOKEN))
+                           : await fetch(CFG.API_URL,{method:'POST',body:JSON.stringify({key:CFG.TOKEN,ops})});
+  const j=await r.json(); if(!j.ok) throw new Error(j.error==='bad_key'?'รหัสไม่ตรง (อัปเดตสคริปต์ Navcard.gs)':(j.error||'ผิดพลาด')); return j; }
+async function writeLog(list){
+  const j=await syncApi('GET','action=load&since=0&cols=calls');
+  const calls=j.docs.filter(d=>d.col==='calls' && !d.deleted && d.doc).map(d=>({id:d.id,...d.doc}));
+  const beYY=iso=>String((+iso.slice(0,4)+543)%100).padStart(2,'0'), fyYY=iso=>String((+iso.slice(0,4)+543+(+iso.slice(5,7)>=10?1:0))%100).padStart(2,'0');
+  const lt=dt=>`${dt.slice(8,10)}-${dt.slice(5,7)}-${dt.slice(11,13)}${dt.slice(14,16)}`;   /* 31-10-0930 like the log */
+  const pil=p=>/^0+$/.test(p)?'-CAP-':String(p||'').replace(/^P\.?/i,'');
+  const key=c=>(c.date||'')+' '+(c.eta||c.atd||'');
+  const open=ship=>calls.filter(c=>norm(c.vessel)===ship && !c.atd).sort((a,b)=>key(a)<key(b)?1:-1)[0];
+  const blank=(date,h)=>({date,by:beYY(date),fy:fyYY(date),job:'',vessel:h.ship,from:'',loa:h.loa,loaM:'',lbp:'',ng:'',agent:h.agent,eta:'',order:'',invIn:false,pilotIn:'',capIn:'',berth:'',draughtIn:'',
+    atd:'',invOut:false,paknam:'',pilotOut:'',capOut:'',draughtOut:'',agentOut:h.agent,remark:'',status:'',closeNo:'',cnAt:0,shifts:[],t:Date.now(),updated:Date.now(),marks:{}});
+  const ops=[], touched=new Map();
+  for(const h of list){ const dt=parseTime(h.t,h.X); const T=lt(dt), date=dt.slice(0,10);
+    if(h.side==='L'){
+      if(calls.some(c=>norm(c.vessel)===h.ship && c.eta===T)) continue;
+      const pob=parseTime(h.pob,h.X); const c={id:'c'+Date.now().toString(36)+Math.random().toString(36).slice(2,6), ...blank(date,h), eta:T, order:pob&&pob!==dt?lt(pob):'', pilotIn:pil(h.pilot), berth:h.berth, draughtIn:h.drf};
+      calls.push(c); touched.set(c.id,c); continue; }
+    const shift=String(h.berth).includes('<>');
+    let c=open(h.ship);
+    if(shift){ const [fb,tb]=String(h.berth).split('<>').map(x=>x.trim());
+      if(c && (c.shifts||[]).some(x=>x.order===T)) continue;
+      if(!c){ c={id:'c'+Date.now().toString(36)+Math.random().toString(36).slice(2,6), ...blank(date,h)}; calls.push(c); }
+      c.shifts=[...(c.shifts||[]), {order:T,pilot:pil(h.pilot),capTime:'',fromBerth:fb||'',berth:tb||'',draught:h.drf,agent:h.agent}]; }
+    else { if(calls.some(c=>norm(c.vessel)===h.ship && c.atd===T)) continue;
+      if(!c){ c={id:'c'+Date.now().toString(36)+Math.random().toString(36).slice(2,6), ...blank(date,h)}; calls.push(c); }
+      Object.assign(c,{atd:T,pilotOut:pil(h.pilot),draughtOut:h.drf,agentOut:h.agent||c.agentOut}); }
+    c.updated=Date.now(); touched.set(c.id,c); }
+  for(const c of touched.values()){ const {id,...doc}=c; ops.push({op:'put',col:'calls',id,doc,updated:Date.now()}); }
+  if(ops.length) await syncApi('POST','',ops);
+  return ops.length; }
 (async function start(){
   $('modeBadge').textContent = CFG.API_URL? 'เชื่อม Google Sheet' : 'โหมดตัวอย่าง';
   $('modeBadge').classList.toggle('live', !!CFG.API_URL);

@@ -79,7 +79,7 @@ function schedPost_(e) {
         case 'deleteMovement': return deleteById_('Movements', req.id);
         case 'saveShip': return saveShip_(req.ship);
         case 'updateShip': return updateShip_(req.oldName, req.ship);
-        case 'deleteShip': return deleteByCol_('Ships', 'ชื่อเรือ', req.name);
+        case 'deleteShip': bumpShips_(); return deleteByCol_('Ships', 'ชื่อเรือ', req.name);
         case 'savePilots': return savePilots_(req.pilots);
         case 'savePilotPhoto': return savePilotPhoto_(req.no, req.photo);
         case 'savePilotProfiles': return savePilotProfiles_(req.list);
@@ -202,6 +202,7 @@ function deleteById_(name, id) {
   return true;
 }
 function saveShip_(ship) {
+  bumpShips_();
   const s = sh_('Ships');
   if (findRow_(s, 'ชื่อเรือ', ship.name) > 0) return ship;
   const header = s.getRange(1, 1, 1, s.getLastColumn()).getValues()[0].map(String);
@@ -212,6 +213,7 @@ function saveShip_(ship) {
 
 const SHIP_COLS_ = { name: 'ชื่อเรือ', loa: 'LOA', berth: 'ท่าประจำ', agent: 'เอเย่นต์', note: 'หมายเหตุ' };
 function updateShip_(oldName, ship) {
+  bumpShips_();
   const s = sh_('Ships');
   const header = s.getRange(1, 1, 1, s.getLastColumn()).getValues()[0].map(String);
   const name = str_(ship.name).toUpperCase();
@@ -420,14 +422,21 @@ function syncGet_(e) {
   let now = Number(PropertiesService.getScriptProperties().getProperty('SEQ') || 0);
   const docs = [];
   const only = p.cols ? String(p.cols).split(',') : null;
+  mergeLogVessels_(rows);
   rows.forEach(function (r) {
     const seq = Number(r[2]);
     if (seq > now) now = seq;
     if (seq <= since) return;
+    if (String(r[0]) === 'vessels') return;              // ship register = Ships tab (below)
     if (only && only.indexOf(String(r[0])) < 0) return;
     const del = r[4] === true;
     docs.push({ col: String(r[0]), id: String(r[1]), updated: Number(r[3]), deleted: del, doc: del ? null : JSON.parse(r[5] || 'null') });
   });
+  const shipsSeq = Number(PropertiesService.getScriptProperties().getProperty('SHIPS_SEQ') || 1);
+  if (shipsSeq > now) now = shipsSeq;
+  if ((!only || only.indexOf('vessels') >= 0) && (since === 0 || shipsSeq > since)) {
+    shipDocs_().forEach(function (v) { docs.push({ col: 'vessels', id: v.id, updated: shipsSeq, deleted: false, doc: v.doc }); });
+  }
   return syncOut_({ ok: true, now: now, docs: docs });
 }
 
@@ -450,6 +459,7 @@ function syncPost_(e) {
     (b.ops || []).forEach(function (op) {
       const col = String(op.col || ''), id = String(op.id || '');
       if (!col || !id) { results.push({ id: id, error: 'bad_op' }); return; }
+      if (col === 'vessels') { vesselOp_(op); results.push({ id: id, seq: bumpShips_() }); return; }
       const k = col + '\u0000' + id, i = idx[k];
       const upd = Number(op.updated || Date.now());
       if (i !== undefined && Number(rows[i][3]) > upd) { results.push({ id: id, skipped: true }); return; }
@@ -467,4 +477,59 @@ function syncPost_(e) {
   } finally {
     lock.releaseLock();
   }
+}
+
+
+/* ======================= ทะเบียนเรือชุดเดียว (แท็บ Ships) ใช้ทั้งจัดตารางเรือและสมุดบันทึกเรือ ======================= */
+function vslug_(n) {
+  const x = String(n || '').trim().toUpperCase().replace(/\s+/g, ' ').replace(/[^A-Z0-9._~:@+-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 120);
+  return x || ('V' + Date.now());
+}
+function bumpShips_() {
+  const pr = PropertiesService.getScriptProperties();
+  const s = Math.max(Date.now(), Number(pr.getProperty('SEQ') || 0) + 1, Number(pr.getProperty('SHIPS_SEQ') || 0) + 1);
+  pr.setProperty('SEQ', String(s)); pr.setProperty('SHIPS_SEQ', String(s));
+  return s;
+}
+function shipDocs_() {
+  return rows_('Ships').map(function (r) {
+    const name = str_(r['ชื่อเรือ']).toUpperCase();
+    return name ? { id: vslug_(name), doc: { name: name, loa: str_(r['LOA']), agent: str_(r['เอเย่นต์']), berth: str_(r['ท่าประจำ']) } } : null;
+  }).filter(Boolean);
+}
+function vesselOp_(op) {
+  const s = sh_('Ships');
+  const header = s.getRange(1, 1, 1, s.getLastColumn()).getValues()[0].map(String);
+  const v = s.getDataRange().getValues(), c = header.indexOf('ชื่อเรือ');
+  let r = -1;
+  for (let i = 1; i < v.length; i++) if (vslug_(v[i][c]) === String(op.id)) { r = i + 1; break; }
+  if (op.op === 'del') { if (r > 0) s.deleteRow(r); return; }
+  const d = op.doc || {}, name = str_(d.name).toUpperCase();
+  if (!name) return;
+  if (r < 0) r = findRow_(s, 'ชื่อเรือ', name);
+  if (r < 0) { writeRow_(s, s.getLastRow() + 1, header, { 'ชื่อเรือ': name, 'LOA': str_(d.loa), 'ท่าประจำ': str_(d.berth), 'เอเย่นต์': str_(d.agent), 'หมายเหตุ': '', 'ที่มา': 'สมุดบันทึกเรือ' }); return; }
+  [['ชื่อเรือ', name], ['LOA', d.loa], ['เอเย่นต์', d.agent], ['ท่าประจำ', d.berth]].forEach(function (kv) {
+    const k = header.indexOf(kv[0]);
+    if (k >= 0 && kv[1] !== undefined && (kv[0] !== 'ท่าประจำ' || str_(kv[1]))) s.getRange(r, k + 1).setNumberFormat('@').setValue(str_(kv[1]));
+  });
+}
+/** ครั้งแรกครั้งเดียว: ทะเบียนเรือเดิมของสมุดบันทึก (แท็บ data, col vessels) รวมเข้าแท็บ Ships */
+function mergeLogVessels_(rows) {
+  const pr = PropertiesService.getScriptProperties();
+  if (pr.getProperty('VESSELS_MERGED')) return;
+  const s = sh_('Ships');
+  const header = s.getRange(1, 1, 1, s.getLastColumn()).getValues()[0].map(String);
+  const have = {}; rows_('Ships').forEach(function (r) { have[str_(r['ชื่อเรือ']).toUpperCase()] = 1; });
+  const add = [];
+  rows.forEach(function (r) {
+    if (String(r[0]) !== 'vessels' || r[4] === true) return;
+    let d = null; try { d = JSON.parse(r[5] || 'null'); } catch (x) {}
+    const name = d && str_(d.name).toUpperCase();
+    if (!name || have[name]) return;
+    have[name] = 1;
+    add.push(header.map(function (h) { return { 'ชื่อเรือ': name, 'LOA': str_(d.loa), 'เอเย่นต์': str_(d.agent), 'ที่มา': 'สมุดบันทึกเรือ' }[h] || ''; }));
+  });
+  if (add.length) s.getRange(s.getLastRow() + 1, 1, add.length, header.length).setNumberFormat('@').setValues(add);
+  pr.setProperty('VESSELS_MERGED', '1');
+  bumpShips_();
 }
