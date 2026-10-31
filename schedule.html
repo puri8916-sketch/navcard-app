@@ -2078,7 +2078,7 @@ function parseTSV(t){ return t.replace(/\r/g,'').replace(/\n$/,'').split('\n').m
 function inBoard(e){ return e.target && e.target.closest && e.target.closest('#board') && e.target.dataset.r!==undefined; }
 document.addEventListener('copy',e=>{ if(!inBoard(e)||!SEL) return; const i=e.target;
   if(!multi() && i.selectionStart!==i.selectionEnd && !(i.selectionStart===0 && i.selectionEnd===i.value.length)) return;   // part of one cell: normal copy
-  const t=selTSV(); CLIP=t; e.clipboardData.setData('text/plain',t.text); e.preventDefault(); });
+  const t=selTSV(); CLIP=t; e.clipboardData.setData('text/plain',t.text); e.preventDefault(); if(multi()) toast('คัดลอกแล้ว · คลิกช่องที่จะวาง แล้วกด Ctrl+V'); });
 document.addEventListener('cut',e=>{ if(!inBoard(e)||!SEL) return; const i=e.target;
   if(!multi() && i.selectionStart!==i.selectionEnd && !(i.selectionStart===0 && i.selectionEnd===i.value.length)) return;
   const t=selTSV(); CLIP=t; e.clipboardData.setData('text/plain',t.text); e.preventDefault(); clearSel(); });
@@ -2087,11 +2087,18 @@ document.addEventListener('paste',e=>{ if(!inBoard(e)||!SEL) return;
   const own = CLIP && CLIP.text===t.replace(/\r/g,'').replace(/\n$/,'');
   if(!multi() && !own && !/[\t\n]/.test(t.replace(/\n$/,''))){ e.preventDefault(); document.execCommand('insertText',false,t.replace(/\n$/,'')); return; }   // plain text into one cell
   e.preventDefault(); pasteGrid(own?CLIP.cells:parseTSV(t), own?CLIP.red:null, own?CLIP.hh:null); });
+/* Ctrl+C / Ctrl+V on a selected range even when the keyboard focus is not inside a cell (e.g. after dragging over the cells) */
+document.addEventListener('keydown',e=>{ if(!BD || $('view-line').hidden || !SEL) return; const mod=e.ctrlKey||e.metaKey; if(!mod || e.shiftKey || e.altKey) return;
+  const t=e.target; if(t && t.closest && (t.closest('#board .ce') || (t.matches && t.matches('input,textarea,select,[contenteditable="true"]')))) return;
+  const k=(e.key||'').toLowerCase(), code=e.code;
+  if(k==='c'||code==='KeyC'){ e.preventDefault(); menuCopy(false); }
+  else if(k==='x'||code==='KeyX'){ e.preventDefault(); menuCopy(true); }
+  else if(k==='v'||code==='KeyV'){ e.preventDefault(); menuPaste(); } });
 async function menuPaste(){
   try{ const t=await navigator.clipboard.readText(); const own=CLIP && CLIP.text===t.replace(/\r/g,'').replace(/\n$/,''); pasteGrid(own?CLIP.cells:parseTSV(t), own?CLIP.red:null, own?CLIP.hh:null); }
   catch(err){ if(CLIP) pasteGrid(CLIP.cells, CLIP.red, CLIP.hh); else toast('ใช้ Ctrl+V เพื่อวาง'); }
 }
-async function menuCopy(cut){ if(!needSel()) return; const t=selTSV(); CLIP=t; try{ await navigator.clipboard.writeText(t.text); }catch(e){} if(cut) clearSel(); else toast('คัดลอกแล้ว'); }
+async function menuCopy(cut){ if(!needSel()) return; const t=selTSV(); CLIP=t; try{ await navigator.clipboard.writeText(t.text); }catch(e){} if(cut) clearSel(); else toast('คัดลอกแล้ว · คลิกช่องที่จะวาง แล้วกด Ctrl+V'); }
 
 /* keyboard */
 BOARD.addEventListener('keydown',e=>{ const i=e.target.closest('.ce'); if(!i) return;
