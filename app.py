@@ -275,7 +275,9 @@ st.markdown("""<style>
 .st-key-profile_pop{position:fixed!important;top:10px;right:16px;z-index:999990;width:auto!important}
 .st-key-profile_pop > div > button,.st-key-profile_pop button[data-testid="stPopoverButton"]{width:40px;height:40px;min-height:40px;padding:0!important;border-radius:50%!important;background:#1A56DB!important;border:0!important;box-shadow:0 1px 4px rgb(0 0 0 / .25)}
 .st-key-profile_pop button p{color:#fff!important;font-size:19px!important;font-weight:800!important;margin:0!important}
-.st-key-profile_pop button [data-testid="stIconMaterial"]{display:none!important}
+.st-key-profile_pop button div[aria-hidden="true"],.st-key-profile_pop button [data-testid="stIconMaterial"]{display:none!important}
+.st-key-profile_pop button,.st-key-profile_pop button > div,.st-key-profile_pop button > div > div{display:flex!important;align-items:center!important;justify-content:center!important;gap:0!important;margin:0!important}
+.st-key-profile_pop button p{line-height:1!important}
 [data-testid="stToolbarActions"],[data-testid="stToolbarActionButton"],[data-testid="stAppDeployButton"],[data-testid="stMainMenu"]{display:none!important}
 .stApp header[data-testid="stHeader"],[data-testid="stHeader"]{height:auto!important;background:transparent!important;pointer-events:none;width:auto!important;right:auto!important}
 [data-testid="stHeader"] button,[data-testid="stHeader"] img{pointer-events:auto}
