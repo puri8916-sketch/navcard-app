@@ -274,6 +274,19 @@ st.markdown("""<style>
 [data-testid="stMain"] [data-testid="stElementContainer"]:has(iframe[srcdoc*="navauth"]){position:absolute!important;width:0!important;height:0!important;overflow:hidden}
 .st-key-profile_pop{position:fixed!important;top:10px;right:16px;z-index:999990;width:auto!important}
 .st-key-profile_pop > div > button,.st-key-profile_pop button[data-testid="stPopoverButton"]{width:40px;height:40px;min-height:40px;padding:0!important;border-radius:50%!important;background:#1A56DB!important;border:0!important;box-shadow:0 1px 4px rgb(0 0 0 / .25)}
+.st-key-profile_pop::before{content:"";position:absolute;inset:-4px;border-radius:50%;pointer-events:none;z-index:0;
+  background:conic-gradient(from 0deg,#00C6FF,#7B61FF,#FF4FD8,#FFB800,#00E28A,#00C6FF);
+  -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 2.5px));mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 2.5px));
+  animation:navSpin 2.4s linear infinite;filter:drop-shadow(0 0 4px rgb(123 97 255 / .7))}
+.st-key-profile_pop::after{content:"";position:absolute;inset:-4px;border-radius:50%;pointer-events:none;z-index:0;
+  background:conic-gradient(from 0deg,transparent 0 75%,rgb(255 255 255 / .95) 88%,transparent 100%);
+  -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 2.5px));mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 2.5px));
+  animation:navSpin 1.6s linear infinite}
+.st-key-profile_pop > div{position:relative;z-index:1}
+.st-key-profile_pop button[data-testid="stPopoverButton"]{background:linear-gradient(135deg,#2563EB,#7B3FE4)!important;transition:transform .2s}
+.st-key-profile_pop button[data-testid="stPopoverButton"]:hover{transform:scale(1.07)}
+@keyframes navSpin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.st-key-profile_pop::before,.st-key-profile_pop::after{animation:none}}
 .st-key-profile_pop button p{color:#fff!important;font-size:19px!important;font-weight:800!important;margin:0!important}
 .st-key-profile_pop button div[aria-hidden="true"],.st-key-profile_pop button [data-testid="stIconMaterial"]{display:none!important}
 .st-key-profile_pop button,.st-key-profile_pop button > div,.st-key-profile_pop button > div > div{display:flex!important;align-items:center!important;justify-content:center!important;gap:0!important;margin:0!important}
