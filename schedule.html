@@ -1970,8 +1970,8 @@ BOARD.addEventListener('change',e=>{ const i=e.target.closest('.ce'); if(!i||!BD
   if((c===4||c===5||c===13) && i.value.trim()){   /* ETA / POB / ETD: 1600 → 30-1600; ETA and POB fill each other when the other is empty */
     const base=BD.blocks[b].date||BD.date, dt=parseTime(i.value,base);
     if(dt){ const t=fmtT(dt), o2=c===4?5:c===5?4:-1;
-      if(typingKey===null) pushUndo(); row.c[c]=t; i.value=t;
-      const filled = o2>=0; if(filled){ row.c[o2]=t; setH(row,o2,''); }   /* ETA and POB always move together */
+      if(typingKey===null) pushUndo(); const raw=String(i.value).trim(); row.c[c]=t; keepRich(row,c,raw,t); i.value=t;
+      const filled = o2>=0; if(filled){ row.c[o2]=t; setH(row,o2,hOf(row,c)); row.r[o2]=row.r[c]; }   /* ETA and POB always move together, colour too */
       if(c===5){ const pos=filled?relayout(b,r,4):null; boardSave(); if(pos){ SEL={b,r1:pos.r,c1:c,r2:pos.r,c2:c}; } renderBoard(); return; } } }
   if((c===4||c===13) && i.value.trim()){
     const blk=BD.blocks[b]; const base=blk.date||BD.date;
@@ -2055,6 +2055,9 @@ function moveSel(d, whole){ if(!needSel()) return; const R=rect(); const rows=BD
 
 /* clipboard: Ctrl+C / X / V like Excel (tab-separated, keeps red when pasted here) */
 function selTSV(){ const R=rect(), out=[], red=[], hh=[]; for(let r=R.r0;r<=R.r1;r++){ const row=BD.blocks[R.b].rows[r]; out.push(row.c.slice(R.c0,R.c1+1)); red.push(row.r.slice(R.c0,R.c1+1)); hh.push(Array.from({length:R.c1-R.c0+1},(x,k)=>hOf(row,R.c0+k))); } return {cells:out, red, hh, text:out.map(x=>x.join('\t')).join('\n')}; }
+/* 2359 typed in red → 29-2359: the added day goes in front, the red part stays red */
+function keepRich(row,c,raw,t){ const hh=hOf(row,c); if(!hh || raw===t) return;
+  if(t.endsWith(raw)) setH(row,c, esc(t.slice(0,t.length-raw.length))+hh); else setH(row,c,''); }
 function pasteGrid(cells, red, hh){
   if(!needSel()) return; const R=rect(); pushUndo(); const rows=BD.blocks[R.b].rows;
   const single = cells.length===1 && cells[0].length===1;
@@ -2065,8 +2068,8 @@ function pasteGrid(cells, red, hh){
   const base=BD.blocks[R.b].date||BD.date; let timed=false;
   for(let i=0;i<h;i++){ const row=rows[R.r0+i]; if(!row) continue;
     for(let j=0;j<w;j++){ const c=R.c0+j; if(![4,5,13].includes(c)) continue; const v=String(row.c[c]||'').trim(); if(!v) continue;
-      const dt=parseTime(v,base); if(!dt) continue; const t=fmtT(dt); if(t!==v){ row.c[c]=t; setH(row,c,''); } timed=true;
-      const o2=c===4?5:c===5?4:-1; if(o2>=0 && !(R.c0<=o2 && o2<R.c0+w)){ row.c[o2]=t; setH(row,o2,''); } } }
+      const dt=parseTime(v,base); if(!dt) continue; const t=fmtT(dt); if(t!==v){ row.c[c]=t; keepRich(row,c,v,t); } timed=true;
+      const o2=c===4?5:c===5?4:-1; if(o2>=0 && !(R.c0<=o2 && o2<R.c0+w)){ row.c[o2]=t; setH(row,o2,hOf(row,c)); row.r[o2]=row.r[c]; } } }
   if([1,10].some(c=>R.c0<=c && c<R.c0+w)) timed=false;   /* a whole ship pasted somewhere: keep it where it was put */
   const pos = timed ? relayout(R.b,-1,-1) : null;
   SEL = timed ? null : {b:R.b, r1:R.r0, c1:R.c0, r2:R.r0+h-1, c2:Math.min(16,R.c0+w-1)}; boardSave(); renderBoard();
