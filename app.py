@@ -338,10 +338,14 @@ with st.sidebar:
         document.body.appendChild(cv);
         function sb(){return document.querySelector('[data-testid="stSidebar"]')}
         function small(){return window.innerWidth<=768}
-        function open(){var s=sb();return !!s&&s.getAttribute("aria-expanded")==="true"}
-        function close(){var b=document.querySelector('[data-testid="stSidebarCollapseButton"] button');if(b)b.click()}
+        function open(){var s=sb();if(!s)return false;var a=s.getAttribute("aria-expanded");if(a==="true")return true;if(a==="false")return false;
+          var r=s.getBoundingClientRect();return r.width>120&&r.right>120&&getComputedStyle(s).visibility!=="hidden"}   /* newer Streamlit: by position */
+        function close(){var b=document.querySelector('[data-testid="stSidebarCollapseButton"] button')||document.querySelector('[data-testid="stSidebarCollapseButton"]')||
+          document.querySelector('[data-testid="stSidebar"] [data-testid="stSidebarHeader"] button');if(b)b.click()}
         function upd(){cv.style.display=(small()&&open())?"block":"none"}
-        cv.addEventListener("click",function(e){e.preventDefault();close();cv.style.display="none"});
+        cv.style.cursor="pointer";
+        function tap(e){e.preventDefault();e.stopPropagation();close();cv.style.display="none"}
+        cv.addEventListener("click",tap);cv.addEventListener("touchend",tap,{passive:false});
         document.addEventListener("click",function(e){if(!small())return;var b=e.target.closest&&e.target.closest('[data-testid="stSidebar"] .stButton button');if(b)setTimeout(close,250)},true);
         new MutationObserver(upd).observe(document.body,{subtree:true,attributes:true,attributeFilter:["aria-expanded"]});
         window.addEventListener("resize",upd);setInterval(upd,800);upd();
