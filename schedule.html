@@ -2093,7 +2093,7 @@ document.addEventListener('keydown',e=>{ if(!BD || $('view-line').hidden || !SEL
   const k=(e.key||'').toLowerCase(), code=e.code;
   if(k==='c'||code==='KeyC'){ e.preventDefault(); menuCopy(false); }
   else if(k==='x'||code==='KeyX'){ e.preventDefault(); menuCopy(true); }
-  else if(k==='v'||code==='KeyV'){ e.preventDefault(); menuPaste(); } });
+  else if(k==='v'||code==='KeyV'){ quietFocus=true; try{ focusCell(SEL.b,SEL.r1,SEL.c1); }finally{ quietFocus=false; } /* the browser's paste then lands in that cell, with the real clipboard (also text copied from outside) */ } });
 async function menuPaste(){
   try{ const t=await navigator.clipboard.readText(); const own=CLIP && CLIP.text===t.replace(/\r/g,'').replace(/\n$/,''); pasteGrid(own?CLIP.cells:parseTSV(t), own?CLIP.red:null, own?CLIP.hh:null); }
   catch(err){ if(CLIP) pasteGrid(CLIP.cells, CLIP.red, CLIP.hh); else toast('ใช้ Ctrl+V เพื่อวาง'); }
