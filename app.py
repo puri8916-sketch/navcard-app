@@ -369,6 +369,15 @@ with st.sidebar:
     (()=>{const hide=w=>{try{const D=w.document;if(D.getElementById("navHideBadge"))return;const s=D.createElement("style");s.id="navHideBadge";
       s.textContent='[class*="viewerBadge"],[class*="ViewerBadge"],[class*="profileContainer"],[class*="profilePreview"],[data-testid="appCreatorAvatar"],a[href*="streamlit.io/cloud"],a[href*="share.streamlit.io/user"],[data-testid="manage-app-button"],[data-testid="stManageAppButton"],[class*="manageApp"],[class*="ManageApp"]{display:none!important}';
       D.head.appendChild(s)}catch(e){}};let w=window;for(let i=0;i<4&&w;i++){hide(w);if(w===w.parent)break;w=w.parent}})();
+    /* phone "Install app / Add to home screen": our name + icon instead of Streamlit's (files in ./static, served at app/static/) */
+    (()=>{let base;try{base=new URL("app/static/",window.parent.location.href).href}catch(e){return}
+      const add=w=>{try{const D=w.document;if(D.getElementById("navPwa"))return;const h=D.head,mk=(t,a)=>{const e=D.createElement(t);for(const k in a)e.setAttribute(k,a[k]);h.appendChild(e);return e};
+        D.querySelectorAll('link[rel="manifest"],link[rel="apple-touch-icon"]').forEach(e=>e.remove());
+        mk("link",{id:"navPwa",rel:"manifest",href:base+"manifest.json"});mk("link",{rel:"apple-touch-icon",href:base+"apple-touch-icon.png"});
+        mk("meta",{name:"apple-mobile-web-app-title",content:"SKP Pilot"});mk("meta",{name:"application-name",content:"SKP Pilot"});
+        mk("meta",{name:"apple-mobile-web-app-capable",content:"yes"});mk("meta",{name:"mobile-web-app-capable",content:"yes"});mk("meta",{name:"theme-color",content:"#0B3B6E"});
+        if(!/SKP/.test(D.title))D.title="SKP·AI Pilot Analysis"}catch(e){}};
+      let w=window.parent;for(let i=0;i<4&&w;i++){add(w);if(w===w.parent)break;w=w.parent}})();
     </script>""", height=0)
     _theme_choice = _THEME_OPTIONS[0]   # always light (the light/dark switch was removed)
     st.markdown("### ระบบนำร่องสงขลา")
