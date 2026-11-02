@@ -2269,7 +2269,7 @@ function askLog(list){
   M.addEventListener('click',async e=>{ const a=e.target.closest('[data-a]')?.dataset.a; if(e.target===M||a==='no'){ M.remove(); return; }
     if(a!=='ok') return; const pick=[...M.querySelectorAll('input[data-i]:checked')].map(x=>list[+x.dataset.i]); M.remove();
     if(!pick.length) return;
-    try{ const n=await writeLog(pick); toast(n?`บันทึกลงสมุดบันทึกเรือแล้ว ${n} รายการ`:'มีในสมุดบันทึกเรือแล้ว'); }
+    try{ const t0=performance.now(); const n=await writeLog(pick); const sec=((performance.now()-t0)/1000).toFixed(1); toast(n?`บันทึกลงสมุดบันทึกเรือแล้ว ${n} รายการ (${sec} วิ)`:`มีในสมุดบันทึกเรือแล้ว (${sec} วิ)`); }
     catch(err){ toast('บันทึกลงสมุดไม่สำเร็จ: '+err.message); } }); }
 async function syncApi(method, q, ops){
   if(!CFG.API_URL) throw new Error('ยังไม่ได้เชื่อม Google Sheet');
