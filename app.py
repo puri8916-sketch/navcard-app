@@ -302,7 +302,12 @@ div:has(> [data-testid="stExpandSidebarButton"]){order:-1!important;align-self:c
 [data-testid="stExpandSidebarButton"]:hover{background:rgba(0,0,0,.06)!important}
 [data-testid="stExpandSidebarButton"] [data-testid="stIconMaterial"]{font-size:0!important;width:auto!important}
 [data-testid="stExpandSidebarButton"] [data-testid="stIconMaterial"]::after{content:"☰";font:700 30px/1 system-ui,"Segoe UI Symbol",sans-serif;color:#1d2730}
-[data-testid="stSidebarLogo"],[data-testid="stHeaderLogo"]{height:48px!important;max-height:48px!important;width:auto!important;max-width:none!important}
+[data-testid="stSidebarLogo"],[data-testid="stHeaderLogo"]{height:auto!important;max-height:48px!important;width:auto!important;max-width:100%!important;object-fit:contain;object-position:left center}
+[data-testid="stSidebarHeader"]{gap:6px!important}
+[data-testid="stSidebarHeader"] > div:has([data-testid="stSidebarLogo"]){flex:1 1 auto!important;min-width:0!important;overflow:hidden}
+[data-testid="stSidebarHeader"] > div:has([data-testid="stSidebarLogo"]) *{max-width:100%}
+[data-testid="stSidebarCollapseButton"]{flex:none!important;margin-left:auto}
+[data-testid="stHeaderLogo"]{max-width:min(240px,calc(100vw - 150px))!important}
 [data-testid="stSidebarHeader"]{margin-left:-14px!important;padding-left:0!important;padding-top:6px!important;height:auto!important;align-items:flex-start!important}
 [data-testid="stSidebarCollapseButton"],[data-testid="stSidebarCollapseButton"] *{opacity:1!important;visibility:visible!important;display:inline-flex!important}
 [data-testid="stSidebar"] .stButton button{min-height:48px;padding:8px 14px;border-radius:10px}
