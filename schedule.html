@@ -658,7 +658,7 @@ html.ios .hbar{position:absolute;bottom:100%!important}
 const CFG_KEY='shipsched_cfg';
 const CFG = (()=>{ const c={API_URL:'',TOKEN:''}; const inj=window.__SCHED__||{};
   if(inj.url){ c.API_URL=inj.url; c.TOKEN=inj.key||''; }
-  try{ const v=JSON.parse(localStorage.getItem(CFG_KEY)||'null'); if(v&&v.url){ c.API_URL=v.url; c.TOKEN=v.key||''; } }catch(e){}
+  if(!inj.managed) try{ const v=JSON.parse(localStorage.getItem(CFG_KEY)||'null'); if(v&&v.url){ c.API_URL=v.url; c.TOKEN=v.key||''; } }catch(e){}   /* signed-in site: the server's sheet always wins (same as สมุดบันทึกเรือ) */
   return c; })();
 if(window.__THEME__) document.documentElement.dataset.theme = window.__THEME__;
 const SEED = /*SEED*/null;

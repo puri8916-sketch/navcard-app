@@ -411,7 +411,7 @@ if _page in (_P_SCHED, _P_NOTICE):
     # Data lives in its own Google Sheet (ShipSchedule_DB) via apps_script/Schedule.gs.
     with open(os.path.join(_HERE, "schedule.html"), encoding="utf-8") as _f:
         _sched_html = _f.read()
-    _sched_cfg = {k: v for k, v in _cfg_for("schedule").items() if k in ("url", "key")}
+    _sched_cfg = {k: v for k, v in _cfg_for("schedule").items() if k in ("url", "key", "managed")}
     _inject = ("window.__SCHED__=" + json.dumps(_sched_cfg, ensure_ascii=False).replace("</", "<\\/") + ";"
                "window.__CAN_PRINT__=true;" + ("window.__ONLY__='notice';" if _page == _P_NOTICE else ""))
     _sched_theme = {_THEME_OPTIONS[0]: "light", _THEME_OPTIONS[1]: "dark"}.get(_theme_choice)
