@@ -2277,8 +2277,13 @@ async function syncApi(method, q, ops){
                            : await fetch(CFG.API_URL,{method:'POST',body:JSON.stringify({key:CFG.TOKEN,ops})});
   const j=await r.json(); if(!j.ok) throw new Error(j.error==='bad_key'?'รหัสไม่ตรง (อัปเดตสคริปต์ Navcard.gs)':(j.error||'ผิดพลาด')); return j; }
 async function writeLog(list){
-  const j=await syncApi('GET','action=load&since=0&cols=calls');
-  const calls=j.docs.filter(d=>d.col==='calls' && !d.deleted && d.doc).map(d=>({id:d.id,...d.doc}));
+  /* reuse the log's own copy on this device (navsync_v1) and fetch only what changed since — much smaller than the whole log */
+  const NC='navsync_v1'; let cache=null; try{ cache=JSON.parse(localStorage.getItem(NC)||'null'); }catch(e){}
+  const useC=!!(cache && cache.url===CFG.API_URL && +cache.since>0 && cache.cols && cache.cols.calls);
+  const j=await syncApi('GET','action=load&cols=calls&since='+(useC?cache.since:0));
+  const cmap=new Map(useC?Object.entries(cache.cols.calls).map(([id,doc])=>[id,{id,...doc}]):[]);
+  for(const d of j.docs){ if(d.col!=='calls') continue; if(d.deleted||!d.doc) cmap.delete(d.id); else cmap.set(d.id,{id:d.id,...d.doc}); }
+  const calls=[...cmap.values()];
   const beYY=iso=>String((+iso.slice(0,4)+543)%100).padStart(2,'0'), fyYY=iso=>String((+iso.slice(0,4)+543+(+iso.slice(5,7)>=10?1:0))%100).padStart(2,'0');
   const lt=dt=>`${dt.slice(8,10)}-${dt.slice(5,7)}-${dt.slice(11,13)}${dt.slice(14,16)}`;   /* 31-10-0930 like the log */
   const pil=p=>/^0+$/.test(p)?'-CAP-':String(p||'').replace(/^P\.?/i,'');
@@ -2303,7 +2308,11 @@ async function writeLog(list){
       Object.assign(c,{atd:T,pilotOut:pil(h.pilot),draughtOut:h.drf,agentOut:h.agent||c.agentOut}); }
     c.updated=Date.now(); touched.set(c.id,c); }
   for(const c of touched.values()){ const {id,...doc}=c; ops.push({op:'put',col:'calls',id,doc,updated:Date.now()}); }
-  if(ops.length) await syncApi('POST','',ops);
+  if(ops.length){ await syncApi('POST','',ops);
+    /* put the new rows straight into the log's copy on this device: สมุดบันทึกเรือ shows them at once (an open tab updates via the storage event) */
+    try{ const c=JSON.parse(localStorage.getItem(NC)||'null');
+      if(c && c.url===CFG.API_URL && c.cols){ c.cols.calls=c.cols.calls||{}; c.meta=c.meta||{}; c.meta.calls=c.meta.calls||{};
+        for(const o of ops){ c.cols.calls[o.id]=o.doc; c.meta.calls[o.id]=o.updated; } localStorage.setItem(NC,JSON.stringify(c)); } }catch(e){} }
   return ops.length; }
 (async function start(){
   $('modeBadge').textContent = CFG.API_URL? 'เชื่อม Google Sheet' : 'โหมดตัวอย่าง';
