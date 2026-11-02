@@ -1650,7 +1650,8 @@ async function buildPdf(){
   const M=4.3, W=297-2*M, H=210-2*M; let w=W, h=canvas.height*W/canvas.width; if(h>H){ h=H; w=canvas.width*H/canvas.height; }   // always one A4 page
   pdf.addImage(canvas.toDataURL('image/jpeg',0.95),'JPEG',M+(W-w)/2,M,w,h);
   const [y,m,d]=S.D.split('-').map(Number);
-  return {pdf, name:`SHIP'S SCHEDULE ${d}-${m}-${String((y+543)%100).padStart(2,'0')}.pdf`};
+  const mon=MONTHS[m-1].charAt(0)+MONTHS[m-1].slice(1).toLowerCase();
+  return {pdf, name:`${d} ${mon} ${y}.pdf`};   /* e.g. 2 November 2026.pdf */
 }
 async function downloadPdf(){
   const btn=$('pdfBtn'); btn.disabled=true; const label=btn.textContent; btn.textContent='กำลังสร้าง PDF…';
