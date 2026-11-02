@@ -1430,7 +1430,7 @@ async function refresh(force){
   try{
     let [init,list]=await Promise.all([api('init'), api('movements',(()=>{ const [from,to]=rangeFor(S.D); return {from,to}; })())]);
     const changed = JSON.stringify(init)!==JSON.stringify(S.init) || JSON.stringify(list)!==JSON.stringify(S.mv);
-    list=mergeRemote(list); applyInit(init); S.mv=list; S.loaded=rangeFor(S.D); cacheSet();
+    list=mergeRemote(list); applyInit(init); S.mv=list; S.loaded=rangeFor(S.D); cacheSet(); pushLocalProfiles();
     if(changed){ if(gridBusy()) pendingRender=true; else { rerender(); if(!$('view-ships').hidden) renderShips(); } }
     if(BD && BD.date===S.D && !$('view-line').hidden && !(document.activeElement && document.activeElement.closest && document.activeElement.closest('#board'))
        && Object.keys(BD.all).some(d=>{ const r=dayRemote(d); return r && (r.updated||0)>(BD.all[d].updated||0); })) openBoard(S.D);
@@ -2322,7 +2322,7 @@ async function writeLog(list){
   const D0 = (!CFG.API_URL && SEED && SEED.startDate) ? SEED.startDate : todayYmd();
   const c = cacheGet();
   if(c && c.init){ applyInit(c.init); S.mv=c.mv||[]; S.loaded=c.loaded; S.D=D0; $('schedDate').value=D0; renderAll(); renderShips(); showTab('line'); refresh(true); return; }
-  try{ await Promise.all([loadInit(), (S.D=D0, loadMovements(D0))]); cacheSet(); }catch(err){ toast('โหลดฐานข้อมูลไม่สำเร็จ: '+err.message); $('sUrl').value=CFG.API_URL; $('sKey').value=''; $('sMsg').textContent='โหลดไม่สำเร็จ: '+err.message; $('sMsg').className='hint bad'; showTab('setup'); return; }
+  try{ await Promise.all([loadInit(), (S.D=D0, loadMovements(D0))]); cacheSet(); pushLocalProfiles(); }catch(err){ toast('โหลดฐานข้อมูลไม่สำเร็จ: '+err.message); $('sUrl').value=CFG.API_URL; $('sKey').value=''; $('sMsg').textContent='โหลดไม่สำเร็จ: '+err.message; $('sMsg').className='hint bad'; showTab('setup'); return; }
   $('schedDate').value=D0; renderAll(); renderShips(); showTab('line');
   try{ document.fonts.ready.then(()=>fitAll()); }catch(e){}
 })();
@@ -2463,6 +2463,14 @@ async function impRun(){
 /* ---------- ผก.: profile pictures + names, นำเข้าเลขผก./เบอร์/ชื่อ/รูป ---------- */
 const PH_LS='sched_pilot_profiles';   // fallback while the sheet script is the old one
 function lsProf(){ try{ return JSON.parse(localStorage.getItem(PH_LS)||'{}'); }catch(e){ return {}; } }
+/* photos/names kept only in this browser (saved while the sheet script was old) → send them up once so every device sees them */
+let profUp=false;
+async function pushLocalProfiles(){ if(profUp || !CFG.API_URL) return; const o=lsProf(), list=[];
+  for(const [no,x] of Object.entries(o)){ const it={no}; if(x.photo && !(S.photos||{})[no]) it.photo=x.photo; if(x.name && !(S.names||{})[no]) it.name=x.name; if(it.photo||it.name) list.push(it); }
+  if(!Object.keys(o).length) return; profUp=true;
+  try{ if(list.length){ await api('savePilotProfiles',{},{list}); list.forEach(it=>{ if(it.photo){ S.photos=S.photos||{}; S.photos[it.no]=it.photo; } if(it.name){ S.names=S.names||{}; S.names[it.no]=it.name; } }); cacheSet(); toast(`ส่งรูป/ชื่อผก. ${list.length} คน ขึ้นชีตแล้ว · ทุกเครื่องเห็นแล้ว`); }
+    localStorage.removeItem(PH_LS); }
+  catch(e){ profUp=false; } }
 function photoOf(p){ return (S.photos&&S.photos[p]) || (lsProf()[p]||{}).photo || ''; }
 function nameOf(p){ return (S.names&&S.names[p]) || (lsProf()[p]||{}).name || ''; }
 function avColor(p){ let h=0; for(const ch of String(p)) h=(h*31+ch.charCodeAt(0))%360; return `hsl(${h} 50% 40%)`; }
