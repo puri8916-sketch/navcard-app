@@ -287,7 +287,7 @@ st.markdown("""<style>
 .st-key-profile_pop button[data-testid="stPopoverButton"]:hover{transform:scale(1.07)}
 @keyframes navSpin{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){.st-key-profile_pop::before,.st-key-profile_pop::after{animation:none}}
-.st-key-profile_pop button p{color:#FFE29A!important;font-size:19px!important;font-weight:800!important;margin:0!important}
+.st-key-profile_pop button p{color:#fff!important;font-size:19px!important;font-weight:800!important;margin:0!important}
 .st-key-profile_pop button div[aria-hidden="true"],.st-key-profile_pop button [data-testid="stIconMaterial"]{display:none!important}
 .st-key-profile_pop button,.st-key-profile_pop button > div,.st-key-profile_pop button > div > div{display:flex!important;align-items:center!important;justify-content:center!important;gap:0!important;margin:0!important}
 .st-key-profile_pop button p{line-height:1!important}
