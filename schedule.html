@@ -1380,9 +1380,10 @@ function gDelBlank(){ const p=gPos(); if(!p) return; const rows=curLayRows();
 function gAuto(){ if(!layoutOf(S.D)) return toast('ตารางนี้จัดอัตโนมัติอยู่แล้ว'); const before=cl(layoutOf(S.D).rows); gRecordLay(S.D, before, null); setLayout(S.D, null); renderAll(); toast('จัดอัตโนมัติใหม่แล้ว · กด ↶ ย้อนกลับ ถ้าต้องการลำดับเดิม'); }
 
 /* right-click menu for จัดตาราง */
+const FC=['#000000','#FF0000','#C00000','#FFC000','#00B050','#0070C0','#002060','#7030A0','#808080'];   // font colours (Excel standard)
 const GM=$('gmenu');
-GM.innerHTML=[['undo','↶ ย้อนกลับ','Ctrl+Z'],['redo','↷ ทำซ้ำ','Ctrl+Y'],['-'],['cut','ตัด','Ctrl+X'],['copy','คัดลอก','Ctrl+C'],['paste','วาง','Ctrl+V'],['clear','ลบ','Delete'],['-'],['mvup','ย้ายขึ้น','Alt+↑'],['mvdown','ย้ายลง','Alt+↓'],['rowup','ย้ายทั้งแถวขึ้น','Alt+Shift+↑'],['rowdown','ย้ายทั้งแถวลง','Alt+Shift+↓'],['insblank','แทรกแถวว่าง',''],['delblank','ลบแถวว่าง',''],['auto','จัดอัตโนมัติใหม่','']]
-  .map(x=>x[0]==='-'?'<hr>':`<button type="button" data-gm="${x[0]}"><span>${x[1]}</span><kbd>${x[2]}</kbd></button>`).join('');
+GM.innerHTML=[['undo','↶ ย้อนกลับ','Ctrl+Z'],['redo','↷ ทำซ้ำ','Ctrl+Y'],['-'],['cut','ตัด','Ctrl+X'],['copy','คัดลอก','Ctrl+C'],['paste','วาง','Ctrl+V'],['clear','ลบ','Delete'],['-'],['colors'],['-'],['mvup','ย้ายขึ้น','Alt+↑'],['mvdown','ย้ายลง','Alt+↓'],['rowup','ย้ายทั้งแถวขึ้น','Alt+Shift+↑'],['rowdown','ย้ายทั้งแถวลง','Alt+Shift+↓'],['insblank','แทรกแถวว่าง',''],['delblank','ลบแถวว่าง',''],['auto','จัดอัตโนมัติใหม่','']]
+  .map(x=>x[0]==='-'?'<hr>':x[0]==='colors'?`<div class="mcol"><span>สีตัวอักษร</span><div>${FC.map(k=>`<button type="button" data-gcol="${k}" style="background:${k}" title="${k}"></button>`).join('')}<button type="button" data-gcol="" class="auto" title="อัตโนมัติ (ดำ)">A</button></div></div>`:`<button type="button" data-gm="${x[0]}"><span>${x[1]}</span><kbd>${x[2]}</kbd></button>`).join('');
 function hideGMenu(){ GM.hidden=true; }
 G.addEventListener('mousedown',()=>{ GSEP=null; });
 G.addEventListener('contextmenu',e=>{
@@ -1400,6 +1401,7 @@ GM.addEventListener('mousedown',e=>e.preventDefault());
 document.addEventListener('mousedown',e=>{ if(!GM.hidden && !e.target.closest('#gmenu')) hideGMenu(); });
 document.addEventListener('scroll',()=>hideGMenu(),true);
 GM.addEventListener('click',async e=>{
+  const k=e.target.closest('[data-gcol]'); if(k){ hideGMenu(); gPickColor(k.dataset.gcol); return; }
   const b=e.target.closest('[data-gm]'); if(!b) return; hideGMenu(); const a=b.dataset.gm;
   if(a==='undo'){ gUndo(); return; } if(a==='redo'){ gRedo(); return; }
   const lay={mvup:()=>gMove(-1),mvdown:()=>gMove(1),rowup:()=>gMove(-1,true),rowdown:()=>gMove(1,true),insblank:gInsBlank,delblank:gDelBlank,auto:gAuto}[a];
@@ -1721,7 +1723,6 @@ const LHEAD=['NO.',"SHIP'S&nbsp; NAME",'LOA','Drf','ETA','POB','BERTH','Pilot','
 const LF={1:['ship','L'],6:['berth','L'],7:['pilot','L'],8:['agent','L'],10:['ship','R'],14:['berth','R'],15:['pilot','R'],16:['agent','R']};
 const PILOT_COLS=[7,15];
 const blankRow=()=>({c:Array(17).fill(''), r:Array(17).fill(false), h:Array(17).fill('')});
-const FC=['#000000','#FF0000','#C00000','#FFC000','#00B050','#0070C0','#002060','#7030A0','#808080'];   // font colours (Excel standard)
 let curColor='#FF0000';
 const colOf=(row,c)=>{ const v=row.r[c]; if(v) return v===true?'#FF0000':v; return String(row.c[c<9?0:9]||'').trim()==='พ'?'#FF0000':''; };   // old data stored red as true; a พ ship's side of the row is red   // old data stored red as true
 const FILL='#C8C8C8';   // พื้นหลังเทา (cells saved with the old #E0E0E0 show in the new grey too)
