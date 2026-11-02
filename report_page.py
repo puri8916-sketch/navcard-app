@@ -155,8 +155,6 @@ def step1(ctx, files):
         for d, cs in sorted(groups.items()):
             nn, en, sa, sh = rc.counts(cs)
             warn = ""
-            if d in days:
-                warn = f" · ⚠ แท็บนี้มีอยู่แล้ว ({len(days[d].get('cards', []))} การ์ด) จะถูกแทนที่"
             st.markdown(f"**แท็บ {_label(d)}** — {len(cs)} การ์ด: {cs[0]['no']} ({cs[0]['ship'].strip()}) "
                         f"ถึง {cs[-1]['no']} ({cs[-1]['ship'].strip()}) · {nn} ลำ เข้า {en} ออก {sa} เลื่อน {sh}{warn}")
         if len(groups) > 1:   # total over every tab in this upload
