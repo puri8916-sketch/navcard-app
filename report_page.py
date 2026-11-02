@@ -128,8 +128,7 @@ def step1(ctx, files):
         if len(span) == 1:
             assign = [span[0]] * n
         else:
-            st.info(f"แยกการ์ดเป็น {len(span)} แท็บ ({_label(span[0])} ถึง {_label(span[-1])}) — "
-                    "เลือกลำแรกของแต่ละวัน ระบบเลือกไว้ให้ก่อน (เดาจากวันที่เรือเคลื่อนไหวล่าสุด) ตรวจ/แก้ได้")
+            st.info(f"{len(span)} แท็บ ({_label(span[0])} ถึง {_label(span[-1])})")
             sugg = hint if len(parsed) > 1 else rc.suggest_days(span[0], span[-1], cards)
             opts = list(range(n + 1))
             fmt = lambda i: "(ไม่มีการ์ดวันนี้)" if i == n else f"{i + 1}. {cards[i]['no']}  {cards[i]['ship'].strip()}  ·  {_moves(cards[i])}"
