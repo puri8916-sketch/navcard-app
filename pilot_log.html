@@ -1283,9 +1283,9 @@ function statCalc(ym){
   for(const c of allCalls){
     const {L,eT,aT}=callLegs(c);
     for(const g of L)if(!g.x&&inM(g.t))add("ios"[g.k],c);
-    // ค้างท่า: arrived by the end of the month, not departed by then
+    // ค้างท่า: arrived by the end of the month, not departed by then; calls with a -CAP- leg (เข้า or ออก) are never ค้างท่า
     const arr=eT?eT.iso:c.date;
-    if(c.vessel&&arr&&arr<=end&&(!aT||aT.iso>end)){add("stay",c);stayN.push(c.vessel)}
+    if(c.pilotIn!=="-CAP-"&&c.pilotOut!=="-CAP-"&&c.vessel&&arr&&arr<=end&&(!aT||aT.iso>end)){add("stay",c);stayN.push(c.vessel)}
   }
   return {...R,all:R.i.n+R.o.n+R.s.n,miss:[...miss.keys()].sort(),stayN};
 }
