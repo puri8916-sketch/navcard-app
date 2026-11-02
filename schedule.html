@@ -385,8 +385,8 @@ input,textarea{line-height:1.6}
 .lsheet td.hd,.eg thead th{overflow:hidden;text-overflow:clip;letter-spacing:-.01em}
 .lsheet td.hd{padding:0 1px}
 
-.pzoom{display:inline-flex;align-items:center;gap:4px;margin-left:auto}
-.pzoom .btn{min-width:44px;font-size:20px;padding:6px 10px}
+.pzoom{display:inline-flex;align-items:center;gap:4px}
+.pzoom .btn{min-width:44px;font-size:20px;padding:6px 10px;display:inline-flex;align-items:center;justify-content:center}
 .pzoom #pzFit{font-size:15px}
 .pzv{min-width:52px;text-align:center;font:600 16px var(--f-num)}
 
@@ -628,10 +628,10 @@ html.ios .hbar{position:absolute;bottom:100%!important}
     <div class="printbar">
       <button class="btn primary" id="printBtn">ปริ้น</button>
       <button class="btn" id="pdfBtn">ดาวน์โหลด PDF</button>
+      <div class="grp pzoom" role="group" aria-label="ซูมตัวอย่างพิมพ์"><button class="btn tb" id="pzOut" type="button" aria-label="ซูมออก" title="ซูมออก"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.4 15.4 21 21"/><path d="M7.5 10.5h6"/></svg></button><span class="pzv" id="pzVal">100%</span><button class="btn tb" id="pzIn" type="button" aria-label="ซูมเข้า" title="ซูมเข้า"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.4 15.4 21 21"/><path d="M7.5 10.5h6"/><path d="M10.5 7.5v6"/></svg></button><button class="btn tb" id="pzFit" type="button" title="พอดีความกว้างจอ">พอดีจอ</button></div>
       <span class="note" id="printNote" hidden></span>
       <span class="disp" id="dispState" hidden></span>
       <button class="btn" id="dispBtn" hidden>บันทึกจัดจ่าย</button>
-      <div class="grp pzoom" role="group" aria-label="ซูมตัวอย่างพิมพ์"><button class="btn tb" id="pzOut" type="button" aria-label="ซูมออก">−</button><button class="btn tb" id="pzFit" type="button" title="พอดีความกว้างจอ">พอดีจอ</button><span class="pzv" id="pzVal">100%</span><button class="btn tb" id="pzIn" type="button" aria-label="ซูมเข้า">＋</button></div>
     </div>
     <div class="scrollx vfit" id="paperWrap"><div class="paper" id="paperBig"></div></div>
   </section>
