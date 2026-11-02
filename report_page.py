@@ -159,6 +159,10 @@ def step1(ctx, files):
                 warn = f" · ⚠ แท็บนี้มีอยู่แล้ว ({len(days[d].get('cards', []))} การ์ด) จะถูกแทนที่"
             st.markdown(f"**แท็บ {_label(d)}** — {len(cs)} การ์ด: {cs[0]['no']} ({cs[0]['ship'].strip()}) "
                         f"ถึง {cs[-1]['no']} ({cs[-1]['ship'].strip()}) · {nn} ลำ เข้า {en} ออก {sa} เลื่อน {sh}{warn}")
+        if len(groups) > 1:   # total over every tab in this upload
+            allc = [c for cs in groups.values() for c in cs]
+            tn, te, ts, tsh = rc.counts(allc)
+            st.markdown(f"**รวม {len(groups)} แท็บ** — {len(allc)} การ์ด · **{tn} ลำ** เข้า {te} ออก {ts} **เลื่อน {tsh}**")
         empty = [d for d in span if d not in groups]
         if empty:
             st.caption("ไม่มีการ์ด (ไม่สร้างแท็บ): " + ", ".join(_label(d) for d in empty))
@@ -196,6 +200,8 @@ def month_and_settings(ctx):
                          "สรุป": rc.counts_text(t.get("cards", [])).replace("รวมทั้งหมด ", ""),
                          "ส่งการเงินแล้ว (แท็บเขียว)": bool(t.get("sent")), "ลบ": False})
         nsent = sum(r["ส่งการเงินแล้ว (แท็บเขียว)"] for r in rows)
+        mn, me, ms, msh = rc.counts([c for d in mdays for c in days[d].get("cards", [])])
+        st.markdown(f"**รวมทั้งเดือน** — {sum(r['การ์ด'] for r in rows)} การ์ด · **{mn} ลำ** เข้า {me} ออก {ms} **เลื่อน {msh}**")
         with st.expander(f"รายการแท็บ ({len(rows)} แท็บ · ส่งการเงินแล้ว {nsent} · ยังไม่ส่ง {len(rows) - nsent})"):
             ed = st.data_editor(rows, key=f"rep_tabs_{ym}_{st.session_state.get('rep_del_n', 0)}", hide_index=True,
                                 width="stretch", disabled=["แท็บ", "การ์ด", "สรุป"],
