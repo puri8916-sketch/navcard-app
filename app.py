@@ -333,8 +333,9 @@ with st.sidebar:
     (()=>{const P=window.parent;if(!P||P.__navSbInit)return;P.__navSbInit=true;
     try{for(let i=0;i<P.localStorage.length;i++){const k=P.localStorage.key(i);if(k&&k.startsWith("stSidebarCollapsed-"))P.localStorage.setItem(k,"true")}}catch(e){}
     let n=0;const t=setInterval(()=>{const sb=P.document.querySelector('[data-testid="stSidebar"]');
-      if(sb&&sb.getAttribute("aria-expanded")==="true"){const b=P.document.querySelector('[data-testid="stSidebarCollapseButton"] button');if(b){b.click();clearInterval(t)}}
-      else if(sb||++n>40)clearInterval(t)},100)})();
+      const isOpen=sb&&(sb.getAttribute("aria-expanded")==="true"||(sb.getAttribute("aria-expanded")===null&&sb.getBoundingClientRect().right>120));   /* 1.66+: no aria-expanded */
+      if(isOpen){const b=P.document.querySelector('[data-testid="stSidebarCollapseButton"] button')||P.document.querySelector('[data-testid="stSidebarCollapseButton"]');if(b){b.click();clearInterval(t)}}
+      else if(++n>30)clearInterval(t)},100)})();   /* keep looking for ~3 s: the menu may open a moment after load */
     /* phones: tap anywhere outside the open menu (or pick a menu item) to close it — the page itself runs in frames,
        so a see-through cover over the page catches the tap. Installed once into the app page. */
     (()=>{const P=window.parent,D=P.document;if(D.getElementById("navSbCover"))return;
