@@ -15,7 +15,7 @@ import importlib as _importlib
 if not hasattr(nc, "auto_remarks"):
     nc = _importlib.reload(nc)
 
-st.set_page_config(page_title="Navigation Card Merger", layout="wide",
+st.set_page_config(page_title="SKP·AI Pilot Analysis", page_icon=os.path.join(os.path.dirname(os.path.abspath(__file__)), "skp_icon.png"), layout="wide",
                    initial_sidebar_state="collapsed")
 
 _BASE_CSS = """
@@ -269,7 +269,7 @@ def _go(p):
 
 # Streamlit hides the sidebar's collapse (<<) button until hover; keep it visible so the
 # menu can be hidden for more room, and make the reopen (>>) button easy to see.
-st.logo(os.path.join(_HERE, "md_logo.png"), size="large")   # กรมเจ้าท่า, top-left of the menu
+st.logo(os.path.join(_HERE, "skp_logo.png"), size="large")   # SKP·AI Pilot Analysis (mermaid of Laem Samila), top-left
 st.markdown("""<style>
 [data-testid="stMain"] [data-testid="stElementContainer"]:has(iframe[srcdoc*="navauth"]){position:absolute!important;width:0!important;height:0!important;overflow:hidden}
 .st-key-profile_pop{position:fixed!important;top:10px;right:16px;z-index:999990;width:auto!important}
