@@ -542,7 +542,7 @@ html.ios .hbar{position:absolute;bottom:100%!important}
     <div class="scrollx vfit"><div class="paper linepaper" id="board"></div></div>
   </section>
   <section id="view-work" hidden>
-    <div class="ltool"><div class="grp"><button class="btn tb" id="gUndo" title="Ctrl+Z">↶ ย้อนกลับ</button><button class="btn tb" id="gRedo" title="Ctrl+Y">↷ ทำซ้ำ</button></div><div class="grp"><button class="btn tb" id="gAutoBtn" hidden>⟲ จัดอัตโนมัติใหม่</button></div><div class="grp"><button class="btn tb" id="impBtn" title="นำเข้าจากไฟล์ Excel ตารางเรือเดิม (แท็บแยกตามวัน)">📥 นำเข้าไฟล์ตาราง</button><input type="file" id="impFile" accept=".xlsx" hidden></div></div>
+    <div class="ltool"><div class="grp"><button class="btn tb" id="gUndo" title="Ctrl+Z">↶ ย้อนกลับ</button><button class="btn tb" id="gRedo" title="Ctrl+Y">↷ ทำซ้ำ</button></div><div class="grp fcolor gfcolor"><button class="btn tb fc-main" id="gColor" title="สีตัวอักษร"><span class="fcA">A</span><span class="fcBar" id="gfcBar"></span></button><button class="btn tb fc-drop" id="gfcDrop" title="เลือกสี" aria-label="เลือกสีตัวอักษร">▾</button><div class="fc-pal" id="gfcPal" hidden></div></div><div class="grp"><button class="btn tb" id="gAutoBtn" hidden>⟲ จัดอัตโนมัติใหม่</button></div><div class="grp"><button class="btn tb" id="impBtn" title="นำเข้าจากไฟล์ Excel ตารางเรือเดิม (แท็บแยกตามวัน)">📥 นำเข้าไฟล์ตาราง</button><input type="file" id="impFile" accept=".xlsx" hidden></div></div>
     <div class="panel imp" id="impPanel" hidden></div>
     <div class="sheetwrap vfit"><table class="eg" id="grid"></table></div>
   </section>
@@ -887,9 +887,10 @@ function sheetHTML(D){
   h += `<tr><td class="h-in" colspan="9">ENTERING</td><td class="h-out" colspan="9">SAILING &amp; SHIFTING</td></tr>`;
   h += `<tr>${['NO.',"SHIP'S&nbsp; NAME",'LOA','Drf','ETA','POB','BERTH','Pilot','AGENT','NO.',"SHIP'S&nbsp; NAME",'LOA','Drf','ETD','BERTH','Pilot','AGENT'].map(t=>`<td class="hd">${t}</td>`).join('')}<td class="r">PILOT ON DUTY</td></tr>`;
   let ri=0;
-  const cellsL=(m,lateRow)=> m ? `<td class="${lateRow?'pc':''}">${lateRow?'พ':(main.no.get(m.id)||'')}</td><td class="l">${esc(m.ship)}</td><td>${esc(m.loa)}</td><td>${esc(m.drf)}</td><td>${fmtT(m.datetime)}</td><td>${fmtT(m.pob||m.datetime)}</td><td>${esc(m.to)}</td><td class="pc">${esc(m.pilot)}</td><td>${esc(m.agent)}</td>`
+  const fs=(m,f)=>{ const c=fcOf(m,f); return c?` style="color:${c}"`:''; };
+  const cellsL=(m,lateRow)=> m ? `<td class="${lateRow?'pc':''}">${lateRow?'พ':(main.no.get(m.id)||'')}</td><td class="l"${fs(m,'ship')}>${esc(m.ship)}</td><td${fs(m,'loa')}>${esc(m.loa)}</td><td${fs(m,'drf')}>${esc(m.drf)}</td><td${fs(m,'t')}>${fmtT(m.datetime)}</td><td${fs(m,'pob')}>${fmtT(m.pob||m.datetime)}</td><td${fs(m,'berth')}>${esc(m.to)}</td><td class="pc"${fs(m,'pilot')}>${esc(m.pilot)}</td><td${fs(m,'agent')}>${esc(m.agent)}</td>`
                                : '<td></td>'.repeat(9);
-  const cellsR=(m,lateRow)=> m ? `<td class="${lateRow?'pc':''}">${lateRow?'พ':(main.no.get(m.id)||'')}</td><td class="l">${esc(m.ship)}</td><td>${esc(m.loa)}</td><td>${esc(m.drf)}</td><td>${fmtT(m.datetime)}</td><td>${esc(berthText(m))}</td><td class="pc">${esc(m.pilot)}</td><td>${esc(m.agent)}</td>`
+  const cellsR=(m,lateRow)=> m ? `<td class="${lateRow?'pc':''}">${lateRow?'พ':(main.no.get(m.id)||'')}</td><td class="l"${fs(m,'ship')}>${esc(m.ship)}</td><td${fs(m,'loa')}>${esc(m.loa)}</td><td${fs(m,'drf')}>${esc(m.drf)}</td><td${fs(m,'t')}>${fmtT(m.datetime)}</td><td${fs(m,'berth')}>${esc(berthText(m))}</td><td class="pc"${fs(m,'pilot')}>${esc(m.pilot)}</td><td${fs(m,'agent')}>${esc(m.agent)}</td>`
                                : '<td></td>'.repeat(8);
   const rcell = () => `<td class="r">${esc(R[ri++]||'')}</td>`;
   for(const row of main.rows) h += `<tr>${cellsL(row.L)}${cellsR(row.R)}${rcell()}</tr>`;
@@ -960,7 +961,7 @@ function halfHTML(side, m, o){
     for(const f of F){
       if(f==='no'){ const lt=+m.late; h+=`<td class="no${lt?' lt':''}${mid}"><button type="button" data-act="late" data-id="${m.id}" title="${lt?'กดเพื่อยกเลิก พ':'กดเพื่อทำเป็น พ (แจ้งเพิ่มหลังจัดจ่าย)'}">${lt?'พ':(o.no??'')}</button></td>`; continue; }
       const need = f==='pilot' && !m.pilot ? ' need' : '';
-      const cell = inputHTML(m.id,f,side,fieldVal(m,f,side),`data-base="${o.base}"`);
+      const fc = fcOf(m,f), cell = inputHTML(m.id,f,side,fieldVal(m,f,side),`data-base="${o.base}"${fc?` style="color:${fc}"`:''}`);
       if(f==='ship') h+=`<td class="shipc">${cell}</td>`;
       else h+=`<td class="${need.trim()}">${cell}</td>`;
     }
@@ -1273,6 +1274,16 @@ G.addEventListener('dragstart',e=>e.preventDefault()); G.addEventListener('drop'
 
 function gTargets(){ const R=grect(), out=[]; if(!R) return out; for(let r=R.r0;r<=R.r1;r++) for(let c=R.c0;c<=R.c1;c++){ const i=gcell(r,c); if(i) out.push(i); } return out; }
 const mvOf=i=>i.dataset.draft?null:S.mv.find(x=>x.id===i.dataset.k.split(':')[0]);
+/* font colour per cell of a ship, kept in the movement's note as {"fc":{field:colour}} */
+function noteObj(m){ try{ const o=JSON.parse(m.note||'{}'); return o&&typeof o==='object'?o:{}; }catch(e){ return {}; } }
+function fcOf(m,f){ return (noteObj(m).fc||{})[f]||''; }
+function setFc(m,f,col){ const o=noteObj(m), fc=o.fc||{}; if(col) fc[f]=col; else delete fc[f]; if(Object.keys(fc).length) o.fc=fc; else delete o.fc; m.note=Object.keys(o).length?JSON.stringify(o):''; }
+function gSetColor(col){
+  const ins=gTargets().filter(i=>!i.dataset.draft); if(!ins.length) return toast('เลือกช่องของเรือก่อน');
+  const by=new Map(); ins.forEach(i=>{ const m=mvOf(i); if(!m) return; if(!by.has(m.id)) by.set(m.id,{m,before:cl(m),fs:[]}); by.get(m.id).fs.push(i.dataset.f); });
+  gBatchStart(); for(const {m,before,fs} of by.values()){ fs.forEach(f=>setFc(m,f,col)); if(JSON.stringify(before)!==JSON.stringify(m)){ gRecord(before,m); persist(m); } } gBatchEnd(); rerender();
+}
+function gPickColor(col){ if(col){ curColor=col; $('fcBar').style.background=col; $('gfcBar').style.background=col; } gSetColor(col); $('gfcPal').hidden=true; }
 function applyField(m,f,v,side,base){
   v=String(v??'').trim();
   if(f==='ship'){ if(!v) return false; m.ship=norm(v); const s=S.shipIdx.get(m.ship); if(s){ if(s.loa) m.loa=s.loa; if(s.agent) m.agent=s.agent; } ensureShip(m); }
@@ -1761,8 +1772,9 @@ function blockFromSchedule(D, items, snap){
   const rows = pairRows(items, D).map(pr=>{
     const row=blankRow(); if(pr.gap) return row;
     const put=(m,off,vals)=>{ const red=!!(+m.late || changed(m,snap)); vals.forEach((v,i)=>{ row.c[off+i]=String(v??''); row.r[off+i]=red?'#FF0000':''; }); if(+m.late) row.r[off]='#FF0000'; };
-    if(pr.L){ const m=pr.L; put(m,0,[+m.late?'พ':(nos.get(m.id)||''), m.ship, m.loa, m.drf, fmtT(m.datetime), fmtT(m.pob||m.datetime), m.to, m.pilot, m.agent]); }
-    if(pr.R){ const m=pr.R; put(m,9,[+m.late?'พ':(nos.get(m.id)||''), m.ship, m.loa, m.drf, fmtT(m.datetime), berthText(m), m.pilot, m.agent]); }
+    const fcs=(m,off,F)=>F.forEach((f,i)=>{ const c=f!=='no'&&fcOf(m,f); if(c) row.r[off+i]=c; });
+    if(pr.L){ const m=pr.L; put(m,0,[+m.late?'พ':(nos.get(m.id)||''), m.ship, m.loa, m.drf, fmtT(m.datetime), fmtT(m.pob||m.datetime), m.to, m.pilot, m.agent]); fcs(m,0,FL); }
+    if(pr.R){ const m=pr.R; put(m,9,[+m.late?'พ':(nos.get(m.id)||''), m.ship, m.loa, m.drf, fmtT(m.datetime), berthText(m), m.pilot, m.agent]); fcs(m,9,FR); }
     return row;
   });
   return {date:D, label:longDate(D), rows:oneTrailing(rows)};
@@ -2167,6 +2179,12 @@ $('fcDrop').addEventListener('click',()=>{ $('fcPal').hidden=!$('fcPal').hidden;
 $('fcPal').addEventListener('mousedown',e=>e.preventDefault());
 $('fcPal').addEventListener('click',e=>{ const k=e.target.closest('[data-col]'); if(k) pickColor(k.dataset.col); });
 document.addEventListener('mousedown',e=>{ if(!$('fcPal').hidden && !e.target.closest('.fcolor')) $('fcPal').hidden=true; });
+$('gfcPal').innerHTML = $('fcPal').innerHTML;
+['gColor','gfcDrop','gfcPal'].forEach(id=>$(id).addEventListener('mousedown',e=>e.preventDefault()));
+$('gColor').addEventListener('click',()=>gSetColor(curColor));
+$('gfcDrop').addEventListener('click',()=>{ $('gfcPal').hidden=!$('gfcPal').hidden; });
+$('gfcPal').addEventListener('click',e=>{ const k=e.target.closest('[data-col]'); if(k) gPickColor(k.dataset.col); });
+document.addEventListener('mousedown',e=>{ if(!$('gfcPal').hidden && !e.target.closest('.gfcolor')) $('gfcPal').hidden=true; });
 function delBlock(bi){
   if(!BD || !BD.blocks[bi]) return; pushUndo(); const lab=BD.blocks[bi].label;
   BD.blocks.splice(bi,1); SEL=null; boardSave(); renderBoard(); toast(`เอาตาราง ${lab} ออกแล้ว · กด ↶ ย้อนกลับ ถ้าต้องการคืน`);
