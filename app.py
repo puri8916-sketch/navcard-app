@@ -374,7 +374,7 @@ with st.sidebar:
       const add=w=>{try{const D=w.document;if(D.getElementById("navPwa"))return;const h=D.head,mk=(t,a)=>{const e=D.createElement(t);for(const k in a)e.setAttribute(k,a[k]);h.appendChild(e);return e};
         D.querySelectorAll('link[rel="manifest"],link[rel="apple-touch-icon"]').forEach(e=>e.remove());
         mk("link",{id:"navPwa",rel:"manifest",href:base+"manifest.json"});mk("link",{rel:"apple-touch-icon",href:base+"apple-touch-icon.png"});
-        mk("meta",{name:"apple-mobile-web-app-title",content:"SKP Pilot"});mk("meta",{name:"application-name",content:"SKP Pilot"});
+        mk("meta",{name:"apple-mobile-web-app-title",content:"ระบบนำร่องสงขลา"});mk("meta",{name:"application-name",content:"ระบบนำร่องสงขลา"});
         mk("meta",{name:"apple-mobile-web-app-capable",content:"yes"});mk("meta",{name:"mobile-web-app-capable",content:"yes"});mk("meta",{name:"theme-color",content:"#0B3B6E"});
         if(!/SKP/.test(D.title))D.title="SKP·AI Pilot Analysis"}catch(e){}};
       let w=window.parent;for(let i=0;i<4&&w;i++){add(w);if(w===w.parent)break;w=w.parent}})();
