@@ -132,7 +132,7 @@ body.marking .log tbody td[data-k]:hover{outline:2px solid var(--accent);outline
 .log tbody tr.shift td,.log tbody tr.shift .mv .ar{color:var(--pen-shift,var(--pen-red))}
 .log tbody tr.shift td.ship{color:color-mix(in srgb,var(--pen-shift,var(--pen-red)) 80%,var(--rb))}
 body.shift-plain{--pen-shift:var(--pen)}
-body.ink-black{--pen:var(--ink)}
+body.ink-black{--pen:#000}body.ink-black table.log .jobno{color:#000}
 .inkseg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .inkdot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:-1px}
 .loam{color:var(--pen-red);margin-left:2px}.ft{opacity:.9}
@@ -720,9 +720,9 @@ function renderLog(){requestAnimationFrame(fitTable);
 }
 
 /* ---------- table ink colour (per browser) ---------- */
-function setInk(v){document.body.classList.toggle("ink-black",v==="black");document.querySelectorAll("#inkSeg button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.v===v));try{localStorage.setItem("pl.ink",v)}catch(e){}}
+function setInk(v){document.body.classList.toggle("ink-black",v==="black");document.querySelectorAll("#inkSeg button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.v===v));try{localStorage.setItem("pl.ink2",v)}catch(e){}}
 document.querySelectorAll("#inkSeg button").forEach(b=>b.addEventListener("click",()=>setInk(b.dataset.v)));
-try{setInk(localStorage.getItem("pl.ink")||"blue")}catch(e){setInk("blue")}
+try{setInk(localStorage.getItem("pl.ink2")||"black")}catch(e){setInk("black")}   /* black by default (blue still in ตั้งค่า) */
 function setShiftRed(on){document.body.classList.toggle("shift-plain",!on);$("shiftRed").checked=on;try{localStorage.setItem("pl.shiftRed",on?"1":"0")}catch(e){}}
 $("shiftRed").addEventListener("change",e=>setShiftRed(e.target.checked));
 try{setShiftRed(localStorage.getItem("pl.shiftRed")!=="0")}catch(e){setShiftRed(true)}
