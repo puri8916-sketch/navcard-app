@@ -1074,31 +1074,35 @@ function wordRows(from,to){
     if(inLeg)tin=invIn(c)?W_CHANGE:(c.pilotIn==="-CAP-"?"-CAP-":(eT?eT.txt:"-"));
     if(aT){if(inP(aT))tout=invOut(c)?W_CHANGE:(c.pilotOut==="-CAP-"?"-CAP-":aT.txt);else if(aT.iso<from)tout="-"}
     else if(invOut(c)&&dIn(c))tout=W_CHANGE;
+    // ค้างท่า: arrived before the period, still not sailed out by its end, with a leg in the period → first in the table,
+    // with its earlier arrival + earlier shifts shown in red (not counted)
+    const carry=!inLeg&&eT&&eT.iso<from&&(!aT||aT.iso>to)&&(sh.some(inP)||inP(aT));
+    let tinOld=false;if(carry&&!invIn(c)){tin=c.pilotIn==="-CAP-"?"-CAP-":eT.txt;tinOld=tin!=="-CAP-"}
     const agent=(inLeg&&!invIn(c))?(c.agent||c.agentOut||""):(c.agentOut||c.agent||"");
     const firstIn=[eT,aT,...sh].filter(inP).map(t=>t.key).sort()[0]||c.date;
     // only shifts inside the report period (earlier ones were already sent in an earlier report)
-    const shAll=(c.shifts||[]).map((s,i)=>({i,t:inP(sh[i])?(s.pilot==="-CAP-"?"-CAP-":sh[i].txt):"-",from:s.fromBerth||"",to:s.berth||""})).filter(x=>x.t!=="-");
+    const shAll=(c.shifts||[]).map((s,i)=>({i,t:inP(sh[i])?(s.pilot==="-CAP-"?"-CAP-":sh[i].txt):(carry&&sh[i]&&sh[i].iso<from?(s.pilot==="-CAP-"?"-CAP-":sh[i].txt):"-"),old:!inP(sh[i])&&carry&&!!sh[i]&&sh[i].iso<from,from:s.fromBerth||"",to:s.berth||""})).filter(x=>x.t!=="-");
     // legs of this call that belong in this report (used to remember what was sent)
-    const legs={in:tin!=="-",out:!!tout&&tout!=="-",sh:shAll.filter(x=>x.t!=="-").map(x=>x.i)};
-    const key=inLeg&&eT?"1"+eT.key:"0"+firstIn+String(c.t||0).padStart(14,"0");
+    const legs={in:tin!=="-"&&!tinOld&&!carry,out:!!tout&&tout!=="-",sh:shAll.filter(x=>x.t!=="-"&&!x.old).map(x=>x.i)};
+    const key=carry?"!"+eT.key+String(c.t||0).padStart(14,"0"):inLeg&&eT?"1"+eT.key:"0"+firstIn+String(c.t||0).padStart(14,"0");
     // what was already sent (each "บันทึกว่าส่งแล้ว" adds a batch): every batch keeps its own row; legs filled in later go to a new row at the end
     const batches=c.sms?(c.sms.b||[c.sms]):[],seen={in:false,out:false,sh:[]},parts=[];
     for(const b of batches){const p={in:!!b.in&&legs.in&&!seen.in,out:!!b.out&&legs.out&&!seen.out,sh:legs.sh.filter(i=>(b.sh||[]).includes(i)&&!seen.sh.includes(i)),at:b.at||0};
       if(p.in)seen.in=true;if(p.out)seen.out=true;seen.sh.push(...p.sh);if(p.in||p.out||p.sh.length)parts.push(p)}
     const late={in:legs.in&&!seen.in,out:legs.out&&!seen.out,sh:legs.sh.filter(i=>!seen.sh.includes(i)),late:true};
     if(late.in||late.out||late.sh.length)parts.push(late);
-    if(parts.length<2){out.push({c,key,tin,tout,berth:c.berth||"",agent,legs,shifts:shAll});continue}
+    if(parts.length<2){out.push({c,key,tin,tinOld,carry,tout,berth:c.berth||"",agent,legs,shifts:shAll});continue}
     parts.forEach((p,k)=>{
       const first=k===0,ts=[p.in&&eT,p.out&&aT,...p.sh.map(i=>sh[i])].filter(Boolean).map(t=>t.key).sort()[0]||"";
       out.push({c,key:first?key:"9"+(p.late?"99999999999999":String(p.at).padStart(14,"0"))+ts+String(c.t||0).padStart(14,"0"),late:!!p.late&&!first,
-        tin:p.in?tin:"-",tout:p.out?tout:"",berth:c.berth||"",agent:p.out&&!p.in?(c.agentOut||c.agent||""):agent,legs:{in:p.in,out:p.out,sh:p.sh},
-        shifts:shAll.filter(x=>first?(x.t==="-"||p.sh.includes(x.i)):p.sh.includes(x.i))})});
+        tin:p.in?tin:(first&&tinOld?tin:"-"),tinOld:first&&tinOld,carry,tout:p.out?tout:"",berth:c.berth||"",agent:p.out&&!p.in?(c.agentOut||c.agent||""):agent,legs:{in:p.in,out:p.out,sh:p.sh},
+        shifts:shAll.filter(x=>first?(x.t==="-"||x.old||p.sh.includes(x.i)):p.sh.includes(x.i))})});
   }
   out.sort((a,b)=>a.key<b.key?-1:a.key>b.key?1:0);
   return out;
 }
 const isTime=v=>/^\d{1,2}-\d{4}$/.test(v);
-function wordCounts(rows){let i=0,o=0,s=0;for(const r of rows){if(isTime(r.tin))i++;if(isTime(r.tout))o++;for(const x of r.shifts)if(isTime(x.t))s++}return {i,o,s,all:i+o+s}}
+function wordCounts(rows){let i=0,o=0,s=0;for(const r of rows){if(isTime(r.tin)&&!r.tinOld)i++;if(isTime(r.tout))o++;for(const x of r.shifts)if(isTime(x.t)&&!x.old)s++}return {i,o,s,all:i+o+s}}   // red (earlier) times are not counted
 function wPeriod(from,to){const [y1,m1,d1]=from.split("-").map(Number),[y2,m2,d2]=to.split("-").map(Number),yy=y=>String((y+543)%100).padStart(2,"0");
   return {title:`${d1} ${TH_MS[m1-1]}${y1!==y2?" "+yy(y1):""} - ${d2} ${TH_MS[m2-1]} ${yy(y2)}`,
     file:(m1===m2&&y1===y2)?`${d1}-${d2} ${TH_MS[m2-1]} ${yy(y2)}`:`${d1} ${TH_MS[m1-1]} ${yy(y1)} - ${d2} ${TH_MS[m2-1]} ${yy(y2)}`}}
@@ -1152,8 +1156,8 @@ function wSummary(n){
 function wordDocXml(rows,from,to){
   const lines=[];let no=0;
   for(const r of rows){no++;
-    lines.push([String(no),r.c.vessel||"",r.tin||"-",r.tout||"",r.berth,r.agent?`(${r.agent})`:""]);
-    for(const s of r.shifts)lines.push(["","","",s.t||"-",s.from,s.to]);
+    const L=[String(no),r.c.vessel||"",r.tin||"-",r.tout||"",r.berth,r.agent?`(${r.agent})`:""];L.oldIn=!!r.tinOld;lines.push(L);
+    for(const s of r.shifts){const S=["","","",s.t||"-",s.from,s.to];S.oldT=!!s.old;lines.push(S)}
   }
   const PER=31,pages=[];for(let i=0;i<lines.length;i+=PER)pages.push(lines.slice(i,i+PER));if(!pages.length)pages.push([]);
   const per=wPeriod(from,to).title;let body="";
@@ -1161,6 +1165,7 @@ function wordDocXml(rows,from,to){
     body+=wTitle(per,pi+1,pi===0)+W_TBL_OPEN+wHead();
     for(const L of pg){
       body+="<w:tr>"+L.map((v,i)=>{
+        if((i===2&&L.oldIn)||(i===3&&L.oldT))return wCell(i,v,{run:{sz:32,color:RED}});   // earlier date-time of a ship still in port
         if(i===2||i===3)return wCell(i,v,wTime(v));
         if(i===5&&v.startsWith("("))return wCell(i,v,{run:{color:"FF0000",szCs:24}});
         if(i===1)return wCell(i,v,{run:{sz:32,color:"000000"}});
