@@ -229,7 +229,7 @@ label.f input:focus,.srow input:focus{border-color:var(--accent);outline:none;bo
 .seg button[aria-pressed="true"].wait{background:var(--warn-bg);color:var(--warn-ink);border-color:transparent;font-weight:500}
 .seg button[aria-pressed="true"].none{background:var(--hover);font-weight:500}
 .srows{display:flex;flex-direction:column;gap:6px}
-.srow{display:grid;grid-template-columns:22px minmax(0,1.1fr) minmax(0,.8fr) minmax(0,1fr) 14px minmax(0,1fr) minmax(0,.8fr) minmax(0,1.6fr) 26px;gap:6px;align-items:center}
+.srow{display:grid;grid-template-columns:22px minmax(0,1.1fr) minmax(0,.8fr) minmax(0,1fr) 14px minmax(0,1fr) minmax(0,.8fr) minmax(0,1.3fr) minmax(0,1.4fr) 26px;gap:6px;align-items:center}
 .srow.head{font-size:11.5px;color:var(--muted)}
 .srow input{border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:5px 8px;color:var(--ink);font-size:14px;width:100%;min-width:0;height:32px}
 .srow .num{font-family:var(--f-mono);font-size:12px;color:var(--muted);text-align:center}
@@ -246,7 +246,7 @@ label.f input:focus,.srow input:focus{border-color:var(--accent);outline:none;bo
 @media (max-width:760px){
   .g6{grid-template-columns:repeat(2,minmax(0,1fr))}.g6>.s3,.g6>.s4{grid-column:1/-1}
   .two{grid-template-columns:1fr;gap:10px}.two>.blk+.blk{border-left:0;padding-left:0;border-top:1px solid var(--line);padding-top:10px}
-  .srow{grid-template-columns:repeat(6,minmax(0,1fr));padding-bottom:8px;border-bottom:1px dashed var(--line)}.srow.head,.srow .num,.srow .arw{display:none}.srow>input{grid-column:span 2}.srow>[id^="sf"],.srow>[id^="sb"]{grid-column:span 3;order:4}.srow>[id^="sb"]{order:5}.srow>[id^="sd"]{order:3}.srow>.ag{grid-column:span 5;order:6}.srow .x{order:7}
+  .srow{grid-template-columns:repeat(6,minmax(0,1fr));padding-bottom:8px;border-bottom:1px dashed var(--line)}.srow.head,.srow .num,.srow .arw{display:none}.srow>input{grid-column:span 2}.srow>[id^="sf"],.srow>[id^="sb"]{grid-column:span 3;order:4}.srow>[id^="sb"]{order:5}.srow>[id^="sd"]{order:3}.srow>.ag{grid-column:span 5;order:6}.srow>.srm{grid-column:span 5;order:7}.srow .x{order:8}
 }
 /* vessels + settings */
 .panel{margin-top:16px;display:flex;flex-direction:column;gap:14px}
@@ -713,7 +713,7 @@ function renderLog(){requestAnimationFrame(fitTable);
       c.shifts.forEach((s,i)=>{
         body.append(el("tr",{class:"shift"+alt+(i===c.shifts.length-1?" grp-end":""),"data-id":c.id,"data-si":i},el("td"),el("td",{class:"ship"},"↳ ย้ายท่า "+(i+1)),el("td"),
           el("td",{class:"div"}),cell(s.order,"mono"),cell(capCell(s.pilot,s.capTime),"mono"),cell(moveEl(s)),cell(s.draught,"mono"),
-          el("td",{class:"div"}),el("td"),cell(s.agent?hl(s.agent):""),el("td",{class:"div"}),el("td"),el("td"),el("td"),el("td",{class:"div"}),el("td")));
+          el("td",{class:"div"}),el("td"),cell(s.agent?hl(s.agent):""),el("td",{class:"div"}),el("td"),el("td"),el("td"),cell(s.remark?el("span",{class:"remark"},s.remark):"","div"),el("td")));
       });
     }
   }
@@ -814,7 +814,7 @@ $("cf").addEventListener("input",()=>{closeF=$("cf").value.trim();if(closeF&&sco
 
 /* ---------- inline cell editing: click a cell, type, Enter = save + next row, Tab = next cell ---------- */
 const MAIN_F=["job","vessel","from","eta","order","pilotIn","berth","draughtIn","loa","lbp","agent","atd","pilotOut","draughtOut","agentOut","remark",null];
-const SHIFT_F={4:"order",5:"pilot",6:"move",7:"draught",10:"agent"};
+const SHIFT_F={4:"order",5:"pilot",6:"move",7:"draught",10:"agent",15:"remark"};
 const F_OPTS=()=>({vessel:[shipOpts],from:[portOpts,1],lbp:[portOpts,1],pilotIn:[pilotOpts],pilotOut:[pilotOpts],pilot:[pilotOpts],berth:[berthOpts,1],agent:[agentOpts],agentOut:[agentOpts],remark:[remarkOpts]});
 const F_UPPER=new Set(["from","lbp","berth"]);
 let pendingEdit=null,editingCell=null;
@@ -963,7 +963,7 @@ async function buildPdfBlob(rows,title,sub,onPage){
       for(const r of it.g){
         const c=r.c,isS=r.k==="s",col=isS?PDF_C.red:PDF_C.ink;
         const val=k=>{if(!isS){if(k==="loa")return null;return (k==="order"?(invIn(c)?"-":timeOf(c[k])):k==="agentOut"?(c.agentOut||c.agent):c[k])||""}
-          const s=r.s;return {job:"",vessel:"↳ ย้ายท่า "+(r.i+1),order:s.order,pilotIn:s.pilot,berth:moveTxt(s),draughtIn:s.draught,agent:s.agent}[k]||""};
+          const s=r.s;return {job:"",vessel:"↳ ย้ายท่า "+(r.i+1),order:s.order,pilotIn:s.pilot,berth:moveTxt(s),draughtIn:s.draught,agent:s.agent,remark:s.remark}[k]||""};
         PDF_COLS.forEach((cc,i)=>{
           const k=cc[2],mk=(isS?"s"+r.i+":":"")+(k==="closeNo"?"status":k),m=c.marks?.[mk];
           if(m&&(PDF_C.hl[m]||m[0]==="#")){g.fillStyle=PDF_C.hl[m]||m;g.fillRect(xs[i]*S,y*S,cc[1]*S,r.h*S)}
@@ -1579,7 +1579,7 @@ $("insOver").onclick=()=>{
 function renderShifts(){
   const box=$("shiftList");box.replaceChildren();
   if(!shifts.length){box.append(el("p",{class:"hint",style:"margin:0"},"ไม่มีการย้ายท่า (ถ้ามี กด “+ ย้ายท่า”)"));return}
-  box.append(el("div",{class:"srow head","aria-hidden":"true"},el("span"),el("span",{},"Order"),el("span",{},"Pilot No."),el("span",{},"จากท่า"),el("span"),el("span",{},"ไปท่า"),el("span",{},"Draught"),el("span",{},"Agent"),el("span")));
+  box.append(el("div",{class:"srow head","aria-hidden":"true"},el("span"),el("span",{},"Order"),el("span",{},"Pilot No."),el("span",{},"จากท่า"),el("span"),el("span",{},"ไปท่า"),el("span",{},"Draught"),el("span",{},"Agent"),el("span",{},"Remark"),el("span")));
   shifts.forEach((s,i)=>{
     const or=el("input",{id:"so"+i,class:"mono","aria-label":"Order ครั้งที่ "+(i+1),placeholder:"__-__-____","data-tmask":"1",autocomplete:"off",value:s.order||""});or.oninput=()=>s.order=or.value.trim();
     const pi=el("input",{id:"sp"+i,class:"mono","aria-label":"Pilot No.",placeholder:"Pilot",title:"-CAP- ใส่เวลาต่อท้ายได้ เช่น -CAP- 14-10-0700",value:capRaw(s.pilot,s.capTime)});combo(pi,pilotOpts);pi.oninput=()=>{const p=capSplit(pi.value);s.pilot=p.p;s.capTime=p.t};
@@ -1587,7 +1587,8 @@ function renderShifts(){
     const be=el("input",{id:"sb"+i,class:"mono","aria-label":"ไปท่า",placeholder:"ไปท่า",value:s.berth||""});combo(be,berthOpts,{upper:true});be.oninput=()=>s.berth=be.value.trim();
     const dr=el("input",{id:"sd"+i,class:"mono","aria-label":"Draught",placeholder:"Draught",autocomplete:"off",value:s.draught||""});dr.oninput=()=>s.draught=dr.value.trim();
     const ag=el("input",{id:"sa"+i,class:"ag","aria-label":"Agent",placeholder:"Agent",autocomplete:"off",value:s.agent||""});ag.oninput=()=>s.agent=ag.value.trim();combo(ag,agentOpts);
-    box.append(el("div",{class:"srow"},el("span",{class:"num"},i+1),or,pi,fb,el("span",{class:"arw","aria-hidden":"true"},"→"),be,dr,ag,
+    const rm=el("input",{id:"sr"+i,class:"srm","aria-label":"Remark ย้ายท่าครั้งที่ "+(i+1),placeholder:"Remark",autocomplete:"off",value:s.remark||""});rm.oninput=()=>s.remark=rm.value.trim();
+    box.append(el("div",{class:"srow"},el("span",{class:"num"},i+1),or,pi,fb,el("span",{class:"arw","aria-hidden":"true"},"→"),be,dr,ag,rm,
       el("button",{type:"button",class:"x","aria-label":"ลบการย้ายท่าครั้งที่ "+(i+1),title:"ลบ",onclick:()=>{shifts.splice(i,1);renderShifts()}},"✕")));
   });
 }
@@ -1602,7 +1603,7 @@ $("edSave").onclick=async()=>{
   const data={date:editing?.date||curDate,by:beYY(editing?.date||curDate),fy:fyYY(editing?.date||curDate),job:/^SGZ\s*\/\s*\d*$/i.test(g("fJob"))?"":g("fJob"),vessel,from:g("fFrom"),loa:g("fLoa"),loaM:g("fLoaM"),lbp:g("fLbp"),ng:editing?.ng||"",agent:g("fAgent"),
     eta:timeOf(g("fEta")),order:timeOf(g("fOrder")),invIn:$("invIn").checked||invSplit(g("fEta")).inv||invSplit(g("fOrder")).inv,pilotIn:pIn.p,capIn:pIn.p==="-CAP-"?(pIn.t||g("fCapIn")):"",berth:g("fBerth"),draughtIn:g("fDraughtIn"),
     atd:timeOf(g("fAtd")),invOut:$("invOut").checked||invSplit(g("fAtd")).inv,paknam:editing?.paknam||"",...(editing?.sms?{sms:editing.sms}:{}),pilotOut:pOut.p,capOut:pOut.p==="-CAP-"?(pOut.t||g("fCapOut")):"",draughtOut:g("fDraughtOut"),agentOut:g("fAgentOut")||g("fAgent"),remark:g("fRemark"),status,closeNo:g("fCloseNo"),cnAt:g("fCloseNo")!==(editing?.closeNo||"")?(g("fCloseNo")?Date.now():0):(editing?.cnAt||0),
-    shifts:shifts.filter(s=>s.order||s.pilot||s.fromBerth||s.berth||s.draught||s.agent),t:editing?.t||Date.now(),updated:Date.now(),marks:Object.fromEntries(Object.entries(editing?.marks||{}).filter(([k])=>{const m=k.match(/^(?:fc\|)?s(\d+):/);return !m||+m[1]<shifts.filter(s=>s.order||s.pilot||s.fromBerth||s.berth||s.draught||s.agent).length}))};
+    shifts:shifts.filter(s=>s.order||s.pilot||s.fromBerth||s.berth||s.draught||s.agent||s.remark),t:editing?.t||Date.now(),updated:Date.now(),marks:Object.fromEntries(Object.entries(editing?.marks||{}).filter(([k])=>{const m=k.match(/^(?:fc\|)?s(\d+):/);return !m||+m[1]<shifts.filter(s=>s.order||s.pilot||s.fromBerth||s.berth||s.draught||s.agent||s.remark).length}))};
   $("edSave").disabled=true;
   try{
     if(editing)await db.collection("calls").doc(editing.id).set(data);
@@ -1626,7 +1627,7 @@ $("exportBtn").onclick=async()=>{
   const rows=ymRangeCalls(f,t);if(!rows.length){toast("ไม่มีข้อมูลในช่วงนี้");return}
   for(const c of rows){
     lines.push([c.date?beTab(c.date):"",c.job,c.vessel,c.from,timeOf(c.eta),invIn(c)?"-":timeOf(c.order),capRaw(c.pilotIn,c.capIn),c.berth,c.draughtIn,c.loa+(c.loaM?"/"+c.loaM:""),c.lbp,c.agent,timeOf(c.atd),capRaw(c.pilotOut,c.capOut),c.draughtOut,c.agentOut||"",c.remark,c.closeNo||"",c.status==="ปิดการเงิน"?c.status:"",invIn(c)?"ใช่":"",invOut(c)?"ใช่":""].map(q).join(","));
-    (c.shifts||[]).forEach((s,i)=>lines.push(["","","↳ ย้ายท่า "+(i+1),"","",s.order,capRaw(s.pilot,s.capTime),moveTxt(s),s.draught,"","",s.agent||"","","","","","","","",""].map(q).join(",")));
+    (c.shifts||[]).forEach((s,i)=>lines.push(["","","↳ ย้ายท่า "+(i+1),"","",s.order,capRaw(s.pilot,s.capTime),moveTxt(s),s.draught,"","",s.agent||"","","","","",s.remark||"","","",""].map(q).join(",")));
   }
   try{await downloads.save({filename:"บันทึกเรือประจำเดือน "+(f===t?ymLabel(f):ymLabel(f)+" - "+ymLabel(t))+".csv",data:new Blob(["﻿"+lines.join("\n")],{type:"text/csv"})})}catch(e){if(e?.code!=="declined")toast("ส่งออกไม่สำเร็จ")}
 };
