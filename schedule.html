@@ -1215,6 +1215,7 @@ G.addEventListener('keydown',e=>{
     [...pop.children].forEach((c,k)=>c.classList.toggle('act',k===cb.act)); pop.children[cb.act]?.scrollIntoView({block:'nearest'}); return; }
   if(open && (e.key==='Enter'||e.key==='Tab') && cb.act>=0 && i.value.trim()){ if(e.key==='Enter') e.preventDefault(); pick(cb.act); if(e.key==='Enter' && i.dataset.draft) return; if(e.key==='Enter') return; }
   if(e.altKey && (k==='ArrowUp'||k==='ArrowDown') && !i.dataset.draft){ e.preventDefault(); hidePop(); gMove(k==='ArrowUp'?-1:1, e.shiftKey); return; }
+  if(mod && (k==='a'||k==='A') && (gmulti() || !i.value || (i.selectionStart===0 && i.selectionEnd===i.value.length))){ e.preventDefault(); hidePop(); gSelAll(); return; }   /* Ctrl+A again → whole table */
   if(e.key==='Escape'){ hidePop(); hideGMenu(); if(gmulti()){ GSEL={r1:GSEL.r1,c1:GSEL.c1,r2:GSEL.r1,c2:GSEL.c1}; paintGSel(); } return; }
   if((k==='Delete'||k==='Backspace') && gmulti()){ e.preventDefault(); gClear(); return; }
   if(e.key==='Enter'){ e.preventDefault();
@@ -1237,6 +1238,7 @@ function indexGrid(){
   for(const tr of G.querySelectorAll('tbody tr')){
     const ins=tr.querySelectorAll('input[data-k]'); if(!ins.length) continue;
     ins.forEach(i=>{ const c=i.dataset.side==='L'?FL.indexOf(i.dataset.f):9+FR.indexOf(i.dataset.f); i.dataset.gr=gr; i.dataset.gc=c; const td=i.closest('td'); td.dataset.gr=gr; td.dataset.gc=c; });
+    tr.querySelectorAll('td.no').forEach(td=>{ td.dataset.gr=gr; td.dataset.gc=td.classList.contains('mid')?9:0; });   /* NO. column: part of a selection / copy */
     gr++;
   }
   G.dataset.rows=gr; if(GSEL){ const n=gr-1; GSEL.r1=Math.min(GSEL.r1,n); GSEL.r2=Math.min(GSEL.r2,n); paintGSel(); }
@@ -1311,7 +1313,12 @@ function gClear(){
   gBatchEnd(); rerender();
   if(del.size) toast(`ลบเรือ ${del.size} ลำ · กด ↶ ย้อนกลับ ถ้าลบผิด`);
 }
-function gTSV(){ const R=grect(), out=[]; for(let r=R.r0;r<=R.r1;r++){ const line=[]; for(let c=R.c0;c<=R.c1;c++){ const i=gcell(r,c); line.push(i?i.value:''); } out.push(line); } return {cells:out, text:out.map(x=>x.join('\t')).join('\n')}; }
+function gTSV(){ const R=grect(), out=[]; for(let r=R.r0;r<=R.r1;r++){ const line=[]; for(let c=R.c0;c<=R.c1;c++){ const i=gcell(r,c); const td=i?null:G.querySelector(`td[data-gr="${r}"][data-gc="${c}"]`); line.push(i?i.value:td?td.textContent.trim():''); } out.push(line); } return {cells:out, text:out.map(x=>x.join('\t')).join('\n')}; }
+function gSelAll(){ const n=+G.dataset.rows; if(!n) return; GSEL={r1:0,c1:0,r2:n-1,c2:16}; paintGSel(); }
+/* the whole day as on the sheet (title, headers, ships, พ part, totals) — paste into Excel / LINE */
+async function gCopyAll(){ const rows=[...G.querySelectorAll('tr')].map(tr=>[...tr.children].map(td=>{ const i=td.querySelector('input'); const b=td.querySelector('button'); const t=i?i.value:(b?b.textContent:td.textContent); const n=+td.colSpan||1; return [String(t).trim(),...Array(n-1).fill('')]; }).flat());
+  const text=rows.filter(r=>r.some(Boolean)||true).map(r=>r.join('\t')).join('\n'); GCLIP={cells:rows,text};
+  try{ await navigator.clipboard.writeText(text); toast('คัดลอกทั้งตารางแล้ว · วางใน Excel ได้'); }catch(e){ toast('คัดลอกไม่ได้ ลองใช้ Ctrl+A แล้ว Ctrl+C'); } }
 function gPaste(cells){
   const R=grect(); if(!R) return; const single=cells.length===1 && cells[0].length===1;
   const h=single?R.r1-R.r0+1:cells.length, w=single?R.c1-R.c0+1:Math.max(...cells.map(x=>x.length));
@@ -1382,7 +1389,7 @@ function gAuto(){ if(!layoutOf(S.D)) return toast('ตารางนี้จ�
 /* right-click menu for จัดตาราง */
 const FC=['#000000','#FF0000','#C00000','#FFC000','#00B050','#0070C0','#002060','#7030A0','#808080'];   // font colours (Excel standard)
 const GM=$('gmenu');
-GM.innerHTML=[['undo','↶ ย้อนกลับ','Ctrl+Z'],['redo','↷ ทำซ้ำ','Ctrl+Y'],['-'],['cut','ตัด','Ctrl+X'],['copy','คัดลอก','Ctrl+C'],['paste','วาง','Ctrl+V'],['clear','ลบ','Delete'],['-'],['colors'],['-'],['mvup','ย้ายขึ้น','Alt+↑'],['mvdown','ย้ายลง','Alt+↓'],['rowup','ย้ายทั้งแถวขึ้น','Alt+Shift+↑'],['rowdown','ย้ายทั้งแถวลง','Alt+Shift+↓'],['insblank','แทรกแถวว่าง',''],['delblank','ลบแถวว่าง',''],['auto','จัดอัตโนมัติใหม่','']]
+GM.innerHTML=[['undo','↶ ย้อนกลับ','Ctrl+Z'],['redo','↷ ทำซ้ำ','Ctrl+Y'],['-'],['cut','ตัด','Ctrl+X'],['copy','คัดลอก','Ctrl+C'],['paste','วาง','Ctrl+V'],['clear','ลบ','Delete'],['selall','เลือกทั้งหมด','Ctrl+A'],['copyall','คัดลอกทั้งตาราง',''],['-'],['colors'],['-'],['mvup','ย้ายขึ้น','Alt+↑'],['mvdown','ย้ายลง','Alt+↓'],['rowup','ย้ายทั้งแถวขึ้น','Alt+Shift+↑'],['rowdown','ย้ายทั้งแถวลง','Alt+Shift+↓'],['insblank','แทรกแถวว่าง',''],['delblank','ลบแถวว่าง',''],['auto','จัดอัตโนมัติใหม่','']]
   .map(x=>x[0]==='-'?'<hr>':x[0]==='colors'?`<div class="mcol"><span>สีตัวอักษร</span><div>${FC.map(k=>`<button type="button" data-gcol="${k}" style="background:${k}" title="${k}"></button>`).join('')}<button type="button" data-gcol="" class="auto" title="อัตโนมัติ (ดำ)">A</button></div></div>`:`<button type="button" data-gm="${x[0]}"><span>${x[1]}</span><kbd>${x[2]}</kbd></button>`).join('');
 function hideGMenu(){ GM.hidden=true; }
 G.addEventListener('mousedown',()=>{ GSEP=null; });
@@ -1404,6 +1411,7 @@ GM.addEventListener('click',async e=>{
   const k=e.target.closest('[data-gcol]'); if(k){ hideGMenu(); gPickColor(k.dataset.gcol); return; }
   const b=e.target.closest('[data-gm]'); if(!b) return; hideGMenu(); const a=b.dataset.gm;
   if(a==='undo'){ gUndo(); return; } if(a==='redo'){ gRedo(); return; }
+  if(a==='selall'){ gSelAll(); return; } if(a==='copyall'){ gCopyAll(); return; }
   const lay={mvup:()=>gMove(-1),mvdown:()=>gMove(1),rowup:()=>gMove(-1,true),rowdown:()=>gMove(1,true),insblank:gInsBlank,delblank:gDelBlank,auto:gAuto}[a];
   if(lay){ lay(); GSEP=null; return; }
   GSEP=null;
