@@ -234,8 +234,8 @@ table.lsheet{border-collapse:separate;border-spacing:0;border-top:1px dotted #8C
 .btn.tb{padding:7px 12px;font-size:17px}
 .btn.tb.red{color:#D0021B}
 /* ทุกปุ่มสีเขียว LINE ยกเว้น ดาวน์โหลด PDF (แดง) */
-.btn.primary,#impBtn,#gAutoBtn,#impGo,#printBtn,#dispBtn,#sBack,.btn.danger,#linePull{background:#06C755;border:2px solid #06C755;color:#fff;font-weight:700;box-shadow:0 3px 10px rgb(6 199 85 / .35)}
-.btn.primary:hover,#impBtn:hover,#gAutoBtn:hover,#impGo:hover,#printBtn:hover,#dispBtn:hover,#sBack:hover,.btn.danger:hover,#linePull:hover,.btn.tb[data-bact="undo"],.btn.tb[data-bact="redo"],#gUndo,#gRedo{background:#E8F0FE;color:#1A56DB;border:1.5px solid #A4C2F4;font-weight:700}
+.btn.primary,#impBtn,#gAutoBtn,#impGo,#printBtn,#sBack,.btn.danger,#linePull{background:#06C755;border:2px solid #06C755;color:#fff;font-weight:700;box-shadow:0 3px 10px rgb(6 199 85 / .35)}
+.btn.primary:hover,#impBtn:hover,#gAutoBtn:hover,#impGo:hover,#printBtn:hover:hover,#sBack:hover,.btn.danger:hover,#linePull:hover,.btn.tb[data-bact="undo"],.btn.tb[data-bact="redo"],#gUndo,#gRedo{background:#E8F0FE;color:#1A56DB;border:1.5px solid #A4C2F4;font-weight:700}
 .btn.tb[data-bact="undo"]:hover,.btn.tb[data-bact="redo"]:hover,#gUndo:hover,#gRedo:hover{background:#D2E3FC}
 #printBtn{font-size:19px;font-weight:800;padding:10px 24px}
 #pdfBtn,#psbBtn{background:#E06666;border:2px solid #E06666;color:#fff;font-weight:700;box-shadow:0 2px 6px rgb(224 102 102 / .3)}#pdfBtn:hover,#psbBtn:hover{background:#CC5555;border-color:#CC5555}
@@ -475,7 +475,7 @@ html.only-notice body{padding-bottom:0!important}
   .ltool input.since{padding:3px 6px;font-size:19px;width:56px}
   .fc-main{padding-block:2px!important}
   #linePull{padding:5px 12px;font-size:15px}
-  #gAutoBtn,#impBtn,#printBtn,#dispBtn,#pdfBtn,#psbBtn{padding:5px 12px;font-size:15px;border-width:2px}
+  #gAutoBtn,#impBtn,#printBtn,#pdfBtn,#psbBtn{padding:5px 12px;font-size:15px;border-width:2px}
   main{padding-top:6px}
   .shipsticky{top:calc(env(safe-area-inset-top,0px) + 42px)}
 }
@@ -557,7 +557,7 @@ html.ios .hbar{position:absolute;bottom:100%!important}
     <div class="scrollx vfit"><div class="paper linepaper" id="board"></div></div>
   </section>
   <section id="view-work" hidden>
-    <div class="ltool"><div class="grp"><button class="btn primary" id="printBtn">ปริ้น</button><button class="btn" id="pdfBtn">ดาวน์โหลด PDF</button><span class="note" id="printNote" hidden></span><span class="disp" id="dispState" hidden></span><button class="btn" id="dispBtn" hidden>บันทึกจัดจ่าย</button></div><div class="grp"><button class="btn tb" id="gUndo" title="Ctrl+Z">↶ ย้อนกลับ</button><button class="btn tb" id="gRedo" title="Ctrl+Y">↷ ทำซ้ำ</button></div><div class="grp fcolor gfcolor"><button class="btn tb fc-main" id="gColor" title="สีตัวอักษร"><span class="fcA">A</span><span class="fcBar" id="gfcBar"></span></button><button class="btn tb fc-drop" id="gfcDrop" title="เลือกสี" aria-label="เลือกสีตัวอักษร">▾</button><div class="fc-pal" id="gfcPal" hidden></div></div><div class="grp"><button class="btn tb" id="gAutoBtn" hidden>⟲ จัดอัตโนมัติใหม่</button></div><div class="grp"><button class="btn tb" id="psbBtn" title="นำเข้าไฟล์ Excel เรือ PSB (Daily Vessel Movement Schedule)">📥 นำเข้า PSB</button><input type="file" id="psbFile" accept=".xlsx" hidden></div><div class="grp" hidden><button class="btn tb" id="impBtn" title="นำเข้าจากไฟล์ Excel ตารางเรือเดิม (แท็บแยกตามวัน)">📥 นำเข้าไฟล์ตาราง</button><input type="file" id="impFile" accept=".xlsx" hidden></div></div>
+    <div class="ltool"><div class="grp"><button class="btn primary" id="printBtn">ปริ้น</button><button class="btn" id="pdfBtn">ดาวน์โหลด PDF</button><span class="note" id="printNote" hidden></span></div><div class="grp"><button class="btn tb" id="gUndo" title="Ctrl+Z">↶ ย้อนกลับ</button><button class="btn tb" id="gRedo" title="Ctrl+Y">↷ ทำซ้ำ</button></div><div class="grp fcolor gfcolor"><button class="btn tb fc-main" id="gColor" title="สีตัวอักษร"><span class="fcA">A</span><span class="fcBar" id="gfcBar"></span></button><button class="btn tb fc-drop" id="gfcDrop" title="เลือกสี" aria-label="เลือกสีตัวอักษร">▾</button><div class="fc-pal" id="gfcPal" hidden></div></div><div class="grp"><button class="btn tb" id="gAutoBtn" hidden>⟲ จัดอัตโนมัติใหม่</button></div><div class="grp"><button class="btn tb" id="psbBtn" title="นำเข้าไฟล์ Excel เรือ PSB (Daily Vessel Movement Schedule)">📥 นำเข้า PSB</button><input type="file" id="psbFile" accept=".xlsx" hidden></div><div class="grp" hidden><button class="btn tb" id="impBtn" title="นำเข้าจากไฟล์ Excel ตารางเรือเดิม (แท็บแยกตามวัน)">📥 นำเข้าไฟล์ตาราง</button><input type="file" id="impFile" accept=".xlsx" hidden></div></div>
     <div class="panel imp" id="impPanel" hidden></div>
     <div class="sheetwrap vfit"><table class="eg" id="grid"></table></div>
   </section>
@@ -778,7 +778,6 @@ function applyInit(d){
   S.ships = d.ships.filter(s=>s.name); S.shipIdx = new Map(S.ships.map(s=>[s.name.toUpperCase(), s]));
   S.berths = d.berths; S.agents = d.agents; S.pilots = d.pilots; S.duty = d.duty; S.fixed = d.fixed; d.profiles=d.profiles||{}; d.profiles.photos=d.profiles.photos||{}; d.profiles.names=d.profiles.names||{}; S.photos=d.profiles.photos; S.names=d.profiles.names;
   S.settings = {...S.settings, ...d.settings};
-  S.snaps = d.snapshots || {};
   S.boards = d.boards || {};
   S.layouts = d.layouts = d.layouts || {};
 }
@@ -1526,7 +1525,7 @@ function showTab(t){ const g=tabGrp(t); if(!TD.line && !TD.work && S.D){ TD.line
     else if(TD[g]!==S.D){ const D=TD[g]; S.D=D; $('schedDate').value=D; renderAll();
       if(!covered(D)) loadMovements(D).then(()=>{ cacheSet(); renderAll(); if(!$('view-line').hidden && S.D===D) openBoard(D); }).catch(err=>toast('โหลดข้อมูลไม่สำเร็จ: '+err.message)); } }
   for(const x of ['work','print','line','ships','pilots']){ $('tab-'+x).setAttribute('aria-selected', x===t); $('view-'+x).hidden = x!==t; }
-  $('dateNav').hidden = !(t==='line'||t==='work'); /* day strip only on แก้ไข / จัดตาราง; พิมพ์ prints the จัดตาราง day */ if(t==='work') fitAll(); if(t==='print'){ renderPrint(); renderDisp(); } if(t==='line'){ if(!$('lineSince').value) $('lineSince').value=String(+todayYmd().slice(8)); if(!BD || BD.date!==S.D) openBoard(S.D); else fitBoard(); } $('view-setup').hidden = t!=='setup'; hidePop(); }
+  $('dateNav').hidden = !(t==='line'||t==='work'); /* day strip only on แก้ไข / จัดตาราง; พิมพ์ prints the จัดตาราง day */ if(t==='work') fitAll(); if(t==='print'){ renderPrint(); } if(t==='line'){ if(!$('lineSince').value) $('lineSince').value=String(+todayYmd().slice(8)); if(!BD || BD.date!==S.D) openBoard(S.D); else fitBoard(); } $('view-setup').hidden = t!=='setup'; hidePop(); }
 $('tab-work').addEventListener('click',()=>showTab('work')); $('tab-print').addEventListener('click',()=>showTab('print'));
 $('tab-line').addEventListener('click',()=>showTab('line'));
 $('tab-ships').addEventListener('click',()=>{ renderShips(); showTab('ships'); });
@@ -1671,7 +1670,7 @@ function sheetCSS(){
   return out.join('\n');
 }
 function printSheet(){
-  if(printDirty) renderPrint(); autoDispatch();
+  if(printDirty) renderPrint();
   const [y,m,d]=S.D.split('-').map(Number);
   const doc=`<!doctype html><html><head><meta charset="utf-8"><title>SHIP'S SCHEDULE ${d}-${m}-${String((y+543)%100).padStart(2,'0')}</title>
 <style>:root{--f-sheet:${getComputedStyle(document.documentElement).getPropertyValue('--f-sheet')}}
@@ -1692,7 +1691,7 @@ function loadScript(src){ return new Promise((ok,no)=>{ const s=document.createE
 async function buildPdf(){
   if(!window.html2canvas) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
   if(!window.jspdf) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
-  await sheetFonts(); if(printDirty) renderPrint(); autoDispatch();
+  await sheetFonts(); if(printDirty) renderPrint();
   // like Excel: the table always uses the full page width; when there are many rows the rows get lower instead of the whole table shrinking
   const sh=sheetHTML(S.D); const rowH=Math.max(15, Math.min(24, Math.floor(758/sh.nRows)));
   const stage=document.createElement('div'); stage.id='pdfStage'; stage.style.setProperty('--rh',rowH+'px'); stage.innerHTML=shrinkToFit(sh.html); document.body.append(stage);
@@ -1763,33 +1762,7 @@ document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==
 document.addEventListener('focusout',e=>{ if(BD && BD.remoteWaiting && e.target.closest && e.target.closest('#board')) setTimeout(()=>{ if(!(document.activeElement&&document.activeElement.closest&&document.activeElement.closest('#board'))){ BD.remoteWaiting=false; pollBoards(); } },300); });
 setInterval(()=>{ if(document.visibilityState!=='hidden' && S.init) refresh(false).catch(()=>{}); },60000);
 
-/* ---------- จัดจ่ายแล้ว (snapshot) ---------- */
 function nowDt(){ const d=new Date(); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`; }
-function snapOf(D){ return (S.snaps||{})[D]; }
-function changed(m, snap){
-  if(!snap) return false; const s=snap.items[m.id];
-  if(!s) return false;                            // added after dispatch (นำเข้า PSB / เพิ่มใหม่): black — only date-time / berth changes go red
-  return s.dt!==m.datetime || s.b!==berthText(m);  // date-time or berth changed
-}
-function renderDisp(){
-  const sn=snapOf(S.D); const el=$('dispState');
-  el.textContent = sn ? `จัดจ่ายแล้ว ${sn.at}` : 'ยังไม่จัดจ่าย'; el.classList.toggle('ok',!!sn);
-  $('dispBtn').textContent = sn ? 'บันทึกจัดจ่ายใหม่' : 'บันทึกจัดจ่าย';
-}
-async function dispatch(D){
-  const items={}; S.mv.filter(m=>inWin(m,D)).forEach(m=>items[m.id]={dt:m.datetime,b:berthText(m)});
-  const at=`${shortDate(nowDt().slice(0,10))} ${nowDt().slice(11)}`;
-  const snap={date:D, at, items};
-  S.snaps=S.snaps||{}; S.snaps[D]={at,items}; if(S.init) S.init.snapshots=S.snaps; cacheSet(); renderDisp(); lineDirty=true;
-  try{ await api('saveSnapshot',{},{snap}); toast(`บันทึกจัดจ่ายตาราง ${shortDate(D)} แล้ว`); }catch(err){ toast('บันทึกจัดจ่ายไม่สำเร็จ: '+scriptOld(err)); }
-}
-function autoDispatch(){ if(!snapOf(S.D)) dispatch(S.D); }
-let dispArm=false;
-$('dispBtn').addEventListener('click',()=>{
-  if(snapOf(S.D) && !dispArm){ dispArm=true; $('dispBtn').textContent='ยืนยันบันทึกใหม่'; setTimeout(()=>{ dispArm=false; renderDisp(); },3000); return; }
-  dispArm=false; dispatch(S.D);
-});
-
 /* ---------- แก้ไข (รูป LINE): ตารางแยกจากจัดตาราง ดึงครั้งแรกแล้วแก้อิสระ ใช้งานแบบ Excel ---------- */
 const LCOLW=[7.1,57.9,10,10.3,23,23,23.3,8.4,21.1,7.4,52,9.9,8.6,23,50.7,8.4,20.3];
 const LHEAD=['NO.',"SHIP'S&nbsp; NAME",'LOA','Drf','ETA','POB','BERTH','Pilot','AGENT','NO.',"SHIP'S&nbsp; NAME",'LOA','Drf','ETD','BERTH','Pilot','AGENT'];
@@ -1841,11 +1814,11 @@ function pairRows(items, D){
   for(const r of arrangeRows(items, D)){ if(r.blank){ if(!rows[rows.length-1].gap) rows.push({gap:true}); } else rows.push(r); }
   return rows;
 }
-function blockFromSchedule(D, items, snap){
+function blockFromSchedule(D, items){
   const nos = buildMain(S.mv.filter(m=>inWin(m,D) && !+m.late), D).no;
   const rows = pairRows(items, D).map(pr=>{
     const row=blankRow(); if(pr.gap) return row;
-    const put=(m,off,vals)=>{ const red=!!(+m.late || changed(m,snap)); vals.forEach((v,i)=>{ row.c[off+i]=String(v??''); row.r[off+i]=red?'#FF0000':''; }); if(+m.late) row.r[off]='#FF0000'; };
+    const put=(m,off,vals)=>{ const red=!!+m.late; vals.forEach((v,i)=>{ row.c[off+i]=String(v??''); row.r[off+i]=red?'#FF0000':''; }); if(+m.late) row.r[off]='#FF0000'; };
     const fcs=(m,off,F)=>F.forEach((f,i)=>{ const c=f!=='no'&&fcOf(m,f); if(c) row.r[off+i]=c; });
     if(pr.L){ const m=pr.L; put(m,0,[+m.late?'พ':(nos.get(m.id)||''), m.ship, m.loa, m.drf, fmtT(m.datetime), fmtT(m.pob||m.datetime), m.to, m.pilot, m.agent]); fcs(m,0,FL); }
     if(pr.R){ const m=pr.R; put(m,9,[+m.late?'พ':(nos.get(m.id)||''), m.ship, m.loa, m.drf, fmtT(m.datetime), berthText(m), m.pilot, m.agent]); fcs(m,9,FR); }
@@ -1858,8 +1831,8 @@ function boardFromSchedule(D){
   const dd=String($('lineSince').value||'').replace(/\D/g,'');   /* day of month only: ships from 00:00 of that day */
   const since = (dd && parseTime(dd+'-0000', P)) || (todayYmd()+' 00:00');
   return { date:D, updated:Date.now(), blocks:[
-    blockFromSchedule(P, S.mv.filter(m=>inWin(m,P) && m.datetime>=since), snapOf(P)),
-    blockFromSchedule(D, S.mv.filter(m=>inWin(m,D) && !+m.late), snapOf(D)) ] };
+    blockFromSchedule(P, S.mv.filter(m=>inWin(m,P) && m.datetime>=since)),
+    blockFromSchedule(D, S.mv.filter(m=>inWin(m,D) && !+m.late)) ] };
 }
 
 /* storage: one table per day, shared by every view that shows that day
