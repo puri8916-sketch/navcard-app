@@ -1316,8 +1316,10 @@ function gClear(){
 function gTSV(){ const R=grect(), out=[]; for(let r=R.r0;r<=R.r1;r++){ const line=[]; for(let c=R.c0;c<=R.c1;c++){ const i=gcell(r,c); const td=i?null:G.querySelector(`td[data-gr="${r}"][data-gc="${c}"]`); line.push(i?i.value:td?td.textContent.trim():''); } out.push(line); } return {cells:out, text:out.map(x=>x.join('\t')).join('\n')}; }
 function gSelAll(){ const n=+G.dataset.rows; if(!n) return; GSEL={r1:0,c1:0,r2:n-1,c2:16}; paintGSel(); }
 /* the whole day as on the sheet (title, headers, ships, พ part, totals) — paste into Excel / LINE */
-async function gCopyAll(){ const rows=[...G.querySelectorAll('tr')].map(tr=>[...tr.children].map(td=>{ const i=td.querySelector('input'); const b=td.querySelector('button'); const t=i?i.value:(b?b.textContent:td.textContent); const n=+td.colSpan||1; return [String(t).trim(),...Array(n-1).fill('')]; }).flat());
-  const text=rows.filter(r=>r.some(Boolean)||true).map(r=>r.join('\t')).join('\n'); GCLIP={cells:rows,text};
+function gAllText(){ const rows=[...G.querySelectorAll('tr')].map(tr=>[...tr.children].map(td=>{ const i=td.querySelector('input'); const b=td.querySelector('button'); const t=i?i.value:(b?b.textContent:td.textContent); const n=+td.colSpan||1; return [String(t).trim(),...Array(n-1).fill('')]; }).flat());
+  return {cells:rows, text:rows.map(r=>r.join('\t')).join('\n')}; }
+const gAllSel=()=>{ const R=grect(); return !!R && R.r0===0 && R.c0===0 && R.c1===16 && R.r1===+G.dataset.rows-1; };
+async function gCopyAll(){ const t=gAllText(); GCLIP=t; const text=t.text;
   try{ await navigator.clipboard.writeText(text); toast('คัดลอกทั้งตารางแล้ว · วางใน Excel ได้'); }catch(e){ toast('คัดลอกไม่ได้ ลองใช้ Ctrl+A แล้ว Ctrl+C'); } }
 function gPaste(cells){
   const R=grect(); if(!R) return; const single=cells.length===1 && cells[0].length===1;
@@ -1337,7 +1339,7 @@ function gPaste(cells){
 const inGrid=e=>e.target && e.target.closest && e.target.closest('#grid') && e.target.dataset && e.target.dataset.gr!==undefined;
 document.addEventListener('copy',e=>{ if(!inGrid(e)||!GSEL) return; const i=e.target;
   if(!gmulti() && i.selectionStart!==i.selectionEnd && !(i.selectionStart===0 && i.selectionEnd===i.value.length)) return;
-  const t=gTSV(); GCLIP=t; e.clipboardData.setData('text/plain',t.text); e.preventDefault(); });
+  const t=gAllSel()?gAllText():gTSV(); GCLIP=t; e.clipboardData.setData('text/plain',t.text); e.preventDefault(); if(gAllSel()) toast('คัดลอกทั้งตารางแล้ว'); });   /* everything selected → the whole day incl. date, headers, totals */
 document.addEventListener('cut',e=>{ if(!inGrid(e)||!GSEL) return; const i=e.target;
   if(!gmulti() && i.selectionStart!==i.selectionEnd && !(i.selectionStart===0 && i.selectionEnd===i.value.length)) return;
   const t=gTSV(); GCLIP=t; e.clipboardData.setData('text/plain',t.text); e.preventDefault(); gClear(); });
@@ -1416,7 +1418,7 @@ GM.addEventListener('click',async e=>{
   if(lay){ lay(); GSEP=null; return; }
   GSEP=null;
   const mvs=[...new Map(gTargets().map(mvOf).filter(Boolean).map(m=>[m.id,m])).values()];
-  if(a==='copy'||a==='cut'){ const t=gTSV(); GCLIP=t; try{ await navigator.clipboard.writeText(t.text); }catch(x){} if(a==='cut') gClear(); else toast('คัดลอกแล้ว'); }
+  if(a==='copy'||a==='cut'){ const t=a==='copy'&&gAllSel()?gAllText():gTSV(); GCLIP=t; try{ await navigator.clipboard.writeText(t.text); }catch(x){} if(a==='cut') gClear(); else toast('คัดลอกแล้ว'); }
   else if(a==='paste'){ try{ const t=(await navigator.clipboard.readText()).replace(/\r/g,'').replace(/\n$/,''); gPaste(t.split('\n').map(l=>l.split('\t'))); }catch(x){ if(GCLIP) gPaste(GCLIP.cells); else toast('ใช้ Ctrl+V เพื่อวาง'); } }
   else if(a==='clear') gClear();
   else if(a==='late'){ gBatchStart(); mvs.forEach(m=>{ const before=cl(m); m.late=+m.late?0:1; gRecord(before,m); persist(m); }); gBatchEnd(); rerender(); }
@@ -1816,7 +1818,7 @@ function dayLegacy(d){
 }
 function getDay(d){ const a=dayLocal(d), r=dayRemote(d); let x=a&&r?((a.updated||0)>=(r.updated||0)?a:r):(a||r); if(!x) x=dayLegacy(d); return x?JSON.parse(JSON.stringify(x)):null; }
 function boardSave(){
-  if(!BD) return; const now=Date.now(), changed=[];
+  if(!BD) return; const now=Date.now(), changed=[]; setTimeout(undoSave,0);
   for(const d of Object.keys(BD.all)){ const vis=BD.blocks.find(x=>x.date===d); if(vis){ vis.hidden=false; BD.all[d]=vis; } else BD.all[d].hidden=true; }
   for(const blk of Object.values(BD.all)){
     const k=dayKey(blk); if(BD.saved[blk.date]===k) continue;      // only days that really changed are written
@@ -1841,11 +1843,16 @@ function openBoard(D){
     b.date=d; BD.all[d]=b; if(!b.hidden) BD.blocks.push(b); BD.updated=Math.max(BD.updated,b.updated||0);
   }
   for(const b of Object.values(BD.all)) if(!b.sent) b.sent=boardHalves(b);   /* starting point for "taken off → สมุดบันทึกเรือ" (no first LINE send needed) */
-  UNDO=[]; REDO=[]; SEL=null;
+  undoLoad(); SEL=null;
   boardSave(); renderBoard();
 }
 
 /* undo / redo */
+/* undo history kept per day in this tab (sessionStorage): switching menus and coming back keeps ↶ / ↷ */
+const UKEY=D=>'shipsched_undo:'+(CFG.API_URL||'demo')+':'+D;
+const boardSig=()=>JSON.stringify(BD.blocks.map(b=>[b.date,b.label,b.rows]));
+function undoSave(){ if(!BD) return; const sig=boardSig(); for(const n of [60,20,5,0]){ try{ sessionStorage.setItem(UKEY(BD.date), JSON.stringify({u:n?UNDO.slice(-n):[], r:n?REDO.slice(-n):[], sig})); return; }catch(e){} } }
+function undoLoad(){ try{ const o=JSON.parse(sessionStorage.getItem(UKEY(BD.date))||'null'); if(o && o.sig===boardSig()){ UNDO=o.u||[]; REDO=o.r||[]; return; } }catch(e){} UNDO=[]; REDO=[]; }
 function pushUndo(){ if(!BD) return; UNDO.push(JSON.stringify(BD.blocks)); if(UNDO.length>200) UNDO.shift(); REDO=[]; }
 function undo(){ if(!UNDO.length) return toast('ย้อนกลับไม่ได้แล้ว'); REDO.push(JSON.stringify(BD.blocks)); BD.blocks=JSON.parse(UNDO.pop()); typingKey=null; boardSave(); renderBoard(); }
 function redo(){ if(!REDO.length) return toast('ไม่มีให้ทำซ้ำ'); UNDO.push(JSON.stringify(BD.blocks)); BD.blocks=JSON.parse(REDO.pop()); typingKey=null; boardSave(); renderBoard(); }
