@@ -387,6 +387,18 @@ with st.sidebar:
     _page = st.session_state["page_choice"]
 apply_theme(_theme_choice)
 
+def _calc_html_build():
+    """The ×3.2808 calculator page (same synced ship lengths) — opened from a button in สมุดบันทึกเรือ."""
+    with open(os.path.join(_HERE, "calc_3_2808.html"), encoding="utf-8") as _f:
+        _calc_html = _f.read()
+    _defaults = nc.load_default_ships(os.path.join(_HERE, "ships.csv"))
+    _calc_html = _calc_html.replace(
+        "<script>", "<script>window.__DEFAULT_SHIPS__=" + json.dumps(_defaults, ensure_ascii=False).replace("</", "<\\/") + ";</script>\n<script>", 1)
+    _calc_html = _calc_html.replace(
+        "<script>", "<script>try{localStorage.setItem('calc3_2808_theme','light');}catch(e){}</script>\n<script>", 1)
+    return _calc_html.replace("<script>", _sync_script() + "<script>", 1)
+
+
 if _page == _P_LOG:
     # Daily pilot log (replaces the per-day tabs of the Google Sheet "เล่มบันทึกข้อมูล").
     # Data lives in this browser's localStorage; the page has its own backup/restore buttons.
@@ -406,6 +418,7 @@ if _page == _P_LOG:
     # ships.csv lengths are copied once into the original port's sheet (calcShips) by the page
     _inject += "window.__DEFAULT_SHIPS__=" + json.dumps(nc.load_default_ships(os.path.join(_HERE, "ships.csv")),
                                                        ensure_ascii=False).replace("</", "<\\/") + ";"
+    _inject += "window.__CALC_HTML__=" + json.dumps(_calc_html_build(), ensure_ascii=False).replace("</", "<\\/") + ";"
     _log_theme = {_THEME_OPTIONS[0]: "light", _THEME_OPTIONS[1]: "dark"}.get(_theme_choice)
     if _log_theme:
         _inject += "window.__THEME__='" + _log_theme + "';"
@@ -438,28 +451,9 @@ if _page in (_P_SCHED, _P_NOTICE):
 _ship_store = components.declare_component(
     "ship_store", path=os.path.join(_HERE, "ship_store_component"))
 
-def _calc_component(height):
-    """The ×3.2808 calculator (same synced ship lengths), shown beside the card merger."""
-    with open(os.path.join(_HERE, "calc_3_2808.html"), encoding="utf-8") as _f:
-        _calc_html = _f.read()
-    _defaults = nc.load_default_ships(os.path.join(_HERE, "ships.csv"))
-    _calc_html = _calc_html.replace(
-        "<script>", "<script>window.__DEFAULT_SHIPS__=" + json.dumps(_defaults, ensure_ascii=False).replace("</", "<\\/") + ";</script>\n<script>", 1)
-    _calc_theme = {_THEME_OPTIONS[0]: "light", _THEME_OPTIONS[1]: "dark"}.get(_theme_choice)
-    if _calc_theme:
-        _calc_html = _calc_html.replace(
-            "<script>",
-            "<script>try{localStorage.setItem('calc3_2808_theme','" + _calc_theme + "');}catch(e){}</script>\n<script>", 1)
-    _calc_html = _calc_html.replace("<script>", _sync_script() + "<script>", 1)
-    components.html(_calc_html, height=height, scrolling=True)
 
 
-_main, _side = st.columns([5, 2], gap="large")
-with _side:
-    st.markdown("#### 🧮 เครื่องคิดเลข ×3.2808")
-    _calc_component(560)
-
-with _main:
+with st.container():   # the ×3.2808 calculator moved to a button in สมุดบันทึกเรือ
     import report_page
     st.title("📑 ปิดการ์ดประจำวัน")
 

@@ -309,6 +309,12 @@ table.reg{border-collapse:collapse;width:100%;min-width:520px}
 .cmenu .mi:hover{background:var(--head)}
 .cmenu hr{border:0;border-top:1px solid var(--line);margin:4px 2px}
 td.mkfc,td.mkfc *{color:var(--mkfc)!important}
+.calcbtn{font-weight:700;white-space:nowrap}
+.calcbtn[aria-expanded="true"]{background:#5b5be0;color:#fff;border-color:#5b5be0}
+.calcpanel{position:fixed;top:0;right:0;bottom:0;width:min(380px,100vw);z-index:60;background:#f4f4f7;box-shadow:-8px 0 24px rgb(0 0 0 / .18);display:flex;flex-direction:column;border-left:1px solid #d5d8e0}
+.calcpanel[hidden]{display:none}
+.calcpanel .cp-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;background:#fff;border-bottom:1px solid #e3e6ec;font-size:16px}
+.calcpanel iframe{flex:1;width:100%;border:0;background:#f4f4f7}
 </style>
 </head>
 <body>
@@ -340,10 +346,12 @@ td.mkfc,td.mkfc *{color:var(--mkfc)!important}
 
   <div id="notice" class="notice" hidden></div>
 
+  <aside class="calcpanel" id="calcPanel" hidden aria-label="เครื่องคิดเลข ×3.2808"><div class="cp-head"><b>🧮 เครื่องคิดเลข ×3.2808</b><button type="button" class="btn tb" id="calcX" aria-label="ปิดเครื่องคิดเลข">✕</button></div></aside>
   <section id="view-log">
     <div class="stats">
       <button class="btn primary addship" id="addBtn">＋ เพิ่มเรือ</button>
       <div class="spacer"></div>
+      <button class="btn tb calcbtn" id="calcBtn" type="button" title="เครื่องคิดเลข ×3.2808 (เปิดทางขวา)" aria-expanded="false" hidden>🧮 ×3.2808</button>
       <div class="hlbar">
         <div class="ctool" title="สีพื้น"><button class="btn tb ct-main" id="fillMain" type="button" aria-pressed="false" title="สีพื้น (กดแล้วคลิกช่องในตาราง)"><span class="ct-ic">🖍</span><span class="ct-bar" id="fillBar"></span></button><button class="btn tb ct-drop" id="fillDrop" type="button" aria-label="เลือกสีพื้น">▾</button><div class="ct-pal" id="fillPal" hidden></div></div>
         <div class="ctool" title="สีตัวอักษร"><button class="btn tb ct-main" id="fontMain" type="button" aria-pressed="false" title="สีตัวอักษร (กดแล้วคลิกช่องในตาราง)"><span class="ct-ic ct-a">A</span><span class="ct-bar" id="fontBar"></span></button><button class="btn tb ct-drop" id="fontDrop" type="button" aria-label="เลือกสีตัวอักษร">▾</button><div class="ct-pal" id="fontPal" hidden></div></div>
@@ -1794,6 +1802,12 @@ $("impFile").onchange=async e=>{
     const msg=`นำเข้าแล้ว ${add.length} รายการ`+(fill.length?` · เติมข้อมูล ${fill.length} ลำ`:"");box.replaceChildren(msg);toast(msg);
   }},"นำเข้า "+(add.length+fill.length)+" รายการ"),el("button",{class:"btn",onclick:()=>box.hidden=true},"ยกเลิก")));
 };
+/* ---------- ×3.2808 calculator: a button opens it in a panel on the right (same synced ship lengths) ---------- */
+(function(){ const btn=$("calcBtn"), P=$("calcPanel"); if(!btn||!P||!window.__CALC_HTML__) return; btn.hidden=false;
+  const set=open=>{ P.hidden=!open; btn.setAttribute("aria-expanded",open?"true":"false");
+    if(open && !P.querySelector("iframe")){ const f=document.createElement("iframe"); f.title="เครื่องคิดเลข ×3.2808"; f.srcdoc=window.__CALC_HTML__; P.appendChild(f); } };
+  btn.addEventListener("click",()=>set(P.hidden)); $("calcX").addEventListener("click",()=>set(false));
+  document.addEventListener("keydown",e=>{ if(e.key==="Escape" && !P.hidden) set(false); }); })();
 /* ---------- calculator ship lengths (collection calcShips, shared with the ×3.2808 calculator) ---------- */
 const CALC_F=3.2808;
 function calcShips(){const o={};for(const [k,v] of Object.entries(SS.all("calcShips")))if(v&&!v.hidden)o[k]=v;return o}
