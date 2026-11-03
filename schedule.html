@@ -533,7 +533,7 @@ html.ios .hbar{position:absolute;bottom:100%!important}
   <nav class="tabs" role="tablist">
     <button role="tab" id="tab-line" aria-selected="true">แก้ไข</button>
     <button role="tab" id="tab-work" aria-selected="false">จัดตาราง</button>
-    <button role="tab" id="tab-print" aria-selected="false">พิมพ์</button>
+    <button role="tab" id="tab-print" aria-selected="false" hidden>พิมพ์</button>
     <button role="tab" id="tab-ships" aria-selected="false">ทะเบียนเรือ</button>
     <button role="tab" id="tab-pilots" aria-selected="false">ผก. &amp; เวร</button>
   </nav>
@@ -552,7 +552,7 @@ html.ios .hbar{position:absolute;bottom:100%!important}
     <div class="scrollx vfit"><div class="paper linepaper" id="board"></div></div>
   </section>
   <section id="view-work" hidden>
-    <div class="ltool"><div class="grp"><button class="btn tb" id="gUndo" title="Ctrl+Z">↶ ย้อนกลับ</button><button class="btn tb" id="gRedo" title="Ctrl+Y">↷ ทำซ้ำ</button></div><div class="grp fcolor gfcolor"><button class="btn tb fc-main" id="gColor" title="สีตัวอักษร"><span class="fcA">A</span><span class="fcBar" id="gfcBar"></span></button><button class="btn tb fc-drop" id="gfcDrop" title="เลือกสี" aria-label="เลือกสีตัวอักษร">▾</button><div class="fc-pal" id="gfcPal" hidden></div></div><div class="grp"><button class="btn tb" id="gAutoBtn" hidden>⟲ จัดอัตโนมัติใหม่</button></div><div class="grp"><button class="btn tb" id="impBtn" title="นำเข้าจากไฟล์ Excel ตารางเรือเดิม (แท็บแยกตามวัน)">📥 นำเข้าไฟล์ตาราง</button><input type="file" id="impFile" accept=".xlsx" hidden></div></div>
+    <div class="ltool"><div class="grp"><button class="btn primary" id="printBtn">ปริ้น</button><button class="btn" id="pdfBtn">ดาวน์โหลด PDF</button><span class="note" id="printNote" hidden></span><span class="disp" id="dispState" hidden></span><button class="btn" id="dispBtn" hidden>บันทึกจัดจ่าย</button></div><div class="grp"><button class="btn tb" id="gUndo" title="Ctrl+Z">↶ ย้อนกลับ</button><button class="btn tb" id="gRedo" title="Ctrl+Y">↷ ทำซ้ำ</button></div><div class="grp fcolor gfcolor"><button class="btn tb fc-main" id="gColor" title="สีตัวอักษร"><span class="fcA">A</span><span class="fcBar" id="gfcBar"></span></button><button class="btn tb fc-drop" id="gfcDrop" title="เลือกสี" aria-label="เลือกสีตัวอักษร">▾</button><div class="fc-pal" id="gfcPal" hidden></div></div><div class="grp"><button class="btn tb" id="gAutoBtn" hidden>⟲ จัดอัตโนมัติใหม่</button></div><div class="grp"><button class="btn tb" id="impBtn" title="นำเข้าจากไฟล์ Excel ตารางเรือเดิม (แท็บแยกตามวัน)">📥 นำเข้าไฟล์ตาราง</button><input type="file" id="impFile" accept=".xlsx" hidden></div></div>
     <div class="panel imp" id="impPanel" hidden></div>
     <div class="sheetwrap vfit"><table class="eg" id="grid"></table></div>
   </section>
@@ -636,12 +636,7 @@ html.ios .hbar{position:absolute;bottom:100%!important}
 
   <section id="view-print" hidden>
     <div class="printbar">
-      <button class="btn primary" id="printBtn">ปริ้น</button>
-      <button class="btn" id="pdfBtn">ดาวน์โหลด PDF</button>
       <div class="grp pzoom" role="group" aria-label="ซูมตัวอย่างพิมพ์"><button class="btn tb" id="pzOut" type="button" aria-label="ซูมออก" title="ซูมออก"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.4 15.4 21 21"/><path d="M7.5 10.5h6"/></svg></button><span class="pzv" id="pzVal">100%</span><button class="btn tb" id="pzIn" type="button" aria-label="ซูมเข้า" title="ซูมเข้า"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.4 15.4 21 21"/><path d="M7.5 10.5h6"/><path d="M10.5 7.5v6"/></svg></button><button class="btn tb" id="pzFit" type="button" title="เท่าจัดตาราง">พอดีจอ</button></div>
-      <span class="note" id="printNote" hidden></span>
-      <span class="disp" id="dispState" hidden></span>
-      <button class="btn" id="dispBtn" hidden>บันทึกจัดจ่าย</button>
     </div>
     <div class="scrollx vfit" id="paperWrap"><div class="paper" id="paperBig"></div></div>
   </section>
