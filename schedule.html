@@ -1348,6 +1348,13 @@ const inGrid=e=>e.target && e.target.closest && e.target.closest('#grid') && e.t
 document.addEventListener('copy',e=>{ if(!inGrid(e)||!GSEL) return; const i=e.target;
   if(!gmulti() && i.selectionStart!==i.selectionEnd && !(i.selectionStart===0 && i.selectionEnd===i.value.length)) return;
   const t=gAllSel()?gAllText():gTSV(); GCLIP=t; e.clipboardData.setData('text/plain',t.text); e.preventDefault(); if(gAllSel()) toast('คัดลอกทั้งตารางแล้ว'); });   /* everything selected → the whole day incl. date, headers, totals */
+/* Ctrl+A anywhere on จัดตาราง (not only inside a cell) → the whole table, and Ctrl+C then copies it — the browser's own select-all can't copy the cells */
+const workOn=()=>!$('view-work').hidden, typingElsewhere=t=>t && t.matches && t.matches('input,textarea,select,[contenteditable="true"]') && !t.closest('#grid');
+document.addEventListener('keydown',e=>{ if(!workOn() || !(e.ctrlKey||e.metaKey) || e.altKey || e.shiftKey) return; const k=(e.key||'').toLowerCase();
+  if(k!=='a' && e.code!=='KeyA') return; if(typingElsewhere(e.target) || (e.target.closest && e.target.closest('#grid input'))) return;
+  e.preventDefault(); try{ window.getSelection().removeAllRanges(); }catch(x){} gSelAll(); },true);
+document.addEventListener('copy',e=>{ if(!workOn() || inGrid(e) || typingElsewhere(e.target) || !gAllSel()) return;
+  const t=gAllText(); GCLIP=t; e.clipboardData.setData('text/plain',t.text); e.preventDefault(); toast('คัดลอกทั้งตารางแล้ว'); });
 document.addEventListener('cut',e=>{ if(!inGrid(e)||!GSEL) return; const i=e.target;
   if(!gmulti() && i.selectionStart!==i.selectionEnd && !(i.selectionStart===0 && i.selectionEnd===i.value.length)) return;
   const t=gTSV(); GCLIP=t; e.clipboardData.setData('text/plain',t.text); e.preventDefault(); gClear(); });
