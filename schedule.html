@@ -144,7 +144,9 @@ table.eg{border-collapse:collapse;table-layout:fixed;width:100%;min-width:1180px
 .eg th,.eg td{border:1px solid #8a8a8a;padding:0;height:34px;text-align:center;vertical-align:middle;color:#000}
 .eg thead th{background:#EAEAEA;font-weight:700;font-size:14px}
 .eg thead tr.ttl th{height:46px;background:#fff}
-.eg thead tr.ttl th.date{background:#FFFF99;font-size:24px}
+.eg thead tr.ttl th.date{background:#FFFF99;font-size:24px;white-space:nowrap}
+.eg td.rduty,.eg th.rduty{background:#CCFFCC!important;font-weight:700;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left;padding:0 4px;color:#000}
+.eg th.rduty{text-align:center;font-size:11px}
 .eg thead tr.ttl th.title{font-size:19px;letter-spacing:.06em;word-spacing:.3em}
 .eg thead tr.band th{height:28px;font-size:14px}
 .eg thead tr.cols th{height:28px;font-size:13px}
@@ -945,7 +947,7 @@ function renderPrint(){
 // L = ENTERING (A..I), R = SAILING & SHIFTING (J..Q)
 const FL = ['no','ship','loa','drf','t','pob','berth','pilot','agent'];
 const FR = ['no','ship','loa','drf','t','berth','pilot','agent'];
-const GW = [40,190,52,46,88,88,92,56,84, 40,190,52,46,88,168,56,84]; // relative widths
+const GW = [40,190,52,46,88,88,92,56,84, 40,190,52,46,88,168,56,84, 130]; // relative widths (last = PILOT ON DUTY, read-only like the print)
 const HL = ['NO.',"SHIP'S NAME",'LOA','Drf','ETA','POB','BERTH','Pilot','AGENT'];
 const HR = ['NO.',"SHIP'S NAME",'LOA','Drf','ETD','BERTH','Pilot','AGENT'];
 
@@ -991,28 +993,30 @@ function renderGrid(){
   const main = buildMain(S.mv.filter(m=>inWin(m,D) && !+m.late), D);
   const late = S.mv.filter(m=>inWin(m,P) && +m.late);
   const lateRows = buildLate(late).filter(r=>!r.blank);
+  const RD=rColumn(D); let rdi=0; const rd=()=>`<td class="rduty" title="${esc(RD[rdi]||'')}">${esc(RD[rdi++]||'')}</td>`, rx='<td class="rduty"></td>';
   const gw=GW.reduce((a,b)=>a+b,0); let h = `<colgroup>${GW.map(w=>`<col style="width:${(w/gw*100).toFixed(3)}%">`).join('')}</colgroup>`;
-  h += `<thead><tr class="ttl"><th class="date" colspan="2">${longDate(D)}</th><th class="title" colspan="15">SHIP'S SCHEDULE FOR SONGKHLA PILOT</th></tr><tr class="band"><th class="b-in" colspan="9">ENTERING</th><th class="b-out" colspan="8">SAILING &amp; SHIFTING</th></tr>`;
-  h += `<tr class="cols">${HL.map(t=>`<th>${t}</th>`).join('')}${HR.map((t,i)=>`<th>${t}</th>`).join('')}</tr></thead><tbody>`;
+  h += `<thead><tr class="ttl"><th class="date" colspan="2">${longDate(D)}</th><th class="title" colspan="16">SHIP'S SCHEDULE FOR SONGKHLA PILOT</th></tr><tr class="band"><th class="b-in" colspan="9">ENTERING</th><th class="b-out" colspan="9">SAILING &amp; SHIFTING</th></tr>`;
+  h += `<tr class="cols">${HL.map(t=>`<th>${t}</th>`).join('')}${HR.map((t,i)=>`<th>${t}</th>`).join('')}<th class="rduty">PILOT ON DUTY</th></tr></thead><tbody>`;
   const body = main.rows.slice(1,-1);
+  while(body.length+2 < RD.length) body.push({blank:true});   /* room for the whole PILOT ON DUTY list, like the print */
   // the empty first row of the printed sheet (typing here adds a ship too)
-  h += `<tr>${halfHTML('L',null,{draft:'topL',base:D})}${halfHTML('R',null,{draft:'topR',base:D})}</tr>`;
+  h += `<tr>${halfHTML('L',null,{draft:'topL',base:D})}${halfHTML('R',null,{draft:'topR',base:D})}${rd()}</tr>`;
   body.forEach((r,i)=>{
     // separator rows between time groups look empty like the print, but you can type a ship there like any other row
-    if(r.blank){ h+=`<tr class="sep" data-li="${i}">${halfHTML('L',null,{draft:'s'+i+'L',base:D})}${halfHTML('R',null,{draft:'s'+i+'R',base:D})}</tr>`; return; }
+    if(r.blank){ h+=`<tr class="sep" data-li="${i}">${halfHTML('L',null,{draft:'s'+i+'L',base:D})}${halfHTML('R',null,{draft:'s'+i+'R',base:D})}${rd()}</tr>`; return; }
     const dt = (r.L||r.R).datetime;
     h += `<tr data-li="${i}">${r.L? halfHTML('L',r.L,{no:main.no.get(r.L.id),base:D}) : halfHTML('L',null,{draft:'e'+i+'L',base:D,def:dt})}`+
-         `${r.R? halfHTML('R',r.R,{no:main.no.get(r.R.id),base:D}) : halfHTML('R',null,{draft:'e'+i+'R',base:D,def:dt})}</tr>`;
+         `${r.R? halfHTML('R',r.R,{no:main.no.get(r.R.id),base:D}) : halfHTML('R',null,{draft:'e'+i+'R',base:D,def:dt})}${rd()}</tr>`;
   });
-  h += `<tr class="newrow">${halfHTML('L',null,{draft:'newL',base:D,isNew:true})}${halfHTML('R',null,{draft:'newR',base:D,isNew:true})}</tr>`;
-  h += `<tr class="lateh"><td colspan="17">เรือที่แจ้งเข้า - ออกและเลื่อน เพิ่มเติม หลังจากจัดจ่ายงาน วันที่ ${longDate(P)}</td></tr>`;
+  h += `<tr class="newrow">${halfHTML('L',null,{draft:'newL',base:D,isNew:true})}${halfHTML('R',null,{draft:'newR',base:D,isNew:true})}${rd()}</tr>`;
+  h += `<tr class="lateh"><td colspan="17">เรือที่แจ้งเข้า - ออกและเลื่อน เพิ่มเติม หลังจากจัดจ่ายงาน วันที่ ${longDate(P)}</td>${rd()}</tr>`;
   lateRows.forEach((r,i)=>{
     const dt=(r.L||r.R).datetime;
     h += `<tr>${r.L? halfHTML('L',r.L,{base:P}) : halfHTML('L',null,{draft:'p'+i+'L',base:P,def:dt,late:true})}`+
-         `${r.R? halfHTML('R',r.R,{base:P}) : halfHTML('R',null,{draft:'p'+i+'R',base:P,def:dt,late:true})}</tr>`;
+         `${r.R? halfHTML('R',r.R,{base:P}) : halfHTML('R',null,{draft:'p'+i+'R',base:P,def:dt,late:true})}${rd()}</tr>`;
   });
-  h += `<tr class="newrow">${halfHTML('L',null,{draft:'lateL',base:P,isNew:true,late:true})}${halfHTML('R',null,{draft:'lateR',base:P,isNew:true,late:true})}</tr>`;
-  h += `<tr class="foot"><td colspan="17"> SHIP'S  ENTERING   ${main.nIn}  VESSEL SAILING &amp; SHIFTING  ${main.nOut}  VESSEL   E.mail  ${EMAIL} </td></tr></tbody>`;
+  h += `<tr class="newrow">${halfHTML('L',null,{draft:'lateL',base:P,isNew:true,late:true})}${halfHTML('R',null,{draft:'lateR',base:P,isNew:true,late:true})}${rd()}</tr>`;
+  h += `<tr class="foot"><td colspan="18"> SHIP'S  ENTERING   ${main.nIn}  VESSEL SAILING &amp; SHIFTING  ${main.nOut}  VESSEL   E.mail  ${EMAIL} </td></tr></tbody>`;
   $('grid').innerHTML = h;
   $('gAutoBtn').hidden = !layoutOf(D);
   indexGrid();
