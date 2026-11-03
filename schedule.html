@@ -685,7 +685,7 @@ function schedOf(dt){ const d=dt.slice(0,10), hm=dt.slice(11).replace(':',''); r
 function fmtT(dt){ if(!dt) return ''; return `${+dt.slice(8,10)}-${dt.slice(11,13)}${dt.slice(14,16)}`; }
 function minutes(dt){ const [d,t]=dt.split(' '); const [y,m,dd]=d.split('-').map(Number); const [h,mi]=t.split(':').map(Number); return Date.UTC(y,m-1,dd,h,mi)/60000; }
 function parseTime(txt, D){
-  txt=(txt||'').trim().replace(/[.:]/g,''); let m, date, hm;
+  txt=(txt||'').trim().replace(/^[A-Za-z]+|[A-Za-z]+$/g,'').trim().replace(/[.:]/g,''); let m, date, hm;   /* stray letters (sz1300) are ignored */
   if((m=txt.match(/^(\d{3,4})$/))){ hm=m[1].padStart(4,'0'); date = hm>=cutHM()? D : addDays(D,1); }
   else if((m=txt.match(/^(\d{1,2})\s*[-\/ ]\s*(\d{3,4})$/))){ hm=m[2].padStart(4,'0'); const day=+m[1];
     for(const off of [0,1,-1,2,-2,3]){ const c=addDays(D,off); if(+c.slice(8)===day){ date=c; break; } } }
@@ -1997,6 +1997,8 @@ BOARD.addEventListener('change',e=>{ const i=e.target.closest('.ce'); if(!i||!BD
 function relayout(bi, r0, c0){
   const blk=BD.blocks[bi], base=blk.date||BD.date, rows=blk.rows;
   const halves=[]; let moved=null;
+  const junk=/[A-Za-z]/, unjunk=(row,c)=>{ const v=String(row.c[c]||''); if(!junk.test(v)) return; const dt=parseTime(v,base); if(!dt) return; row.c[c]=fmtT(dt); const h=hOf(row,c); if(h) setH(row,c,h.replace(/[A-Za-z]+(?![^<]*>)/g,'')); };
+  rows.forEach(row=>[4,5,13].forEach(c=>unjunk(row,c)));   /* sz3-1300 → 3-1300 (colour kept) */
   rows.forEach((row,ri)=>{
     for(const [side,a,z,tc] of [['L',0,9,4],['R',9,17,13]]){
       const c=row.c.slice(a,z); if(!c.some(v=>String(v).trim())) continue;
@@ -2070,7 +2072,8 @@ function moveSel(d, whole){ if(!needSel()) return; const R=rect(); const rows=BD
 /* clipboard: Ctrl+C / X / V like Excel (tab-separated, keeps red when pasted here) */
 function selTSV(){ const R=rect(), out=[], red=[], hh=[]; for(let r=R.r0;r<=R.r1;r++){ const row=BD.blocks[R.b].rows[r]; out.push(row.c.slice(R.c0,R.c1+1)); red.push(row.r.slice(R.c0,R.c1+1)); hh.push(Array.from({length:R.c1-R.c0+1},(x,k)=>hOf(row,R.c0+k))); } return {cells:out, red, hh, text:out.map(x=>x.join('\t')).join('\n')}; }
 /* 2359 typed in red → 29-2359: the added day goes in front, the red part stays red */
-function keepRich(row,c,raw,t){ const hh=hOf(row,c); if(!hh || raw===t) return;
+function keepRich(row,c,raw,t){ let hh=hOf(row,c); if(!hh || raw===t) return;
+  const rr=raw.replace(/^[A-Za-z]+|[A-Za-z]+$/g,''); if(rr!==raw){ hh=hh.replace(/[A-Za-z]+(?![^<]*>)/g,''); raw=rr; if(raw===t){ setH(row,c,hh); return; } }
   if(t.endsWith(raw)) setH(row,c, esc(t.slice(0,t.length-raw.length))+hh); else setH(row,c,''); }
 function pasteGrid(cells, red, hh){
   if(!needSel()) return; const R=rect(); pushUndo(); const rows=BD.blocks[R.b].rows;
