@@ -638,7 +638,7 @@ html.ios .hbar{position:absolute;bottom:100%!important}
     <div class="printbar">
       <button class="btn primary" id="printBtn">ปริ้น</button>
       <button class="btn" id="pdfBtn">ดาวน์โหลด PDF</button>
-      <div class="grp pzoom" role="group" aria-label="ซูมตัวอย่างพิมพ์"><button class="btn tb" id="pzOut" type="button" aria-label="ซูมออก" title="ซูมออก"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.4 15.4 21 21"/><path d="M7.5 10.5h6"/></svg></button><span class="pzv" id="pzVal">100%</span><button class="btn tb" id="pzIn" type="button" aria-label="ซูมเข้า" title="ซูมเข้า"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.4 15.4 21 21"/><path d="M7.5 10.5h6"/><path d="M10.5 7.5v6"/></svg></button><button class="btn tb" id="pzFit" type="button" title="พอดีความกว้างจอ">พอดีจอ</button></div>
+      <div class="grp pzoom" role="group" aria-label="ซูมตัวอย่างพิมพ์"><button class="btn tb" id="pzOut" type="button" aria-label="ซูมออก" title="ซูมออก"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.4 15.4 21 21"/><path d="M7.5 10.5h6"/></svg></button><span class="pzv" id="pzVal">100%</span><button class="btn tb" id="pzIn" type="button" aria-label="ซูมเข้า" title="ซูมเข้า"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.4 15.4 21 21"/><path d="M7.5 10.5h6"/><path d="M10.5 7.5v6"/></svg></button><button class="btn tb" id="pzFit" type="button" title="เท่าจัดตาราง">พอดีจอ</button></div>
       <span class="note" id="printNote" hidden></span>
       <span class="disp" id="dispState" hidden></span>
       <button class="btn" id="dispBtn" hidden>บันทึกจัดจ่าย</button>
@@ -2651,7 +2651,7 @@ window.addEventListener('resize',()=>{ fitHeads($('board')); fitHeads($('grid'))
 
 /* พิมพ์: zoom the on-screen preview (printing / PDF are not affected) */
 (function(){ const P=$('paperBig'), W=$('paperWrap'); let z=null;   // null = fit the screen width
-  const fitZ=()=>{ const w=P.offsetWidth||1123; return Math.max(0.3,Math.min(1,(W.clientWidth-4)/w)); };
+  const fitZ=()=>{ const w=P.offsetWidth||1123; return Math.max(0.3,Math.min(2,Math.max(W.clientWidth-4,1180)/w)); };   /* as wide as the จัดตาราง grid (its min width is 1180px) */
   const apply=()=>{ const v=z==null?fitZ():z; P.style.zoom=v; $('pzVal').textContent=Math.round(v*100)+'%'; $('pzFit').classList.toggle('on',z==null); };
   const step=d=>{ const cur=z==null?fitZ():z; z=Math.max(0.3,Math.min(2,Math.round((cur+d)*10)/10)); apply(); };
   $('pzIn').addEventListener('click',()=>step(0.1)); $('pzOut').addEventListener('click',()=>step(-0.1));
