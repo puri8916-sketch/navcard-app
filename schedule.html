@@ -668,6 +668,13 @@ const CFG = (()=>{ const c={API_URL:'',TOKEN:''}; const inj=window.__SCHED__||{}
   return c; })();
 if(window.__THEME__) document.documentElement.dataset.theme = window.__THEME__;
 if(window.__CAN_PRINT__) document.documentElement.classList.add('st');   /* inside the site: the profile badge sits over the top-right corner */
+/* desktop, inside the site: move this frame up so the menu tabs sit just under the profile badge (measured — the header height differs between servers) */
+function liftFrame(){ try{ const fe=window.frameElement, P=parent.document; if(!fe || !window.__CAN_PRINT__ || window.__ONLY__) return;
+  if(parent.innerWidth<769){ fe.style.removeProperty('margin-top'); return; }
+  const badge=P.querySelector('.st-key-profile_pop'), tabs=document.querySelector('nav.tabs'); if(!badge||!tabs) return;
+  const want=badge.getBoundingClientRect().bottom+6, cur=fe.getBoundingClientRect().top+tabs.getBoundingClientRect().top, m0=parseFloat(getComputedStyle(fe).marginTop)||0;
+  const m=Math.round(m0+want-cur); if(Math.abs(m-m0)>1) fe.style.setProperty('margin-top',m+'px','important'); }catch(e){} }
+window.addEventListener('load',liftFrame); window.addEventListener('resize',liftFrame); setTimeout(liftFrame,300); setTimeout(liftFrame,1500); setInterval(liftFrame,2000);
 const SEED = /*SEED*/null;
 
 const MONTHS = ['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'];
