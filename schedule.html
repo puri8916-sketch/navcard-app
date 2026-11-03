@@ -1768,7 +1768,7 @@ function nowDt(){ const d=new Date(); return `${d.getFullYear()}-${pad(d.getMont
 function snapOf(D){ return (S.snaps||{})[D]; }
 function changed(m, snap){
   if(!snap) return false; const s=snap.items[m.id];
-  if(!s) return !+m.late;                         // added after dispatch
+  if(!s) return false;                            // added after dispatch (นำเข้า PSB / เพิ่มใหม่): black — only date-time / berth changes go red
   return s.dt!==m.datetime || s.b!==berthText(m);  // date-time or berth changed
 }
 function renderDisp(){
