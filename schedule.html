@@ -139,31 +139,30 @@ table.st{border-collapse:collapse;table-layout:fixed;width:100%;font-size:17px}
 /* ---------- editable grid (same columns as the Excel tab) ---------- */
 .gridwrap{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:var(--r)}
 /* the work grid is drawn as the printed sheet: white paper, Book Antiqua, the sheet's own fills */
-.sheetwrap{overflow-x:auto;width:max-content;max-width:100%;background:#fff;border:1px solid #9aa4ad;box-shadow:0 1px 3px rgb(0 0 0 / .12)}
-/* จัดตาราง = the printed sheet at 100%: same width, column widths, fonts and row height */
-table.eg{border-collapse:collapse;table-layout:fixed;width:1091px;font-family:var(--f-sheet);font-size:10pt;color:#000;background:#fff}
-.eg th,.eg td{border:.5pt solid #555;padding:0;height:18pt;line-height:1;text-align:center;vertical-align:middle;color:#000}
-.eg thead th{background:#EAEAEA;font-weight:700;font-size:10pt}
-.eg thead tr.ttl th{height:18pt;background:#fff;white-space:nowrap;overflow:hidden}
-.eg thead tr.ttl th.date{background:#FFFF99;font-size:22pt;white-space:nowrap}
-.eg td.rduty,.eg th.rduty{background:#CCFFCC!important;font-weight:700;font-size:7pt;white-space:nowrap;overflow:hidden;text-align:center;padding:0 2px;color:#000}
-.eg th.rduty{text-align:center;font-size:7pt}
-.eg thead tr.ttl th.title{font-size:14pt;word-spacing:.3em}
-.eg thead tr.band th{height:18pt;font-size:10pt}
-.eg thead tr.cols th{height:18pt;font-size:10pt}
+.sheetwrap{overflow-x:auto;background:#fff;border:1px solid #9aa4ad;box-shadow:0 1px 3px rgb(0 0 0 / .12)}
+table.eg{border-collapse:collapse;table-layout:fixed;width:100%;min-width:1180px;font-family:var(--f-sheet);font-size:16px;color:#000;background:#fff}
+.eg th,.eg td{border:1px solid #8a8a8a;padding:0;height:34px;text-align:center;vertical-align:middle;color:#000}
+.eg thead th{background:#EAEAEA;font-weight:700;font-size:14px}
+.eg thead tr.ttl th{height:46px;background:#fff}
+.eg thead tr.ttl th.date{background:#FFFF99;font-size:24px;white-space:nowrap}
+.eg td.rduty,.eg th.rduty{background:#CCFFCC!important;font-weight:700;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left;padding:0 4px;color:#000}
+.eg th.rduty{text-align:center;font-size:11px}
+.eg thead tr.ttl th.title{font-size:19px;letter-spacing:.06em;word-spacing:.3em}
+.eg thead tr.band th{height:28px;font-size:14px}
+.eg thead tr.cols th{height:28px;font-size:13px}
 .eg th.b-in{background:#CCFFFF}
 .eg th.b-out{background:#FFCC99}
-.eg input{width:100%;height:100%;min-height:0;border:0;background:transparent;text-align:center;padding:0 2px;font:400 10pt var(--f-sheet);color:#000;border-radius:0}
+.eg input{width:100%;height:100%;min-height:33px;border:0;background:transparent;text-align:center;padding:0 4px;font:400 16px var(--f-sheet);color:#000;border-radius:0}
 .eg input.ship{text-align:left}
-.eg td.shipc:focus-within input.ship{padding-right:72px}
+.eg td.shipc:focus-within input.ship{padding-right:100px}
 .eg input:focus{outline:2px solid #3B8FD6;outline-offset:-2px;background:#E8F2FB}
 .eg input.pil{color:#FF0000;font-weight:700}
 .eg td.need{background:#FFF7D6}
 .eg input.bad{background:#FFE1E1;outline:2px solid #D0021B;outline-offset:-2px}
 .eg tbody tr:hover td{background:#F4F8FB}
 .eg tbody tr:hover td.need{background:#FFF7D6}
-.eg td.no{font-size:10pt}
-.eg td.no button{width:100%;height:100%;min-height:0;padding:0;border:0;background:transparent;font:inherit;color:inherit;cursor:pointer}
+.eg td.no{font-size:15px}
+.eg td.no button{width:100%;height:100%;min-height:33px;border:0;background:transparent;font:inherit;color:inherit;cursor:pointer}
 .eg td.no button:hover{background:#FFCCFF}
 .eg td.no.lt,.eg td.no.lt button{color:#FF0000;font-weight:700}
 .eg td.shipc{position:relative;text-align:left}
@@ -175,12 +174,12 @@ table.eg{border-collapse:collapse;table-layout:fixed;width:1091px;font-family:va
 .eg input{cursor:cell}.eg input:focus{cursor:text}
 .eg .ops{position:absolute;right:4px;top:50%;transform:translateY(-50%);display:none;gap:3px}
 .eg td.shipc:hover .ops,.eg td.shipc:focus-within .ops{display:flex}
-.eg .ops button{border:1px solid #b5bec6;background:#fff;color:#13212E;border-radius:5px;font-size:11px;padding:1px 4px;line-height:1.2;cursor:pointer;white-space:nowrap;font-family:var(--f-ui)}
+.eg .ops button{border:1px solid #b5bec6;background:#fff;color:#13212E;border-radius:6px;font-size:14px;padding:3px 6px;cursor:pointer;white-space:nowrap;font-family:var(--f-ui)}
 .eg .ops button.arm{background:#D0021B;color:#fff;border-color:#D0021B}
-.eg tr.sep td,.eg tbody tr.sep:hover td{height:18pt;background:#fff}
-.eg tr.lateh td{background:#FFCCFF;font-weight:700;font-size:11pt;height:18pt}
-.eg tr.foot td{background:#FFFF99;font-weight:700;font-size:10pt;height:18pt;white-space:pre}
-.eg .kind{font-size:9pt;font-weight:700;border-radius:4px;padding:1px 4px;margin-left:4px;font-family:var(--f-ui)}
+.eg tr.sep td,.eg tbody tr.sep:hover td{height:34px;background:#fff}
+.eg tr.lateh td{background:#FFCCFF;font-weight:700;font-size:16px;height:32px}
+.eg tr.foot td{background:#FFFF99;font-weight:700;font-size:15px;height:32px;white-space:pre}
+.eg .kind{font-size:14px;font-weight:700;border-radius:4px;padding:1px 4px;margin-left:4px;font-family:var(--f-ui)}
 
 /* combo popup (type to filter) */
 .combo-pop{position:fixed;z-index:70;background:var(--surface);border:1px solid var(--line);border-radius:8px;box-shadow:0 8px 24px rgb(0 0 0 / .18);max-height:300px;max-width:min(520px,calc(100vw - 16px));overflow-y:auto;padding:4px}
@@ -948,7 +947,7 @@ function renderPrint(){
 // L = ENTERING (A..I), R = SAILING & SHIFTING (J..Q)
 const FL = ['no','ship','loa','drf','t','pob','berth','pilot','agent'];
 const FR = ['no','ship','loa','drf','t','berth','pilot','agent'];
-const GW = COLW;   // same column widths as the printed sheet (last = PILOT ON DUTY, read-only)
+const GW = [40,190,52,46,88,88,92,56,84, 40,190,52,46,88,168,56,84, 130]; // relative widths (last = PILOT ON DUTY, read-only like the print)
 const HL = ['NO.',"SHIP'S NAME",'LOA','Drf','ETA','POB','BERTH','Pilot','AGENT'];
 const HR = ['NO.',"SHIP'S NAME",'LOA','Drf','ETD','BERTH','Pilot','AGENT'];
 
@@ -1028,18 +1027,14 @@ function renderGrid(){
 // shrink long text to fit its cell, like Excel's shrink-to-fit
 function fitAll(){   // read all widths first, then write — one layout pass instead of one per cell
   fitHeads($('grid'));
-  /* date, title and PILOT ON DUTY shrink to fit like the print */
-  const cs=[...$('grid').querySelectorAll('th.date,th.title,td.rduty,th.rduty,tr.lateh td,tr.foot td')].filter(t=>t.textContent.trim());
-  cs.forEach(t=>t.style.fontSize=''); const cm=cs.map(t=>[t.scrollWidth,t.clientWidth,parseFloat(getComputedStyle(t).fontSize)]);
-  cs.forEach((t,k)=>{ const [sw,cw,fs]=cm[k]; if(sw>cw+1) t.style.fontSize=Math.max(5,fs*(cw-4)/sw).toFixed(2)+'px'; });
   const list=[...$('grid').querySelectorAll('input')].filter(i=>i.value);
   if(!list.length || $('view-work').hidden) return;
   list.forEach(i=>{ if(i.style.fontSize) i.style.fontSize=''; });
   const m=list.map(i=>[i.scrollWidth,i.clientWidth]);
-  const base=parseFloat(getComputedStyle(list[0]).fontSize)||13.3; list.forEach((i,k)=>{ const [sw,cw]=m[k]; if(sw>cw+1) i.style.fontSize=Math.max(7,base*(cw-2)/sw).toFixed(1)+'px'; });
+  list.forEach((i,k)=>{ const [sw,cw]=m[k]; if(sw>cw+1) i.style.fontSize=Math.max(10,16*(cw-2)/sw).toFixed(1)+'px'; });
 }
 function fitInput(i){ i.style.fontSize=''; if(!i.value || i.offsetParent===null) return; const base=parseFloat(getComputedStyle(i).fontSize);
-  if(i.scrollWidth>i.clientWidth+1){ const k=(i.clientWidth-2)/i.scrollWidth; i.style.fontSize=Math.max(7,base*k).toFixed(1)+'px'; } }
+  if(i.scrollWidth>i.clientWidth+1){ const k=(i.clientWidth-2)/i.scrollWidth; i.style.fontSize=Math.max(10,base*k).toFixed(1)+'px'; } }
 function renderAll(){
   renderStrip();
   $('windowLabel').innerHTML = `รอบ <span class="num">${shortDate(S.D)} ${S.settings.cutoff}</span> – <span class="num">${shortDate(addDays(S.D,1))} ${addTimeLabel()}</span>`;
