@@ -328,6 +328,9 @@ table.log{font-size:18px}table.log td.mono{font-size:18px}table.log thead th{fon
 table.log td.ship,table.log td.ship *{font-weight:400!important}   /* ship names not bold */
 /* the wider serif: ship names and agents stay on one line */
 table.log tbody td:nth-child(2),table.log tbody td:nth-child(11),table.log tbody td:nth-child(15),table.log tbody td:nth-child(11) *,table.log tbody td:nth-child(15) *{white-space:nowrap!important;max-width:none!important}
+/* the whole page (title bar, tabs, date, buttons, search) in the logbook font too */
+:root{--f-body:"LogTimes","Times New Roman",Times,"Tahoma","Leelawadee UI","Noto Sans Thai",serif;--f-mono:"LogTimes","Times New Roman",Times,"Tahoma","Leelawadee UI","Noto Sans Thai",serif}
+button,input,select,textarea{font-family:var(--f-body)}
 </style>
 </head>
 <body>
