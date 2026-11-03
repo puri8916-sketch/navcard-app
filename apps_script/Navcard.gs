@@ -61,6 +61,7 @@ function schedGet_(e) {
     const a = e.parameter.action;
     if (a === 'init') return init_();
     if (a === 'movements') return listMovements_(e.parameter.from, e.parameter.to);
+    if (a === 'boards') return boards_();   // light: only the แก้ไข tables (other devices poll this every few seconds)
     throw new Error('ไม่รู้จักคำสั่ง ' + a);
   });
 }

@@ -15,6 +15,7 @@ function doGet(e) {
     const a = e.parameter.action;
     if (a === 'init') return init_();
     if (a === 'movements') return listMovements_(e.parameter.from, e.parameter.to);
+    if (a === 'boards') return boards_();
     throw new Error('ไม่รู้จักคำสั่ง ' + a);
   });
 }
