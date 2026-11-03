@@ -342,6 +342,14 @@ table.lsheet.board{width:100%;font-size:17px}
 .dpop span:last-child{white-space:nowrap}
 
 /* profile cropper */
+.pv-m{position:fixed;inset:0;z-index:300;background:rgb(0 0 0 / .82);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:12px;touch-action:none}
+.pv-stage{width:min(88vw,560px);height:min(70vh,560px);overflow:hidden;border-radius:12px;background:#111;display:grid;place-items:center;cursor:grab}
+.pv-stage img{width:100%;height:100%;object-fit:contain;transform-origin:center;user-select:none;-webkit-user-drag:none;transition:transform .08s}
+.pv-stage .pv-none{color:#ddd;font-size:18px}
+.pv-cap{color:#fff;text-align:center;font-size:18px;line-height:1.4}.pv-cap b{color:#FF6B6B;font-size:22px}
+.pv-bar{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.pv-bar .btn{font-size:16px;min-width:46px}
+.pv-x{position:absolute;top:12px;right:14px;background:rgb(255 255 255 / .15);color:#fff;border:0;border-radius:50%;width:44px;height:44px;font-size:22px;cursor:pointer}
 .crop-m{position:fixed;inset:0;z-index:300;background:rgb(0 0 0 / .55);display:grid;place-items:center;padding:12px}
 .crop-box{background:var(--surface);color:var(--ink);border-radius:14px;padding:16px;width:min(360px,100%);box-shadow:0 20px 50px rgb(0 0 0 / .35)}
 .crop-box h3{margin:0 0 10px;font-size:18px;text-align:center}
@@ -1495,7 +1503,7 @@ $('tab-pilots').addEventListener('click',()=>{ renderPilots(); showTab('pilots')
 const DUTY_LBL=['ผก.ประจำ 1','ผก.ประจำ 2','ผก.เวร 3','ผก.เวร 4'];
 function pilotList(){ return Object.keys(S.pilots).sort((a,b)=>(+a)-(+b)||a.localeCompare(b)); }
 function renderPilots(){
-  $('pilotBody').innerHTML = pilotList().map(p=>`<tr><td class="avc"><button type="button" class="avbtn" data-avpick="${esc(p)}" title="คลิกเพื่อเปลี่ยนรูป">${avatar(p,48)}</button>${photoOf(p)?`<button type="button" class="avx" data-avdel="${esc(p)}" title="ลบรูป">✕</button>`:''}</td><td class="num" style="padding:8px;font-weight:700;color:var(--pilot)">${esc(p)}</td><td><input class="pname" data-pname="${esc(p)}" value="${esc(nameOf(p))}" placeholder="ชื่อเล่น" aria-label="ชื่อเล่น ${esc(p)}"></td><td><input class="num" data-pphone="${esc(p)}" value="${esc(S.pilots[p])}" inputmode="tel" aria-label="เบอร์ ${esc(p)}"></td><td><button type="button" class="del" data-delpilot="${esc(p)}">ลบ</button></td></tr>`).join('')
+  $('pilotBody').innerHTML = pilotList().map(p=>`<tr><td class="avc"><button type="button" class="avbtn" data-avpick="${esc(p)}" title="คลิกเพื่อดูรูปใหญ่">${avatar(p,48)}</button>${photoOf(p)?`<button type="button" class="avx" data-avdel="${esc(p)}" title="ลบรูป">✕</button>`:''}</td><td class="num" style="padding:8px;font-weight:700;color:var(--pilot)">${esc(p)}</td><td><input class="pname" data-pname="${esc(p)}" value="${esc(nameOf(p))}" placeholder="ชื่อเล่น" aria-label="ชื่อเล่น ${esc(p)}"></td><td><input class="num" data-pphone="${esc(p)}" value="${esc(S.pilots[p])}" inputmode="tel" aria-label="เบอร์ ${esc(p)}"></td><td><button type="button" class="del" data-delpilot="${esc(p)}">ลบ</button></td></tr>`).join('')
     || `<tr><td colspan="5" class="empty">ยังไม่มีเลขผก.</td></tr>`;
   if(!$('dutyMonth').value) $('dutyMonth').value=S.D.slice(0,7); dmLabel();
   const k=$('dutyMonth').value, cur=S.duty[k]||[];
@@ -2521,7 +2529,29 @@ async function setPhoto(p,data){
 let phFor=null;
 (()=>{ const f=document.createElement('input'); f.type='file'; f.accept='image/*'; f.hidden=true; f.id='phFile'; document.body.appendChild(f);
   f.addEventListener('change',async()=>{ const file=f.files[0]; f.value=''; if(!file||!phFor) return; try{ const d=await cropPhoto(file); if(d) await setPhoto(phFor, d); }catch(e){ toast('อ่านรูปไม่ได้'); } }); })();
-$('pilotBody').addEventListener('click',e=>{ const a=e.target.closest('[data-avpick]'); if(a){ phFor=a.dataset.avpick; $('phFile').click(); return; }
+/* profile viewer: big photo, zoom (wheel / pinch / buttons), drag to pan, double-click to reset; change / remove photo from here */
+function photoView(p){ const ph=photoOf(p); let z=1,x=0,y=0; const M=document.createElement('div'); M.className='pv-m'; M.setAttribute('role','dialog');
+  M.innerHTML=`<button type="button" class="pv-x" data-a="x" aria-label="ปิด">✕</button><div class="pv-stage">${ph?`<img src="${esc(ph)}" alt="รูปผก. ${esc(p)}">`:'<span class="pv-none">ยังไม่มีรูป</span>'}</div>
+    <div class="pv-cap"><b>${esc(p)}</b> ${esc(nameOf(p))}<br><span class="num">${esc(S.pilots[p]||'')}</span></div>
+    <div class="pv-bar">${ph?`<button type="button" class="btn" data-a="out" aria-label="ซูมออก">−</button><button type="button" class="btn" data-a="fit">พอดี</button><button type="button" class="btn" data-a="in" aria-label="ซูมเข้า">＋</button>`:''}<button type="button" class="btn" data-a="pick">เปลี่ยนรูป</button>${ph?'<button type="button" class="btn" data-a="del">ลบรูป</button>':''}</div>`;
+  document.body.appendChild(M); const img=M.querySelector('img'), st=M.querySelector('.pv-stage');
+  const apply=()=>{ if(img) img.style.transform=`translate(${x}px,${y}px) scale(${z})`; }, zoom=k=>{ z=Math.max(1,Math.min(8,z*k)); if(z===1){x=0;y=0;} apply(); };
+  const close=()=>{ M.remove(); document.removeEventListener('keydown',key); }, key=e=>{ if(e.key==='Escape') close(); else if(e.key==='+'||e.key==='=') zoom(1.25); else if(e.key==='-') zoom(0.8); };
+  document.addEventListener('keydown',key);
+  M.addEventListener('click',e=>{ const a=e.target.closest('[data-a]')?.dataset.a; if(e.target===M) return close();
+    if(a==='x') close(); else if(a==='in') zoom(1.25); else if(a==='out') zoom(0.8); else if(a==='fit'){ z=1;x=0;y=0;apply(); }
+    else if(a==='pick'){ close(); phFor=p; $('phFile').click(); } else if(a==='del'){ close(); setPhoto(p,''); } });
+  if(!img) return;
+  st.addEventListener('wheel',e=>{ e.preventDefault(); zoom(e.deltaY<0?1.15:0.87); },{passive:false});
+  st.addEventListener('dblclick',()=>{ if(z>1){ z=1;x=0;y=0; } else z=2.5; apply(); });
+  const pts=new Map(); let last=null, pinch=0;
+  st.addEventListener('pointerdown',e=>{ st.setPointerCapture(e.pointerId); pts.set(e.pointerId,[e.clientX,e.clientY]); last=[e.clientX,e.clientY]; });
+  st.addEventListener('pointermove',e=>{ if(!pts.has(e.pointerId)) return; pts.set(e.pointerId,[e.clientX,e.clientY]);
+    if(pts.size===2){ const [a,b]=[...pts.values()], d=Math.hypot(a[0]-b[0],a[1]-b[1]); if(pinch) zoom(d/pinch); pinch=d; return; }
+    if(z>1 && last){ x+=e.clientX-last[0]; y+=e.clientY-last[1]; apply(); } last=[e.clientX,e.clientY]; });
+  const up=e=>{ pts.delete(e.pointerId); if(pts.size<2) pinch=0; last=null; }; st.addEventListener('pointerup',up); st.addEventListener('pointercancel',up);
+}
+$('pilotBody').addEventListener('click',e=>{ const a=e.target.closest('[data-avpick]'); if(a){ photoView(a.dataset.avpick); return; }
   const r=e.target.closest('[data-avdel]'); if(r){ setPhoto(r.dataset.avdel,''); } });
 $('pilotBody').addEventListener('change',async e=>{ const i=e.target.closest('[data-pname]'); if(!i) return; const no=i.dataset.pname, v=i.value.trim(); S.names=S.names||{}; const old=S.names[no]; S.names[no]=v;
   try{ await saveProfiles([{no,name:v}]); flash(i); }catch(err){ S.names[no]=old; i.value=old||''; toast('บันทึกชื่อเล่นไม่สำเร็จ: '+err.message); } });
@@ -2562,7 +2592,7 @@ $('pimpFile').addEventListener('change',async e=>{ const f=e.target.files[0]; e.
 /* ---------- profile picture cropper: drag to move, slider / wheel to zoom, ⟳ to rotate ---------- */
 function cropPhoto(file){ return new Promise(async (resolve)=>{
   const url=URL.createObjectURL(file); const img=new Image(); img.src=url; try{ await img.decode(); }catch(e){ URL.revokeObjectURL(url); resolve(null); return; }
-  const V=320, OUT=220; let rot=0, z=1, ox=0, oy=0;   // view size, output size, rotation (quarter turns), zoom, offset (view px)
+  const V=320, OUT=400; let rot=0, z=1, ox=0, oy=0;   // view size, output size, rotation (quarter turns), zoom, offset (view px)
   const M=document.createElement('div'); M.className='crop-m';
   M.innerHTML=`<div class="crop-box" role="dialog" aria-label="ครอบรูป"><h3>ปรับรูปโปรไฟล์</h3>
     <div class="crop-stage"><canvas width="${V}" height="${V}"></canvas><div class="crop-ring"></div></div>
@@ -2591,7 +2621,7 @@ function cropPhoto(file){ return new Promise(async (resolve)=>{
   M.addEventListener('click',e=>{ const a=e.target.closest('[data-a]')?.dataset.a; if(e.target===M) return done(null);
     if(a==='rot'){ rot=(rot+1)%4; ox=0; oy=0; paint(); }
     if(a==='no') done(null);
-    if(a==='ok'){ const c=document.createElement('canvas'); c.width=c.height=OUT; draw(c.getContext('2d'),OUT); done(c.toDataURL('image/jpeg',0.85)); } });
+    if(a==='ok'){ const c=document.createElement('canvas'); c.width=c.height=OUT; draw(c.getContext('2d'),OUT); let q=0.85, d=c.toDataURL('image/jpeg',q); while(d.length>45000 && q>0.4){ q-=0.08; d=c.toDataURL('image/jpeg',q); } done(d); }   /* a sheet cell holds 50,000 characters */ });
 }); }
 
 try{ document.fonts.ready.then(()=>{ fitHeads($('board')); fitHeads($('grid')); }); }catch(e){}
