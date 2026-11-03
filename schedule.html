@@ -145,8 +145,7 @@ table.eg{border-collapse:collapse;table-layout:fixed;width:100%;min-width:1180px
 .eg thead th{background:#EAEAEA;font-weight:700;font-size:14px}
 .eg thead tr.ttl th{height:46px;background:#fff}
 .eg thead tr.ttl th.date{background:#FFFF99;font-size:24px;white-space:nowrap}
-.eg td.rduty,.eg th.rduty{background:#CCFFCC!important;font-weight:700;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left;padding:0 4px;color:#000}
-.eg th.rduty{text-align:center;font-size:11px}
+.eg td.rduty,.eg thead tr.cols th.rduty{background:#CCFFCC!important;font-weight:700;font-size:7pt;white-space:nowrap;overflow:hidden;text-align:center;padding:0 2px;color:#000}   /* like the print */
 .eg thead tr.ttl th.title{font-size:19px;letter-spacing:.06em;word-spacing:.3em}
 .eg thead tr.band th{height:28px;font-size:14px}
 .eg thead tr.cols th{height:28px;font-size:13px}
@@ -1027,6 +1026,8 @@ function renderGrid(){
 // shrink long text to fit its cell, like Excel's shrink-to-fit
 function fitAll(){   // read all widths first, then write — one layout pass instead of one per cell
   fitHeads($('grid'));
+  const ds=[...$('grid').querySelectorAll('td.rduty,th.rduty')].filter(t=>t.textContent.trim()); ds.forEach(t=>t.style.fontSize='');   /* PILOT ON DUTY shrinks to fit like the print */
+  const dm=ds.map(t=>[t.scrollWidth,t.clientWidth,parseFloat(getComputedStyle(t).fontSize)]); ds.forEach((t,k)=>{ const [sw,cw,fs]=dm[k]; if(sw>cw+1) t.style.fontSize=Math.max(5,fs*(cw-4)/sw).toFixed(2)+'px'; });
   const list=[...$('grid').querySelectorAll('input')].filter(i=>i.value);
   if(!list.length || $('view-work').hidden) return;
   list.forEach(i=>{ if(i.style.fontSize) i.style.fontSize=''; });
