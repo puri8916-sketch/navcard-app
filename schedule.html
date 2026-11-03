@@ -2158,7 +2158,7 @@ const MENU_ITEMS=[
   ['undo','↶ ย้อนกลับ','Ctrl+Z'],['redo','↷ ทำซ้ำ','Ctrl+Y'],['-'],
   ['colors'],['bold','𝐁 ตัวหนา / ยกเลิกตัวหนา','Ctrl+B'],['fill','▦ พื้นหลังเทาอ่อน',''],['nofill','ล้างพื้นหลัง',''],['-'],
   ['cut','ตัด','Ctrl+X'],['copy','คัดลอก','Ctrl+C'],['paste','วาง','Ctrl+V'],['clear','ลบ','Delete'],['-'],
-  ['insup','แทรกแถวด้านบน',''],['insdown','แทรกแถวด้านล่าง',''],['delrow','ลบแถว','']];
+  ['insup','แทรกแถวด้านบน',''],['insdown','แทรกแถวด้านล่าง',''],['delrow','ลบแถว',''],['-'],['autoarr','จัดอัตโนมัติใหม่','']];
 MENU.innerHTML = MENU_ITEMS.map(x=>x[0]==='-'?'<hr>':x[0]==='colors'?`<div class="mcol"><span>สีตัวอักษร</span><div>${FC.map(k=>`<button type="button" data-col="${k}" style="background:${k}" title="${k}"></button>`).join('')}<button type="button" data-col="" class="auto" title="อัตโนมัติ (ดำ)">A</button></div></div>`:`<button type="button" data-m="${x[0]}" class="${x[3]||''}"><span>${x[1]}</span><kbd>${x[2]}</kbd></button>`).join('');
 function hideMenu(){ MENU.hidden=true; }
 BOARD.addEventListener('contextmenu',e=>{
@@ -2176,7 +2176,7 @@ document.addEventListener('scroll',()=>hideMenu(),true);
 function boardAct(a){
   if(!BD) return;
   ({undo, redo, cut:()=>menuCopy(true), copy:()=>menuCopy(false), paste:menuPaste, clear:clearSel,
-    color:()=>setColor(curColor), fill:()=>setFill(true), nofill:()=>setFill(false), togglefill:toggleFill, bold:toggleBold, delblock:()=>{ if(SEL) delBlock(SEL.b); },
+    color:()=>setColor(curColor), fill:()=>setFill(true), nofill:()=>setFill(false), togglefill:toggleFill, bold:toggleBold, delblock:()=>{ if(SEL) delBlock(SEL.b); }, autoarr:()=>{ if(!needSel()) return; pushUndo(); relayout(SEL.b,-1,-1); SEL=null; boardSave(); renderBoard(); toast('จัดเรียงตามเวลาแล้ว (ย้อนกลับได้)'); },
     insup:()=>insRows('up'), insdown:()=>insRows('down'), delrow:delRows,
     rowup:()=>moveSel(-1,true), rowdown:()=>moveSel(1,true), selup:()=>moveSel(-1,false), seldown:()=>moveSel(1,false)}[a]||(()=>{}))();
 }
