@@ -1491,12 +1491,8 @@ function setStatus(v){status=v;document.querySelectorAll("#fStatus button").forE
 document.querySelectorAll("#fStatus button").forEach(b=>b.addEventListener("click",()=>setStatus(b.dataset.v)));
 
 function fyYY(iso){const y=+iso.slice(0,4)+543+(+iso.slice(5,7)>=10?1:0);return String(y%100).padStart(2,"0")}
-async function nextJob(date){
-  const fy=fyYY(date);
-  try{const snap=await db.collection("calls").where("fy","==",fy).get();
-    let max=0;snap.docs.forEach(d=>{const m=String(d.data().job||"").match(/^SGZ\s*(\d+)\s*\//i);if(m)max=Math.max(max,+m[1])});
-    return max?{v:"SGZ"+(max+1)+"/"+fy,caret:null}:{v:"SGZ/"+fy,caret:3};
-  }catch(e){return {v:"SGZ/"+fy,caret:3}}
+async function nextJob(date){   // only the prefix "SGZ/70": the card number is typed by hand (it is not always the next one)
+  return {v:"SGZ/"+fyYY(date),caret:3};
 }
 
 async function openEditor(c){
@@ -1581,7 +1577,7 @@ $("edSave").onclick=async()=>{
   if(!vessel){toast("กรอกชื่อเรือก่อนบันทึก");$("fShip").focus();return}
   const g=id=>$(id).value.trim();
   const pIn=capSplit(g("fPilotIn")),pOut=capSplit(g("fPilotOut"));
-  const data={date:editing?.date||curDate,by:beYY(editing?.date||curDate),fy:fyYY(editing?.date||curDate),job:g("fJob"),vessel,from:g("fFrom"),loa:g("fLoa"),loaM:g("fLoaM"),lbp:g("fLbp"),ng:editing?.ng||"",agent:g("fAgent"),
+  const data={date:editing?.date||curDate,by:beYY(editing?.date||curDate),fy:fyYY(editing?.date||curDate),job:/^SGZ\s*\/\s*\d*$/i.test(g("fJob"))?"":g("fJob"),vessel,from:g("fFrom"),loa:g("fLoa"),loaM:g("fLoaM"),lbp:g("fLbp"),ng:editing?.ng||"",agent:g("fAgent"),
     eta:timeOf(g("fEta")),order:timeOf(g("fOrder")),invIn:$("invIn").checked||invSplit(g("fEta")).inv||invSplit(g("fOrder")).inv,pilotIn:pIn.p,capIn:pIn.p==="-CAP-"?(pIn.t||g("fCapIn")):"",berth:g("fBerth"),draughtIn:g("fDraughtIn"),
     atd:timeOf(g("fAtd")),invOut:$("invOut").checked||invSplit(g("fAtd")).inv,paknam:editing?.paknam||"",...(editing?.sms?{sms:editing.sms}:{}),pilotOut:pOut.p,capOut:pOut.p==="-CAP-"?(pOut.t||g("fCapOut")):"",draughtOut:g("fDraughtOut"),agentOut:g("fAgentOut")||g("fAgent"),remark:g("fRemark"),status,closeNo:g("fCloseNo"),cnAt:g("fCloseNo")!==(editing?.closeNo||"")?(g("fCloseNo")?Date.now():0):(editing?.cnAt||0),
     shifts:shifts.filter(s=>s.order||s.pilot||s.fromBerth||s.berth||s.draught||s.agent),t:editing?.t||Date.now(),updated:Date.now(),marks:Object.fromEntries(Object.entries(editing?.marks||{}).filter(([k])=>{const m=k.match(/^(?:fc\|)?s(\d+):/);return !m||+m[1]<shifts.filter(s=>s.order||s.pilot||s.fromBerth||s.berth||s.draught||s.agent).length}))};
