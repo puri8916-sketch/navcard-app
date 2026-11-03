@@ -342,6 +342,7 @@ table.lsheet.board{width:100%;font-size:17px}
 .dpop span:last-child{white-space:nowrap}
 
 /* profile cropper */
+#grid.allsel th,#grid.allsel td{box-shadow:inset 0 0 0 999px rgb(26 86 219 / .12)}
 .pv-m{position:fixed;inset:0;z-index:300;background:rgb(0 0 0 / .82);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:12px;touch-action:none}
 .pv-stage{width:min(88vw,560px);height:min(70vh,560px);overflow:hidden;border-radius:12px;background:#111;display:grid;place-items:center;cursor:grab}
 .pv-stage img{width:100%;height:100%;object-fit:contain;transform-origin:center;user-select:none;-webkit-user-drag:none;transition:transform .08s}
@@ -1259,7 +1260,7 @@ function paintGSel(){
   const R=grect(); if(!R) return;
   for(let r=R.r0;r<=R.r1;r++) for(let c=R.c0;c<=R.c1;c++){ const td=G.querySelector(`td[data-gr="${r}"][data-gc="${c}"]`); if(td) td.classList.add('gsel'); }
   const a=G.querySelector(`td[data-gr="${GSEL.r1}"][data-gc="${GSEL.c1}"]`); if(a) a.classList.add('ganc');
-  G.classList.toggle('multi', gmulti());
+  G.classList.toggle('multi', gmulti()); G.classList.toggle('allsel', gAllSel());
 }
 function gSet(r,c,extend){ if(extend && GSEL){ GSEL.r2=r; GSEL.c2=c; } else GSEL={r1:r,c1:c,r2:r,c2:c}; paintGSel(); }
 function gFocus(r,c,dr=0,dc=0){
@@ -1326,9 +1327,17 @@ function gSelAll(){ const n=+G.dataset.rows; if(!n) return; GSEL={r1:0,c1:0,r2:n
 /* the whole day as on the sheet (title, headers, ships, พ part, totals) — paste into Excel / LINE */
 function gAllText(){ const rows=[...G.querySelectorAll('tr')].map(tr=>[...tr.children].map(td=>{ const i=td.querySelector('input'); const b=td.querySelector('button'); const t=i?i.value:(b?b.textContent:td.textContent); const n=+td.colSpan||1; return [String(t).trim(),...Array(n-1).fill('')]; }).flat());
   return {cells:rows, text:rows.map(r=>r.join('\t')).join('\n')}; }
+/* same table as HTML with colours, merged title/band cells and borders — Excel / Word / LINE keep the look */
+function gAllHTML(){ const src=[...G.querySelectorAll('tr')]; let h='<table style="border-collapse:collapse;font-family:Cambria,\'Times New Roman\',serif;font-size:11pt">';
+  for(const tr of src){ h+='<tr>'; for(const td of tr.children){ const cs=getComputedStyle(td), i=td.querySelector('input'), b=td.querySelector('button');
+      const ic=i?getComputedStyle(i):cs, t=i?i.value:(b?b.textContent:td.textContent), bg=cs.backgroundColor, col=(i&&i.style.color)||ic.color;
+      const st=`border:1px solid #808080;padding:2px 4px;white-space:nowrap;text-align:${cs.textAlign==='start'?'left':cs.textAlign};font-weight:${td.tagName==='TH'?700:ic.fontWeight};color:${col};${bg&&bg!=='rgba(0, 0, 0, 0)'?'background:'+bg+';':''}`;
+      h+=`<td${td.colSpan>1?` colspan="${td.colSpan}"`:''} style="${st}">${esc(String(t).trim())}</td>`; }
+    h+='</tr>'; }
+  return h+'</table>'; }
 const gAllSel=()=>{ const R=grect(); return !!R && R.r0===0 && R.c0===0 && R.c1===16 && R.r1===+G.dataset.rows-1; };
 async function gCopyAll(){ const t=gAllText(); GCLIP=t; const text=t.text;
-  try{ await navigator.clipboard.writeText(text); toast('คัดลอกทั้งตารางแล้ว · วางใน Excel ได้'); }catch(e){ toast('คัดลอกไม่ได้ ลองใช้ Ctrl+A แล้ว Ctrl+C'); } }
+  try{ if(window.ClipboardItem && navigator.clipboard.write) await navigator.clipboard.write([new ClipboardItem({'text/plain':new Blob([text],{type:'text/plain'}),'text/html':new Blob([gAllHTML()],{type:'text/html'})})]); else await navigator.clipboard.writeText(text); toast('คัดลอกทั้งตารางแล้ว · วางใน Excel ได้'); }catch(e){ toast('คัดลอกไม่ได้ ลองใช้ Ctrl+A แล้ว Ctrl+C'); } }
 function gPaste(cells){
   const R=grect(); if(!R) return; const single=cells.length===1 && cells[0].length===1;
   const h=single?R.r1-R.r0+1:cells.length, w=single?R.c1-R.c0+1:Math.max(...cells.map(x=>x.length));
@@ -1347,14 +1356,14 @@ function gPaste(cells){
 const inGrid=e=>e.target && e.target.closest && e.target.closest('#grid') && e.target.dataset && e.target.dataset.gr!==undefined;
 document.addEventListener('copy',e=>{ if(!inGrid(e)||!GSEL) return; const i=e.target;
   if(!gmulti() && i.selectionStart!==i.selectionEnd && !(i.selectionStart===0 && i.selectionEnd===i.value.length)) return;
-  const t=gAllSel()?gAllText():gTSV(); GCLIP=t; e.clipboardData.setData('text/plain',t.text); e.preventDefault(); if(gAllSel()) toast('คัดลอกทั้งตารางแล้ว'); });   /* everything selected → the whole day incl. date, headers, totals */
+  const all=gAllSel(), t=all?gAllText():gTSV(); GCLIP=t; e.clipboardData.setData('text/plain',t.text); if(all) e.clipboardData.setData('text/html',gAllHTML()); e.preventDefault(); if(all) toast('คัดลอกทั้งตารางแล้ว'); });   /* everything selected → the whole day incl. date, headers, totals */
 /* Ctrl+A anywhere on จัดตาราง (not only inside a cell) → the whole table, and Ctrl+C then copies it — the browser's own select-all can't copy the cells */
 const workOn=()=>!$('view-work').hidden, typingElsewhere=t=>t && t.matches && t.matches('input,textarea,select,[contenteditable="true"]') && !t.closest('#grid');
 document.addEventListener('keydown',e=>{ if(!workOn() || !(e.ctrlKey||e.metaKey) || e.altKey || e.shiftKey) return; const k=(e.key||'').toLowerCase();
   if(k!=='a' && e.code!=='KeyA') return; if(typingElsewhere(e.target) || (e.target.closest && e.target.closest('#grid input'))) return;
   e.preventDefault(); try{ window.getSelection().removeAllRanges(); }catch(x){} gSelAll(); },true);
 document.addEventListener('copy',e=>{ if(!workOn() || inGrid(e) || typingElsewhere(e.target) || !gAllSel()) return;
-  const t=gAllText(); GCLIP=t; e.clipboardData.setData('text/plain',t.text); e.preventDefault(); toast('คัดลอกทั้งตารางแล้ว'); });
+  const t=gAllText(); GCLIP=t; e.clipboardData.setData('text/plain',t.text); e.clipboardData.setData('text/html',gAllHTML()); e.preventDefault(); toast('คัดลอกทั้งตารางแล้ว'); });
 document.addEventListener('cut',e=>{ if(!inGrid(e)||!GSEL) return; const i=e.target;
   if(!gmulti() && i.selectionStart!==i.selectionEnd && !(i.selectionStart===0 && i.selectionEnd===i.value.length)) return;
   const t=gTSV(); GCLIP=t; e.clipboardData.setData('text/plain',t.text); e.preventDefault(); gClear(); });
@@ -1433,7 +1442,8 @@ GM.addEventListener('click',async e=>{
   if(lay){ lay(); GSEP=null; return; }
   GSEP=null;
   const mvs=[...new Map(gTargets().map(mvOf).filter(Boolean).map(m=>[m.id,m])).values()];
-  if(a==='copy'||a==='cut'){ const t=a==='copy'&&gAllSel()?gAllText():gTSV(); GCLIP=t; try{ await navigator.clipboard.writeText(t.text); }catch(x){} if(a==='cut') gClear(); else toast('คัดลอกแล้ว'); }
+  if(a==='copy' && gAllSel()){ gCopyAll(); return; }
+  if(a==='copy'||a==='cut'){ const t=gTSV(); GCLIP=t; try{ await navigator.clipboard.writeText(t.text); }catch(x){} if(a==='cut') gClear(); else toast('คัดลอกแล้ว'); }
   else if(a==='paste'){ try{ const t=(await navigator.clipboard.readText()).replace(/\r/g,'').replace(/\n$/,''); gPaste(t.split('\n').map(l=>l.split('\t'))); }catch(x){ if(GCLIP) gPaste(GCLIP.cells); else toast('ใช้ Ctrl+V เพื่อวาง'); } }
   else if(a==='clear') gClear();
   else if(a==='late'){ gBatchStart(); mvs.forEach(m=>{ const before=cl(m); m.late=+m.late?0:1; gRecord(before,m); persist(m); }); gBatchEnd(); rerender(); }
