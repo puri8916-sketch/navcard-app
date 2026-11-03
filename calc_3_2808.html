@@ -477,6 +477,7 @@
   const exportShipsBtn = document.getElementById('exportShipsBtn');
   const importFile = document.getElementById('importFile');
   const factor = 3.2808;
+  const ft = v => Math.ceil(Number((v * factor).toFixed(6)));   // result in whole feet, always rounded up (524.862 → 525)
 
   let history = [];   // [{ship, value, result, time}]
   let ships = {};      // { shipName: {value, result, time} }
@@ -567,7 +568,7 @@
       out.textContent = '0';
       return;
     }
-    out.textContent = Number((v * factor).toFixed(4)).toLocaleString();
+    out.textContent = ft(v).toLocaleString();
   }
 
   // ---------- Ship autocomplete ----------
@@ -751,7 +752,7 @@
       return;
     }
 
-    const resultValue = Number((v * factor).toFixed(4)).toLocaleString();
+    const resultValue = ft(v).toLocaleString();
     const now = new Date();
     const time = now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
@@ -855,7 +856,7 @@
         const raw = (cols[iVal] || '').trim();
         const v = parseFloat(raw);
         if (!name || isNaN(v)) continue;
-        const result = Number((v * factor).toFixed(4)).toLocaleString();
+        const result = ft(v).toLocaleString();
         if (!(name in ships)) newShips++;
         ships[name] = { value: raw, result: result, time: iTime >= 0 ? (cols[iTime] || '').trim() : '' };
         rowsRead++;
