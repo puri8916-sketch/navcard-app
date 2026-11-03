@@ -964,7 +964,7 @@ function halfHTML(side, m, o){
   if(m){
     const typ = m.type==='SHIFT' ? `<span class="kind c-shift">ย้าย</span>` : '';
     for(const f of F){
-      if(f==='no'){ const lt=+m.late; h+=`<td class="no${lt?' lt':''}${mid}"><button type="button" data-act="late" data-id="${m.id}" title="${lt?'กดเพื่อยกเลิก พ':'กดเพื่อทำเป็น พ (แจ้งเพิ่มหลังจัดจ่าย)'}">${lt?'พ':(o.no??'')}</button></td>`; continue; }
+      if(f==='no'){ const lt=+m.late; h+=`<td class="no${lt?' lt':''}${mid}">${lt?'พ':(o.no??'')}</td>`; continue; }   /* number only — clicking it no longer makes the ship พ */
       const need = f==='pilot' && !m.pilot ? ' need' : '';
       const fc = fcOf(m,f), cell = inputHTML(m.id,f,side,fieldVal(m,f,side),`data-base="${o.base}"${fc?` style="color:${fc}"`:''}`);
       if(f==='ship') h+=`<td class="shipc">${cell}</td>`;
@@ -1022,7 +1022,7 @@ function renderGrid(){
 function fitAll(){   // read all widths first, then write — one layout pass instead of one per cell
   { const g=$('grid'), w=g.offsetWidth; if(w){ const k=Math.max(1,w/1091); g.style.setProperty('--rh',(24*k).toFixed(1)+'px'); g.style.setProperty('--rk',k.toFixed(3)); } }   /* rows as tight as the printed sheet at this width (18pt rows on a 1091px sheet) */
   fitHeads($('grid'));
-  const ds=[...$('grid').querySelectorAll('td.rduty,th.rduty')].filter(t=>t.textContent.trim()); ds.forEach(t=>t.style.fontSize='');   /* PILOT ON DUTY shrinks to fit like the print */
+  const ds=[...$('grid').querySelectorAll('td.rduty,th.rduty,th.date,th.title')].filter(t=>t.textContent.trim()); ds.forEach(t=>t.style.fontSize='');   /* PILOT ON DUTY shrinks to fit like the print */
   const dm=ds.map(t=>[t.scrollWidth,t.clientWidth,parseFloat(getComputedStyle(t).fontSize)]); ds.forEach((t,k)=>{ const [sw,cw,fs]=dm[k]; if(sw>cw+1) t.style.fontSize=Math.max(5,fs*(cw-4)/sw).toFixed(2)+'px'; });
   const list=[...$('grid').querySelectorAll('input')].filter(i=>i.value);
   if(!list.length || $('view-work').hidden) return;
