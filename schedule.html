@@ -557,7 +557,7 @@ html.ios .hbar{position:absolute;bottom:100%!important}
     <div class="scrollx vfit"><div class="paper linepaper" id="board"></div></div>
   </section>
   <section id="view-work" hidden>
-    <div class="ltool"><div class="grp"><button class="btn primary" id="printBtn">ปริ้น</button><button class="btn" id="pdfBtn">ดาวน์โหลด PDF</button><span class="note" id="printNote" hidden></span><span class="disp" id="dispState" hidden></span><button class="btn" id="dispBtn" hidden>บันทึกจัดจ่าย</button></div><div class="grp"><button class="btn tb" id="gUndo" title="Ctrl+Z">↶ ย้อนกลับ</button><button class="btn tb" id="gRedo" title="Ctrl+Y">↷ ทำซ้ำ</button></div><div class="grp fcolor gfcolor"><button class="btn tb fc-main" id="gColor" title="สีตัวอักษร"><span class="fcA">A</span><span class="fcBar" id="gfcBar"></span></button><button class="btn tb fc-drop" id="gfcDrop" title="เลือกสี" aria-label="เลือกสีตัวอักษร">▾</button><div class="fc-pal" id="gfcPal" hidden></div></div><div class="grp"><button class="btn tb" id="gAutoBtn" hidden>⟲ จัดอัตโนมัติใหม่</button></div><div class="grp" hidden><button class="btn tb" id="impBtn" title="นำเข้าจากไฟล์ Excel ตารางเรือเดิม (แท็บแยกตามวัน)">📥 นำเข้าไฟล์ตาราง</button><input type="file" id="impFile" accept=".xlsx" hidden></div></div>
+    <div class="ltool"><div class="grp"><button class="btn primary" id="printBtn">ปริ้น</button><button class="btn" id="pdfBtn">ดาวน์โหลด PDF</button><span class="note" id="printNote" hidden></span><span class="disp" id="dispState" hidden></span><button class="btn" id="dispBtn" hidden>บันทึกจัดจ่าย</button></div><div class="grp"><button class="btn tb" id="gUndo" title="Ctrl+Z">↶ ย้อนกลับ</button><button class="btn tb" id="gRedo" title="Ctrl+Y">↷ ทำซ้ำ</button></div><div class="grp fcolor gfcolor"><button class="btn tb fc-main" id="gColor" title="สีตัวอักษร"><span class="fcA">A</span><span class="fcBar" id="gfcBar"></span></button><button class="btn tb fc-drop" id="gfcDrop" title="เลือกสี" aria-label="เลือกสีตัวอักษร">▾</button><div class="fc-pal" id="gfcPal" hidden></div></div><div class="grp"><button class="btn tb" id="gAutoBtn" hidden>⟲ จัดอัตโนมัติใหม่</button></div><div class="grp"><button class="btn tb" id="psbBtn" title="นำเข้าไฟล์ Excel เรือ PSB (Daily Vessel Movement Schedule)">📥 นำเข้า PSB</button><input type="file" id="psbFile" accept=".xlsx" hidden></div><div class="grp" hidden><button class="btn tb" id="impBtn" title="นำเข้าจากไฟล์ Excel ตารางเรือเดิม (แท็บแยกตามวัน)">📥 นำเข้าไฟล์ตาราง</button><input type="file" id="impFile" accept=".xlsx" hidden></div></div>
     <div class="panel imp" id="impPanel" hidden></div>
     <div class="sheetwrap vfit"><table class="eg" id="grid"></table></div>
   </section>
@@ -2550,6 +2550,166 @@ async function impRun(){
     P.innerHTML=`✓ นำเข้าแล้ว ${list.length} รายการ`+(olds.length?` · ลบเรือเดิม ${olds.length} รายการ`:'')+` <button class="btn tb" id="impX">ปิด</button>`; $('impX').onclick=()=>P.hidden=true; IMP=null;
     toast(`นำเข้าแล้ว ${list.length} รายการ`);
   }catch(err){ msg.textContent=`หยุดที่ ${done}/${list.length}: ${err.message} (กดนำเข้าอีกครั้งได้ รายการที่บันทึกแล้วจะถูกข้าม)`; $('impGo').disabled=false; }
+}
+
+/* ---------- นำเข้า PSB: "Daily Vessel Movement Schedule" from PSB Operations Centre
+   INBOUND (ETA, 0700–0930 −30 นาที) / OUTBOUND (ETD) / VESSEL SHIFTING (ETD, PSB<>PSB ข้าม) need LOA ≥ 50 m;
+   SHIFT TO PTT OIL TERMINAL always goes in (ETD as is). ---------- */
+const PSB_MIN_M=50;
+function psbBerth(v){ const s=norm(v).replace(/\s+/g,' ');
+  let m=s.match(/^PSB\s*[#\-]?\s*(\d+)$/); if(m) return 'PSB-'+(+m[1]);
+  if(/^\d+(\.0+)?$/.test(s)) return 'PSB-'+parseInt(s);
+  if(/^(ACR|ANCH|ANCHORAGE)\b/.test(s)) return 'ANCHORAGE';
+  if(/^PTT/.test(s)) return 'PTT';
+  if(/^HIGH\s*SEAS?$|^SEA$/.test(s)) return 'SEA';
+  return ''; }   // TOWN … : filled in by hand
+function psbRead(sh){
+  const R=sh.rows, cell=(r,c)=>String(((R[r]||[])[c])??'').replace(/ /g,' ').trim();
+  const find=re=>{ for(let r=1;r<R.length;r++){ const row=R[r]; if(!row) continue; for(let c=1;c<row.length;c++) if(re.test(cell(r,c))) return {r,c}; } return null; };
+  // year: from the "03-04 Nov 2026" heading
+  let Y=null, M0=null; for(let r=1;r<Math.min(R.length,12)&&!Y;r++) for(let c=1;c<((R[r]||[]).length);c++){ const t=cell(r,c).toUpperCase(), m=t.match(/(\d{1,2})\s*-\s*\d{1,2}\s+([A-Z]{3})[A-Z]*\.?\s+(\d{4})/)||t.match(/(\d{1,2})\s+([A-Z]{3})[A-Z]*\.?\s+(\d{4})/);
+    if(m){ const k=Object.keys(IMP_MON).find(x=>x.startsWith(m[2])); if(k){ Y=+m[3]; M0=IMP_MON[k]; break; } } }
+  if(!Y){ Y=+String(S.D||'').slice(0,4)||new Date().getFullYear(); }
+  const serial=v=>{ v=String(v).trim(); if(!/^\d{4,6}(\.\d+)?$/.test(v)) return null; const n=+v, d=Math.floor(n+1e-9), mi=Math.round((n-d)*1440);
+    const t=new Date(Date.UTC(1899,11,30)+d*864e5+mi*6e4); return `${t.getUTCFullYear()}-${pad(t.getUTCMonth()+1)}-${pad(t.getUTCDate())} ${pad(t.getUTCHours())}:${pad(t.getUTCMinutes())}`; };
+  const txtTime=v=>{ const m=String(v).match(/(\d{1,2}):?(\d{2})\s*(?:HRS?|H)?\s*[,\s]\s*(\d{1,2})\s*[\/\-.]\s*(\d{1,2})(?:\s*[\/\-.]\s*(\d{2,4}))?/i); if(!m) return null;
+    const mo=+m[4]; let y=m[5]?(+m[5]<100?2000+ +m[5]:+m[5]):Y; if(!m[5]&&M0&&M0===12&&mo===1) y=Y+1;
+    if(+m[1]>23||+m[2]>59||mo<1||mo>12) return null; return `${y}-${pad(mo)}-${pad(+m[3])} ${pad(+m[1])}:${m[2]}`; };
+  const when=v=>serial(v)||txtTime(v);
+  const hdr=(r,c0,c1)=>{ const h={}; for(let c=c0;c<=c1;c++){ const t=cell(r,c).toUpperCase().replace(/[^A-Z]/g,'');
+    if(/SHIPSNAME|SHIPNAME|VESSEL/.test(t)) h.ship=c; else if(t==='LOA') h.loa=c; else if(t==='ETA') h.eta=c; else if(t==='ETD') h.etd=c; else if(t==='BERTH') h.berth=c; else if(t==='AGENT') h.agent=c; else if(t==='FROM') h.from=c; else if(t==='TO') h.to=c; else if(t==='NO') h.no=c; } return h; };
+  const lab={in:find(/^INBOUND$/i), out:find(/^OUTBOUND$/i), sh:find(/^VESSEL\s+SHIFTING$/i), ptt:find(/^SHIFT\s+TO\s+PTT/i)};
+  const ends=Object.values(lab).filter(Boolean).map(x=>x.r);
+  const nextLab=r=>Math.min(...ends.filter(x=>x>r), R.length);
+  const ditto=s=>/^["“”'‘’〃]+$|^DITTO$|^-$/i.test(s);
+  const legs=[], bad=[];
+  const rowsOf=(L,c0,c1,stopBlank)=>{ if(!L) return [];
+    let hr=-1; for(let r=L.r+1;r<=L.r+3;r++) if(/SHIP/i.test(cell(r,c0)+cell(r,c0+1)+cell(r,c0+2))) { hr=r; break; } if(hr<0) return [];
+    const h=hdr(hr,c0,c1), out=[]; const end=nextLab(L.r);
+    for(let r=hr+1;r<end;r++){ let blank=true; for(let c=c0;c<=c1;c++) if(cell(r,c)) { blank=false; break; }
+      if(blank){ if(stopBlank && out.length) break; continue; }
+      out.push({r, g:k=>h[k]!=null?cell(r,h[k]):''}); }
+    return out; };
+  // INBOUND B–H, OUTBOUND I–O (columns found from the header row)
+  const inC0=lab.in?lab.in.c:2, outC0=lab.out?lab.out.c:inC0+7;
+  for(const x of rowsOf(lab.in,inC0,outC0-1,false)){ const ship=norm(x.g('ship')); if(!ship) continue; const dt=when(x.g('eta'));
+    if(!dt){ bad.push(`${ship} (ETA ${x.g('eta')||'-'})`); continue; } legs.push({src:'in',ship,m:parseFloat(x.g('loa')),dt,berth:psbBerth(x.g('berth')),agent:norm(x.g('agent'))}); }
+  for(const x of rowsOf(lab.out,outC0,outC0+6,false)){ const ship=norm(x.g('ship')); if(!ship) continue; const dt=when(x.g('etd'));
+    if(!dt){ bad.push(`${ship} (ETD ${x.g('etd')||'-'})`); continue; } legs.push({src:'out',ship,m:parseFloat(x.g('loa')),dt,berth:psbBerth(x.g('berth')),agent:norm(x.g('agent'))}); }
+  for(const key of ['sh','ptt']){ const L=lab[key]; if(!L) continue; let prev='';
+    for(const x of rowsOf(L,L.c,L.c+8,true)){ let ship=x.g('ship'); ship=ditto(ship)?prev:norm(ship); if(!ship) continue; prev=ship;
+      const dt=when(x.g('etd')); if(!dt){ bad.push(`${ship} (ETD ${x.g('etd')||'-'})`); continue; }
+      legs.push({src:key,ship,dt,fromRaw:x.g('from'),toRaw:x.g('to'),from:psbBerth(x.g('from')),to:psbBerth(x.g('to'))}); } }
+  return {Y, title:cell(lab.in?lab.in.r-2:7,2)||'', legs, bad};
+}
+// LOA in metres: the file's own rows, then its LOA / Sheet1 tabs, then ทะเบียนเรือ (ft → m)
+function psbLoaBook(sheets){ const b=new Map();
+  for(const sh of sheets) for(const row of sh.rows){ if(!row) continue; for(let c=1;c<row.length-1;c++){ const n=norm(row[c]), v=String(row[c+1]??'').trim();
+    if(n && /[A-Z]/.test(n) && /^\d+(\.\d+)?$/.test(v) && +v>5 && +v<400 && !b.has(n)) b.set(n,+v); } }
+  return b; }
+const psbKey=s=>norm(s).replace(/[^A-Z0-9]/g,'');
+function psbShip(name){ const ex=S.shipIdx.get(name); if(ex) return ex; const k=psbKey(name); return S.ships.find(s=>psbKey(s.name)===k)||null; }
+function psbBuild(rd, book, have){
+  const out=[], skip=[];
+  const metres=(ship,m)=>{ if(m>0) return m; const r=rd.legs.find(l=>l.ship===ship&&l.m>0); if(r) return r.m;
+    const v=book.get(ship)??book.get([...book.keys()].find(k=>psbKey(k)===psbKey(ship))); if(v) return v;
+    const s=psbShip(ship); if(s&&+s.loa) return +s.loa/3.2808; return null; };
+  const inAdj=dt=>{ const hm=+dt.slice(11).replace(':',''); if(hm>=700&&hm<=930){ const [h,mi]=dt.slice(11).split(':').map(Number), t=h*60+mi-30; return `${dt.slice(0,11)}${pad(Math.floor(t/60))}:${pad(t%60)}`; } return dt; };
+  const mk=(l,o)=>{ const s=psbShip(l.ship), M=metres(l.ship,l.m);
+    const loa = s&&s.loa ? String(s.loa) : M ? String(Math.ceil(Number((M*3.2808).toFixed(6)))) : '';
+    return Object.assign({id:newId(), ship:s?s.name:l.ship, loa, drf:'', pob:'', pilot:'', agent:'', late:0, note:'', from:'', to:'', _reg:!!s, _m:M, _src:l.src}, o); };
+  // PTT berth: PTT-A, but "PTT-" (เติมเอง) when another ship goes there at the same time; a ship leaving keeps the berth it came in with
+  const pttIn=rd.legs.filter(l=>l.src==='ptt'&&l.to==='PTT'), pttOut=rd.legs.filter(l=>l.src==='ptt'&&l.from==='PTT');
+  const haveAt=(dt,side)=>have.some(m=>m.datetime===dt&&/^PTT/.test(side==='to'?m.to:m.from));
+  const pttBerth=(list,l,side)=> (list.filter(x=>x.dt===l.dt).length>1||haveAt(l.dt,side)) ? 'PTT-' : 'PTT-A';
+  const lastPtt=new Map();
+  for(const l of rd.legs){
+    if(l.src==='in') out.push(mk(l,{type:'IN', datetime:inAdj(l.dt), to:l.berth, agent:l.agent}));
+    else if(l.src==='out') out.push(mk(l,{type:'OUT', datetime:l.dt, from:l.berth, agent:l.agent}));
+    else if(l.src==='sh'){
+      if(/^PSB-/.test(l.from)&&/^PSB-/.test(l.to)){ skip.push({l,why:'PSB<>PSB'}); continue; }
+      if(l.from==='SEA') out.push(mk(l,{type:'IN', datetime:l.dt, to:l.to}));
+      else if(l.to==='SEA') out.push(mk(l,{type:'OUT', datetime:l.dt, from:l.from}));
+      else out.push(mk(l,{type:'SHIFT', datetime:l.dt, from:l.from==='PTT'?'PTT-':l.from, to:l.to==='PTT'?'PTT-':l.to}));
+    } else {   // SHIFT TO PTT OIL TERMINAL
+      if(l.to==='PTT'&&l.from!=='PTT'){ const b=pttBerth(pttIn,l,'to'); lastPtt.set(l.ship,b);
+        const reg=psbShip(l.ship);
+        if(l.from==='SEA'||!l.from&&/HIGH/i.test(l.fromRaw)) out.push(mk(l,{type:'IN', datetime:l.dt, to:b, agent:(rd.legs.find(x=>x.ship===l.ship&&x.agent)||{}).agent||(reg&&reg.agent)||''}));
+        else out.push(mk(l,{type:'SHIFT', datetime:l.dt, from:l.from, to:b})); }
+      else if(l.from==='PTT'&&l.to!=='PTT'){ const b=lastPtt.get(l.ship)||pttBerth(pttOut,l,'from'); lastPtt.delete(l.ship);
+        const reg=psbShip(l.ship);
+        if(l.to==='SEA') out.push(mk(l,{type:'OUT', datetime:l.dt, from:b, agent:(rd.legs.find(x=>x.ship===l.ship&&x.agent)||{}).agent||(reg&&reg.agent)||''}));
+        else out.push(mk(l,{type:'SHIFT', datetime:l.dt, from:b, to:l.to})); }
+      else skip.push({l,why:'อ่านเส้นทางไม่ได้'});
+    }
+  }
+  // 50 m rule (PTT table always in), duplicates (same ship + time already on the board / earlier in the file)
+  const key=m=>`${psbKey(m.ship)}|${m.datetime}`, seen=new Set(have.map(m=>`${psbKey(baseShip(m.ship))}|${m.datetime}`));
+  const list=[];
+  for(const m of out.sort((a,b)=>a.datetime<b.datetime?-1:a.datetime>b.datetime?1:0)){
+    if(m._src!=='ptt' && m._m!=null && m._m<PSB_MIN_M){ skip.push({m,why:`${+m._m.toFixed(2)} ม.`}); continue; }
+    const k=key(m); m._dup=seen.has(k); seen.add(k);
+    m._warn = m._dup ? '' : !m._reg ? 'ยังไม่ลงทะเบียน' : m._m==null ? 'ไม่ทราบ LOA' : '';
+    list.push(m); }
+  return {list, skip};
+}
+let PSB=null;
+$('psbBtn').addEventListener('click',()=>$('psbFile').click());
+$('psbFile').addEventListener('change',async e=>{
+  const f=e.target.files[0]; e.target.value=''; if(!f) return; const P=$('impPanel'); P.hidden=false; P.innerHTML='กำลังอ่านไฟล์…';
+  const fail=t=>{ P.innerHTML=`${esc(t)} <button class="btn tb" id="impX">ปิด</button>`; $('impX').onclick=()=>P.hidden=true; };
+  try{
+    const sheets=await xlsxRead(await f.arrayBuffer());
+    const main=sheets.find(s=>s.rows.some(r=>r&&r.some(v=>/^\s*INBOUND\s*$/i.test(String(v??'')))));
+    if(!main) return fail('ไม่พบตาราง INBOUND / OUTBOUND ในไฟล์ (ไฟล์ Daily Vessel Movement Schedule ของ PSB)');
+    const rd=psbRead(main); if(!rd.legs.length) return fail('ไม่พบรายการเรือในไฟล์');
+    const dts=rd.legs.map(l=>l.dt).sort(), from=`${addDays(dts[0].slice(0,10),-1)} 00:00`, to=`${addDays(dts[dts.length-1].slice(0,10),1)} 23:59`;
+    let have=[]; try{ have=await api('movements',{from,to}); }catch(err){ have=S.mv; }
+    const ids=new Set(have.map(m=>m.id)); S.mv.forEach(m=>{ if(m.datetime>=from&&m.datetime<=to&&!ids.has(m.id)) have.push(m); });
+    PSB=Object.assign(psbBuild(rd, psbLoaBook(sheets.filter(s=>s!==main)), have), {rd, name:f.name}); psbShow();
+  }catch(err){ fail('อ่านไฟล์ไม่ได้: '+(err.message||String(err))); }
+});
+const PSB_T={IN:'เข้า',OUT:'ออก',SHIFT:'ย้าย'};
+function psbShow(){
+  const P=$('impPanel'), L=PSB.list;
+  const route=m=>m.type==='IN'?esc(m.to):m.type==='OUT'?esc(m.from):`${esc(m.from)}&lt;&gt;${esc(m.to)}`;
+  const tm=m=>`${shortDate(m.datetime.slice(0,10))} ${m.datetime.slice(11).replace(':','')}`;
+  P.innerHTML=`<h3>นำเข้า PSB · ${esc(PSB.rd.title||PSB.name)}</h3>
+  <div style="overflow-x:auto"><table><thead><tr><th><input type="checkbox" id="psbAll"></th><th>วัน เวลา</th><th>ขา</th><th class="l">เรือ</th><th>LOA ม.</th><th class="l">ท่า</th><th class="l">AGENT</th><th class="l"></th></tr></thead><tbody>
+  ${L.map((m,i)=>`<tr${m._dup?' class="dim"':''}><td><input type="checkbox" class="psbC" data-i="${i}" ${m._dup||m._warn?'':'checked'} ${m._dup?'disabled':''}></td><td>${tm(m)}</td><td>${PSB_T[m.type]}</td><td class="l">${esc(m.ship)}</td><td>${m._m!=null?+m._m.toFixed(2):'-'}</td><td class="l">${route(m)}</td><td class="l">${esc(m.agent)}</td>
+    <td class="l">${m._dup?'มีในตารางแล้ว':m._warn?`<b style="color:#d93025">⚠ ${m._warn}</b>`:m._src==='ptt'?'PTT':''}</td></tr>`).join('')}
+  </tbody></table></div>
+  ${PSB.skip.length?`<div class="dim">ข้าม: ${PSB.skip.map(s=>esc((s.m||s.l).ship)+' '+tm(s.m||{datetime:s.l.dt})+' ('+esc(s.why)+')').join(' · ')}</div>`:''}
+  ${PSB.rd.bad.length?`<div class="dim">อ่านเวลาไม่ได้: ${esc(PSB.rd.bad.join(', '))}</div>`:''}
+  <div class="row"><button class="btn primary" id="impGo">ลงตาราง <span id="impN"></span> รายการ</button><button class="btn" id="impX">ยกเลิก</button><span id="impMsg" class="dim"></span></div>`;
+  const boxes=[...P.querySelectorAll('.psbC:not(:disabled)')];
+  const cnt=()=>{ const n=boxes.filter(c=>c.checked).length; $('impN').textContent=n; $('impGo').disabled=!n; $('psbAll').checked=n&&n===boxes.length; };
+  boxes.forEach(c=>c.onchange=cnt); $('psbAll').onchange=e=>{ boxes.forEach(c=>c.checked=e.target.checked); cnt(); };
+  $('impX').onclick=()=>{ P.hidden=true; PSB=null; }; $('impGo').onclick=psbRun; cnt();
+}
+async function psbRun(){
+  const P=$('impPanel'), pick=[...P.querySelectorAll('.psbC:checked:not(:disabled)')].map(c=>PSB.list[+c.dataset.i]);
+  if(!pick.length) return; $('impGo').disabled=true; const msg=$('impMsg');
+  const list=pick.map(m=>{ const o={}; for(const k in m) if(k[0]!=='_') o[k]=m[k]; return o; });
+  let done=0; msg.textContent=`กำลังบันทึก 0/${list.length}…`;
+  try{
+    let batch=true;
+    for(let i=0;i<list.length;i+=40){ const part=list.slice(i,i+40);
+      if(batch){ try{ await api('saveMovements',{},{list:part}); }catch(err){ if(/ไม่รู้จักคำสั่ง/.test(err.message)) batch=false; else throw err; } }
+      if(!batch) for(const m of part) await api('saveMovement',{},{m});
+      part.forEach(m=>{ pick[done]._dup=true; done++; if(!S.mv.some(x=>x.id===m.id)) S.mv.push(cl(m)); });
+      msg.textContent=`กำลังบันทึก ${done}/${list.length}…`; }
+    gBatchStart(); list.forEach(m=>gRecord(null,m)); gBatchEnd();
+    // new ships go into ทะเบียนเรือ (LOA ft, agent from the file)
+    const seenNew=new Set(); for(const m of pick) if(!m._reg && !S.shipIdx.has(m.ship) && !seenNew.has(m.ship)){ seenNew.add(m.ship);
+      const full=list.find(x=>x.ship===m.ship&&x.agent)||m; ensureShip({ship:m.ship, loa:m.loa, type:m.type, to:/^PSB-/.test(m.to)?m.to:'', from:/^PSB-/.test(m.from)?m.from:'', agent:full.agent}); }
+    printDirty=true; lineDirty=true; rerender();
+    P.innerHTML=`✓ ลงตารางแล้ว ${list.length} รายการ <button class="btn tb" id="impX">ปิด</button>`; $('impX').onclick=()=>P.hidden=true; PSB=null;
+    toast(`นำเข้า PSB ${list.length} รายการ`);
+    try{ await loadMovements(S.D); rerender(); }catch(e){}
+  }catch(err){ if(done){ gBatchStart(); list.slice(0,done).forEach(m=>gRecord(null,m)); gBatchEnd(); rerender(); }
+    msg.textContent=`หยุดที่ ${done}/${list.length}: ${err.message} (กดอีกครั้งได้ รายการที่บันทึกแล้วจะถูกข้าม)`; $('impGo').disabled=false;
+    P.querySelectorAll('.psbC').forEach(c=>{ if(PSB.list[+c.dataset.i]._dup){ c.checked=false; c.disabled=true; } }); }
 }
 
 /* keep ทะเบียนเรือ's table header right under the sticky search bar */
