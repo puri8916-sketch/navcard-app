@@ -2721,6 +2721,12 @@ function psbBuild(rd, book, have){
     if(/^SC\b/.test(psbKey(m.ship)?norm(m.ship):'') && !/^PTT/.test(m.from) && !/^PTT/.test(m.to)){ skip.push({m,why:'SC'}); continue; }   // SC … ยกเว้นนำร่อง ยกเว้นเข้าท่าน้ำมัน
     if(m._src!=='ptt' && m._m!=null && m._m<PSB_MIN_M){ skip.push({m,why:`${+m._m.toFixed(2)} ม.`}); continue; }
     const k=key(m); m._dup=seen.has(k); seen.add(k);
+    /* the same leg already in จัดตาราง, even at another time (PSB's time is often moved by hand): same ship, same day, same kind
+       (เข้า / ออก; ย้าย also needs the same from- or to-berth, so PTT in + PTT out stay two legs) */
+    if(!m._dup){ const bk=v=>String(v||'').toUpperCase().replace(/[^A-Z0-9]/g,''), same=(a,b)=>!!a&&!!b&&(bk(a)===bk(b)||(bk(a).startsWith('PTT')&&bk(b).startsWith('PTT')&&(bk(a)==='PTT'||bk(b)==='PTT')));
+      const ex=have.find(h=>psbKey(baseShip(h.ship))===psbKey(m.ship) && String(h.datetime).slice(0,10)===m.datetime.slice(0,10) && (h.type==='IN'?'IN':h.type==='OUT'?'OUT':'SHIFT')===m.type
+        && (m.type!=='SHIFT' || same(h.from,m.from) || same(h.to,m.to)));
+      if(ex){ m._dup=true; m._dupAt=ex.datetime; } }
     m._warn = m._dup ? '' : !m._reg ? 'ยังไม่ลงทะเบียน' : m._m==null ? 'ไม่ทราบ LOA' : '';
     list.push(m); }
   return {list, skip, other, day:TMR};
@@ -2751,7 +2757,7 @@ function psbShow(){
   ${L.length?'':`<div class="dim">ไม่มีเรือของวันที่ ${shortDate(PSB.day)} ในไฟล์นี้</div>`}
   <div style="overflow-x:auto"><table><thead><tr><th><input type="checkbox" id="psbAll"></th><th>วัน เวลา</th><th>ขา</th><th class="l">เรือ</th><th>LOA ม.</th><th class="l">ท่า</th><th class="l">AGENT</th><th class="l"></th></tr></thead><tbody>
   ${L.map((m,i)=>`<tr${m._dup?' class="dim"':''}><td><input type="checkbox" class="psbC" data-i="${i}" ${m._dup||m._warn?'':'checked'} ${m._dup?'disabled':''}></td><td>${tm(m)}</td><td>${PSB_T[m.type]}</td><td class="l">${esc(m.ship)}</td><td>${m._m!=null?+m._m.toFixed(2):'-'}</td><td class="l">${route(m)}</td><td class="l">${esc(m.agent)}</td>
-    <td class="l">${m._dup?'มีในตารางแล้ว':m._warn?`<b style="color:#d93025">⚠ ${m._warn}</b>`:m._src==='ptt'?'PTT':''}</td></tr>`).join('')}
+    <td class="l">${m._dup?'มีในตารางแล้ว'+(m._dupAt&&m._dupAt!==m.datetime?` (${tm({datetime:m._dupAt})})`:''):m._warn?`<b style="color:#d93025">⚠ ${m._warn}</b>`:m._src==='ptt'?'PTT':''}</td></tr>`).join('')}
   </tbody></table></div>
   ${sk.length?`<div class="dim">ข้าม: ${sk.map(s=>esc((s.m||s.l).ship)+' '+tm(s.m||{datetime:s.l.dt})+' ('+esc(s.why)+')').join(' · ')}</div>`:''}
   ${PSB.rd.bad.length?`<div class="dim">อ่านเวลาไม่ได้: ${esc(PSB.rd.bad.join(', '))}</div>`:''}
