@@ -227,6 +227,7 @@ table.lsheet{border-collapse:separate;border-spacing:0;border-top:1px dotted #8C
 .lsheet .h-out{background:#FFCC99;font-weight:700}
 .lsheet .hd{background:#EAEAEA;font-weight:700;font-size:17px}
 .lsheet .pc{color:#FF0000;font-weight:700}
+.lsheet .dc{color:#0070C0;font-weight:700}
 .lsheet tr.red td{color:#FF0000}
 .lsheet td.red{color:#FF0000}
 .lsheet .gapb td{height:18px;border-left:0;border-right:0}
@@ -1770,7 +1771,7 @@ function nowDt(){ const d=new Date(); return `${d.getFullYear()}-${pad(d.getMont
 const LCOLW=[7.1,57.9,10,10.3,23,23,23.3,8.4,21.1,7.4,52,9.9,8.6,23,50.7,8.4,20.3];
 const LHEAD=['NO.',"SHIP'S&nbsp; NAME",'LOA','Drf','ETA','POB','BERTH','Pilot','AGENT','NO.',"SHIP'S&nbsp; NAME",'LOA','Drf','ETD','BERTH','Pilot','AGENT'];
 const LF={1:['ship','L'],6:['berth','L'],7:['pilot','L'],8:['agent','L'],10:['ship','R'],14:['berth','R'],15:['pilot','R'],16:['agent','R']};
-const PILOT_COLS=[7,15];
+const PILOT_COLS=[7,15], DRF_COLS=[3,12];   /* Drf: blue bold by default */
 const blankRow=()=>({c:Array(17).fill(''), r:Array(17).fill(false), h:Array(17).fill('')});
 let curColor='#FF0000';
 const colOf=(row,c)=>{ const v=row.r[c]; if(v) return v===true?'#FF0000':v; return String(row.c[c<9?0:9]||'').trim()==='พ'?'#FF0000':''; };   // old data stored red as true; a พ ship's side of the row is red   // old data stored red as true
@@ -1779,7 +1780,7 @@ const bgOf=(row,c)=>{ const v=(row.g&&row.g[c])||''; return v==='#E0E0E0'?FILL:v
 const tdStyle=(row,c)=>{ const k=colOf(row,c), g=bgOf(row,c); const st=(k?`color:${k};`:'')+(g?`background:${g};`:''); return st?` style="${st}"`:''; };
 const hOf=(row,c)=>(row.h&&row.h[c])||'';
 // bold per cell: row.w[c] = 'b' bold / 'n' not bold / '' default (Pilot columns are bold by default)
-const isBold=(row,c)=>{ const w=row.w&&row.w[c]; return w==='b' || (w!=='n' && PILOT_COLS.includes(c)); };
+const isBold=(row,c)=>{ const w=row.w&&row.w[c]; return w==='b' || (w!=='n' && (PILOT_COLS.includes(c)||DRF_COLS.includes(c))); };
 const wCls=(row,c)=>{ const w=row.w&&row.w[c]; return w==='b'?'wb':w==='n'?'wn':''; };
 function setH(row,c,v){ if(!row.h) row.h=Array(17).fill(''); row.h[c]=v; }
 const cellHTML=(row,c)=>hOf(row,c)||esc(row.c[c]);
@@ -1906,7 +1907,7 @@ function boardTable(b,bi){
   b.rows.forEach((row,ri)=>{
     h+=`<tr data-b="${bi}" data-r="${ri}">`;
     for(let c=0;c<17;c++){
-      const f=LF[c]; const cls=[c===1||c===10?'l':'', PILOT_COLS.includes(c)?'pc':'', (c===0||c===9)&&String(row.c[c]||'').trim()==='พ'?'pw':'', wCls(row,c)].filter(Boolean).join(' ');
+      const f=LF[c]; const cls=[c===1||c===10?'l':'', PILOT_COLS.includes(c)?'pc':'', DRF_COLS.includes(c)?'dc':'', (c===0||c===9)&&String(row.c[c]||'').trim()==='พ'?'pw':'', wCls(row,c)].filter(Boolean).join(' ');
       h+=`<td class="${cls}" data-b="${bi}" data-r="${ri}" data-c="${c}"${tdStyle(row,c)}><div class="ce" contenteditable="true"${colOf(row,c)?` style="color:${colOf(row,c)}"`:''} data-b="${bi}" data-r="${ri}" data-c="${c}"${f?` data-f="${f[0]}" data-side="${f[1]}"`:''} spellcheck="false">${cellHTML(row,c)}</div></td>`;
     }
     h+='</tr>';
@@ -2113,7 +2114,7 @@ function setColor(col){
     if(!(a===0 && z===el.value.length)){
       pushUndo(); typingKey=`${el.dataset.b}:${el.dataset.r}:${el.dataset.c}`;
       document.execCommand('styleWithCSS',false,true);
-      document.execCommand('foreColor',false,col||(PILOT_COLS.includes(+el.dataset.c)?'#FF0000':'#000000'));
+      document.execCommand('foreColor',false,col||(PILOT_COLS.includes(+el.dataset.c)?'#FF0000':DRF_COLS.includes(+el.dataset.c)?'#0070C0':'#000000'));
       const {b,r,c}=cellOf(el); const row=BD.blocks[b].rows[r]; row.c[c]=el.value; setH(row,c,cleanHTML(el)); boardSave(); return;
     }
   }
@@ -2290,7 +2291,7 @@ function boardStaticHTML(){
     h+=`<tr><td class="date" colspan="2">${esc(b.label)}</td><td class="title" colspan="15">SHIP'S&nbsp;&nbsp;&nbsp;SCHEDULE&nbsp;&nbsp;FOR&nbsp;&nbsp;SONGKHLA&nbsp;&nbsp;&nbsp;PILOT</td></tr>`;
     h+=`<tr><td class="h-in" colspan="9">ENTERING</td><td class="h-out" colspan="8">SAILING &amp; SHIFTING</td></tr>`;
     h+=`<tr>${LHEAD.map(t=>`<td class="hd">${t}</td>`).join('')}</tr>`;
-    for(const row of oneTrailing(b.rows)) h+=`<tr>${row.c.map((v,c)=>`<td class="${[c===1||c===10?'l':'', PILOT_COLS.includes(c)?'pc':'', (c===0||c===9)&&String(v||'').trim()==='พ'?'pw':'', wCls(row,c)].filter(Boolean).join(' ')}"${tdStyle(row,c)}>${cellOut(row,c)}</td>`).join('')}</tr>`;
+    for(const row of oneTrailing(b.rows)) h+=`<tr>${row.c.map((v,c)=>`<td class="${[c===1||c===10?'l':'', PILOT_COLS.includes(c)?'pc':'', DRF_COLS.includes(c)?'dc':'', (c===0||c===9)&&String(v||'').trim()==='พ'?'pw':'', wCls(row,c)].filter(Boolean).join(' ')}"${tdStyle(row,c)}>${cellOut(row,c)}</td>`).join('')}</tr>`;
     return h+'</table>';
   }).join('');
 }
