@@ -240,6 +240,7 @@ table.lsheet{border-collapse:separate;border-spacing:0;border-top:1px dotted #8C
 .btn.primary:hover,#impBtn:hover,#gAutoBtn:hover,#impGo:hover,#printBtn:hover:hover,#sBack:hover,.btn.danger:hover,#linePull:hover,.btn.tb[data-bact="undo"],.btn.tb[data-bact="redo"],#gUndo,#gRedo{background:#E8F0FE;color:#1A56DB;border:1.5px solid #A4C2F4;font-weight:700}
 .btn.tb[data-bact="undo"]:hover,.btn.tb[data-bact="redo"]:hover,#gUndo:hover,#gRedo:hover{background:#D2E3FC}
 #printBtn{font-size:19px;font-weight:800;padding:10px 24px}
+#pdfDirBtn{padding:5px 9px;font-size:16px;margin-left:-2px}
 #pdfBtn,#psbBtn{background:#E06666;border:2px solid #E06666;color:#fff;font-weight:700;box-shadow:0 2px 6px rgb(224 102 102 / .3)}#pdfBtn:hover,#psbBtn:hover{background:#CC5555;border-color:#CC5555}
 #lineCopy{background:#06C755;color:#fff;border:2px solid #06C755;font-size:19px;font-weight:800;padding:10px 22px;border-radius:10px;box-shadow:0 3px 10px rgb(6 199 85 / .45);letter-spacing:.2px}
 #lineCopy:hover{background:#05A847;border-color:#05A847;transform:translateY(-1px);box-shadow:0 5px 14px rgb(6 199 85 / .55)}
@@ -581,7 +582,7 @@ html.ios .hbar{position:absolute;bottom:100%!important}
     <div class="scrollx vfit"><div class="paper linepaper" id="board"></div></div>
   </section>
   <section id="view-work" hidden>
-    <div class="ltool"><div class="grp"><button class="btn primary" id="printBtn">ปริ้น</button><button class="btn" id="pdfBtn">ดาวน์โหลด PDF</button><span class="note" id="printNote" hidden></span></div><div class="grp"><button class="btn tb" id="gUndo" title="Ctrl+Z">↶ ย้อนกลับ</button><button class="btn tb" id="gRedo" title="Ctrl+Y">↷ ทำซ้ำ</button></div><div class="grp fcolor gfcolor"><button class="btn tb fc-main" id="gColor" title="สีตัวอักษร"><span class="fcA">A</span><span class="fcBar" id="gfcBar"></span></button><button class="btn tb fc-drop" id="gfcDrop" title="เลือกสี" aria-label="เลือกสีตัวอักษร">▾</button><div class="fc-pal" id="gfcPal" hidden></div></div><div class="grp"><button class="btn tb" id="gAutoBtn" hidden>⟲ จัดอัตโนมัติใหม่</button></div><div class="grp"><button class="btn tb" id="psbBtn" title="นำเข้าไฟล์ Excel เรือ PSB (Daily Vessel Movement Schedule)">📥 นำเข้า PSB</button><input type="file" id="psbFile" accept=".xlsx" hidden></div><div class="grp" hidden><button class="btn tb" id="impBtn" title="นำเข้าจากไฟล์ Excel ตารางเรือเดิม (แท็บแยกตามวัน)">📥 นำเข้าไฟล์ตาราง</button><input type="file" id="impFile" accept=".xlsx" hidden></div></div>
+    <div class="ltool"><div class="grp"><button class="btn primary" id="printBtn">ปริ้น</button><button class="btn" id="pdfBtn">ดาวน์โหลด PDF</button><button class="btn tb" id="pdfDirBtn" hidden title="ที่เก็บ PDF">📁</button><span class="note" id="printNote" hidden></span></div><div class="grp"><button class="btn tb" id="gUndo" title="Ctrl+Z">↶ ย้อนกลับ</button><button class="btn tb" id="gRedo" title="Ctrl+Y">↷ ทำซ้ำ</button></div><div class="grp fcolor gfcolor"><button class="btn tb fc-main" id="gColor" title="สีตัวอักษร"><span class="fcA">A</span><span class="fcBar" id="gfcBar"></span></button><button class="btn tb fc-drop" id="gfcDrop" title="เลือกสี" aria-label="เลือกสีตัวอักษร">▾</button><div class="fc-pal" id="gfcPal" hidden></div></div><div class="grp"><button class="btn tb" id="gAutoBtn" hidden>⟲ จัดอัตโนมัติใหม่</button></div><div class="grp"><button class="btn tb" id="psbBtn" title="นำเข้าไฟล์ Excel เรือ PSB (Daily Vessel Movement Schedule)">📥 นำเข้า PSB</button><input type="file" id="psbFile" accept=".xlsx" hidden></div><div class="grp" hidden><button class="btn tb" id="impBtn" title="นำเข้าจากไฟล์ Excel ตารางเรือเดิม (แท็บแยกตามวัน)">📥 นำเข้าไฟล์ตาราง</button><input type="file" id="impFile" accept=".xlsx" hidden></div></div>
     <div class="panel imp" id="impPanel" hidden></div>
     <div class="sheetwrap vfit"><table class="eg" id="grid"></table></div>
   </section>
@@ -1743,20 +1744,35 @@ async function buildPdf(){
   const mon=MONTHS[m-1].charAt(0)+MONTHS[m-1].slice(1).toLowerCase();
   return {pdf, name:`${d} ${mon} ${y}.pdf`};   /* e.g. 2 November 2026.pdf */
 }
-/* where the PDF goes: browsers that can (Chrome / Edge on a computer) ask for the folder + name, and remember the last folder;
-   others (phones, Safari, Firefox) download as before */
-function savePicker(){ for(const w of [window.top, window.parent, window]){ try{ if(w && typeof w.showSaveFilePicker==='function') return w; }catch(e){} } return null; }
+/* where the PDF goes: Chrome / Edge on a computer — pick a folder once (📁), every PDF is then saved straight into it
+   (the folder is remembered on this device). No folder yet → the browser asks where to save. Phones / Safari / Firefox: normal download. */
+function fsWin(fn){ for(const w of [window.top, window.parent, window]){ try{ if(w && typeof w[fn]==='function') return w; }catch(e){} } return null; }
 function pdfName(){ const [y,m,d]=S.D.split('-').map(Number); const mon=MONTHS[m-1].charAt(0)+MONTHS[m-1].slice(1).toLowerCase(); return `${d} ${mon} ${y}.pdf`; }
+function kv(mode, fn){ return new Promise((ok,no)=>{ let rq; try{ rq=indexedDB.open('skp_files',1); }catch(e){ return no(e); }
+  rq.onupgradeneeded=()=>rq.result.createObjectStore('kv'); rq.onerror=()=>no(rq.error);
+  rq.onsuccess=()=>{ const db=rq.result, tx=db.transaction('kv',mode), st=tx.objectStore('kv'), r=fn(st); tx.oncomplete=()=>{ db.close(); ok(r&&r.result); }; tx.onerror=()=>{ db.close(); no(tx.error); }; }; }); }
+const dirGet=()=>kv('readonly',st=>st.get('pdfDir')).catch(()=>null), dirSet=h=>kv('readwrite',st=>h?st.put(h,'pdfDir'):st.delete('pdfDir')).catch(()=>{});
+async function dirShow(){ const b=$('pdfDirBtn'); if(!fsWin('showDirectoryPicker') || $('pdfBtn').hidden) return; b.hidden=false; const d=await dirGet(); b.title=d?`PDF เก็บที่โฟลเดอร์: ${d.name} (กดเพื่อเปลี่ยน)`:'เลือกโฟลเดอร์ที่จะเก็บ PDF (เลือกครั้งเดียว)'; b.classList.toggle('on',!!d); }
+async function dirPick(){ const W=fsWin('showDirectoryPicker'); if(!W) return null;
+  try{ const d=await W.showDirectoryPicker({id:'skp-schedule-pdf', mode:'readwrite'}); await dirSet(d); dirShow(); toast(`PDF จะเก็บที่โฟลเดอร์ ${d.name}`); return d; }
+  catch(err){ if(!(err && err.name==='AbortError')) toast('เลือกโฟลเดอร์ไม่ได้: '+(err.message||err)); return null; } }
+$('pdfDirBtn').addEventListener('click',dirPick); dirShow();
 async function downloadPdf(){
   const btn=$('pdfBtn'); btn.disabled=true; const label=btn.textContent;
   try{
-    let fh=null; const W=savePicker();
+    let fh=null;
+    /* 1) the folder picked once */
+    const d=await dirGet();
+    if(d){ try{ let p=await d.queryPermission({mode:'readwrite'}); if(p!=='granted') p=await d.requestPermission({mode:'readwrite'});
+        if(p==='granted') fh=await d.getFileHandle(pdfName(),{create:true}); }catch(e){ fh=null; } }
+    /* 2) no folder (or it's gone): ask where to save this one */
+    const W=!fh && fsWin('showSaveFilePicker');
     if(W){ const t0=performance.now();
       try{ fh=await W.showSaveFilePicker({id:'skp-schedule-pdf', suggestedName:pdfName(), types:[{description:'PDF',accept:{'application/pdf':['.pdf']}}]}); }   /* ask first: the picker needs the click */
-      catch(err){ if(err && err.name==='AbortError' && performance.now()-t0>400) return; fh=null; } }   /* cancelled → nothing; blocked / closed at once (no picker here) → normal download */
+      catch(err){ if(err && err.name==='AbortError' && performance.now()-t0>400) return; fh=null; } }   /* cancelled → nothing; blocked / closed at once → normal download */
     btn.textContent='กำลังสร้าง PDF…';
     const {pdf,name}=await buildPdf(); const blob=pdf.output('blob');
-    if(fh){ try{ const w=await fh.createWritable(); await w.write(blob); await w.close(); toast('บันทึกแล้ว: '+fh.name); return; }catch(err){ /* fall through to a normal download */ } }
+    if(fh){ try{ const w=await fh.createWritable(); await w.write(blob); await w.close(); toast(d&&fh.name===pdfName()?`บันทึกแล้ว: ${d.name} / ${fh.name}`:'บันทึกแล้ว: '+fh.name); return; }catch(err){ /* fall through to a normal download */ } }
     const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; document.body.append(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),5000);
     toast('ดาวน์โหลด '+name);
   }catch(err){ toast('สร้าง PDF ไม่สำเร็จ: '+err.message); }
