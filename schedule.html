@@ -1071,11 +1071,12 @@ function fitAll(){   // read all widths first, then write — one layout pass in
   if(!list.length || $('view-work').hidden) return;
   list.forEach(i=>{ if(i.style.fontSize) i.style.fontSize=''; });
   const m=list.map(i=>[i.scrollWidth,i.clientWidth]);
-  list.forEach((i,k)=>{ const [sw,cw]=m[k]; if(sw>cw+1) i.style.fontSize=Math.max(10,16*(cw-2)/sw).toFixed(1)+'px'; });
+  list.forEach((i,k)=>{ const [sw,cw]=m[k]; if(sw>cw+1) i.style.fontSize=Math.max(7,16*(cw-3)/sw).toFixed(1)+'px'; i.scrollLeft=0; i.title=sw>cw+1?i.value:''; });   /* the whole text always visible (no scrolling inside the cell) */
+  list.filter(i=>i.style.fontSize && i.scrollWidth>i.clientWidth+1).forEach(i=>{ i.style.fontSize=Math.max(7,parseFloat(i.style.fontSize)*0.94).toFixed(1)+'px'; });   /* text shapes don't scale exactly: one more small step */
   $('grid').querySelectorAll('.rt .rto').forEach(o=>{ const i=o.previousElementSibling; o.style.fontSize=i&&i.style.fontSize||''; });   /* coloured letters: same size as the cell */
 }
 function fitInput(i){ i.style.fontSize=''; if(!i.value || i.offsetParent===null) return; const base=parseFloat(getComputedStyle(i).fontSize);
-  if(i.scrollWidth>i.clientWidth+1){ const k=(i.clientWidth-2)/i.scrollWidth; i.style.fontSize=Math.max(10,base*k).toFixed(1)+'px'; }
+  if(i.scrollWidth>i.clientWidth+1){ const k=(i.clientWidth-3)/i.scrollWidth; i.style.fontSize=Math.max(7,base*k).toFixed(1)+'px'; } i.scrollLeft=0;
   const o=i.nextElementSibling; if(o && o.classList && o.classList.contains('rto')) o.style.fontSize=getComputedStyle(i).fontSize; }
 function renderAll(){
   renderStrip();
@@ -1251,7 +1252,7 @@ G.addEventListener('focusin',e=>{ const i=e.target.closest('input'); if(!i) retu
     const inside=R && r>=R.r0 && r<=R.r1 && c>=R.c0 && c<=R.c1; if(!GSEL || !(inside && (gmulti()||gRight))) { if(!(GSEL && GSEL.r1===r && GSEL.c1===c)) gSet(r,c,false); } } });
 G.addEventListener('input',e=>{ const i=e.target.closest('input'); if(i){ i.classList.remove('bad'); fitInput(i); buildPop(i); } });
 G.addEventListener('change',e=>{ const i=e.target.closest('input'); if(i) onCellChange(i); });
-G.addEventListener('focusout',e=>{
+G.addEventListener('focusout',e=>{ const fi=e.target.closest&&e.target.closest('input'); if(fi) setTimeout(()=>{ if(document.activeElement!==fi) fitInput(fi); },0);   /* after typing: shrink to fit again, back to the start of the text */
   const i=e.target.closest('input'); if(!i) return;
   setTimeout(()=>{ if(cb.inp===i && document.activeElement!==i) hidePop(); },120);
   const p=i.dataset.draft; if(!p) return;
@@ -2514,7 +2515,10 @@ async function writeLog(list){
   if(c && c.init){ applyInit(c.init); S.mv=c.mv||[]; S.loaded=c.loaded; S.D=D0; $('schedDate').value=D0; renderAll(); renderShips(); showTab('line'); refresh(true); return; }
   try{ await Promise.all([loadInit(), (S.D=D0, loadMovements(D0))]); cacheSet(); pushLocalProfiles(); }catch(err){ toast('โหลดฐานข้อมูลไม่สำเร็จ: '+err.message); $('sUrl').value=CFG.API_URL; $('sKey').value=''; $('sMsg').textContent='โหลดไม่สำเร็จ: '+err.message; $('sMsg').className='hint bad'; showTab('setup'); return; }
   $('schedDate').value=D0; renderAll(); renderShips(); showTab('line');
-  try{ document.fonts.ready.then(()=>fitAll()); }catch(e){}
+  try{ document.fonts.ready.then(()=>fitAll()); document.fonts.addEventListener('loadingdone',()=>fitAll()); }catch(e){}
+  /* widths change after the sheet font arrives, the frame is resized, or the menu opens/closes → fit the text again */
+  try{ let rt=null; new ResizeObserver(()=>{ clearTimeout(rt); rt=setTimeout(()=>{ if(!$('view-work').hidden && !gridBusy()) fitAll(); },120); }).observe($('grid')); }catch(e){}
+  setTimeout(()=>{ if(!$('view-work').hidden) fitAll(); },1500);
 })();
 
 /* ---------- นำเข้าไฟล์ตาราง: the old Excel workbook (one tab per day: "13 SEPTEMBER 2026" in A1,
