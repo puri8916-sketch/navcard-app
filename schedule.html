@@ -1842,7 +1842,7 @@ function boardFromSchedule(D){
    (27's table is the bottom of view 27 and the top of view 28 — the same data) */
 const BKEY=D=>'shipsched_board:'+(CFG.API_URL||'demo')+':'+D;      // older per-view boards
 const KB=d=>'shipsched_day:'+(CFG.API_URL||'demo')+':'+d;
-const dayKey=b=>JSON.stringify([b.label,b.rows,!!b.hidden,b.sent||null]);
+const dayKey=b=>JSON.stringify([b.label,b.rows,!!b.hidden,b.sent||null,b.ls||null]);
 function dayLocal(d){ try{ return JSON.parse(localStorage.getItem(KB(d))||'null'); }catch(e){ return null; } }
 function dayRemote(d){ const x=(S.boards||{})[d]; return x && x.rows ? x : null; }
 function dayLegacy(d){
@@ -1939,7 +1939,15 @@ function lateHalves(){ const out=new Map();
       out.set(`${X}|${side}|${ship}`,{X,side,m}); } }
   return out; }
 const sameLeg=(m,x)=>m.ship===x.m.ship && (x.side==='L'?m.type==='IN':m.type!=='IN') && schedOf(m.datetime)===x.X;
-function syncLate(){ if(!BD) return; const cur=lateHalves(), prev=BD.lateSnap; BD.lateSnap=cur; if(!prev) return;   /* first look: remember only */
+function syncLate(){ if(!BD) return; const cur=lateHalves();
+  /* what the พ rows looked like at the last sync is kept with each day's table (ls), so an edit is still carried over
+     after a reload, a change of day or on another device — not only while this page stays open */
+  let prev=BD.lateSnap; const stored=BD.blocks.some(b=>b.ls);
+  if(!prev && stored){ prev=new Map(); BD.blocks.forEach(b=>Object.entries(b.ls||{}).forEach(([k,v])=>prev.set(k,v))); }
+  if(!prev){ prev=new Map(); for(const [k,x] of cur){ const ex=S.mv.filter(m=>+m.late && sameLeg(m,x)); if(ex.length===1) prev.set(k,{X:x.X,side:x.side,m:{...ex[0]}}); } }   /* first time: the table on แก้ไข wins */
+  BD.lateSnap=cur; let lsCh=false;
+  for(const b of BD.blocks){ const X=b.date||BD.date, ls={}; for(const [k,x] of cur) if(x.X===X) ls[k]=x; if(JSON.stringify(ls)!==JSON.stringify(b.ls||{})){ b.ls=ls; lsCh=true; } }
+  if(lsCh) setTimeout(boardSave,0);
   let ch=false;
   for(const [k,x] of cur){ if(x.m.drf==='งด') continue;
     const p=prev.get(k);
