@@ -2022,7 +2022,13 @@ function syncLate(){ if(!BD) return; const cur=lateHalves();
       const ex=S.mv.find(m=>+m.late && m.ship===p.m.ship && side(m.type) && m.datetime===p.m.datetime) || S.mv.find(m=>+m.late && sameLeg(m,p));
       if(!ex) continue; let any=false; for(const f of F) if(String(ex[f]??'')!==String(x.m[f]??'')){ ex[f]=x.m[f]; any=true; }
       if(any){ persist(cl(ex)); ch=true; } continue; }
-    const ex=S.mv.find(m=>sameLeg(m,x));
+    /* a name fixed on แก้ไข (same side + time, the old name is gone) → rename, not a second ship */
+    const ren=[...prev.entries()].find(([pk,p])=>!cur.has(pk) && p.X===x.X && p.side===x.side && p.m.datetime===x.m.datetime);
+    if(ren){ const p=ren[1], side=t=>x.side==='L'?t==='IN':t!=='IN';
+      const ex=S.mv.find(m=>+m.late && m.ship===p.m.ship && side(m.type) && m.datetime===p.m.datetime);
+      if(ex){ prev.delete(ren[0]); Object.assign(ex,{ship:x.m.ship}); ['pob','type','from','to','loa','drf','pilot','agent'].forEach(f=>{ if(String(ex[f]??'')!==String(x.m[f]??'')) ex[f]=x.m[f]; }); persist(cl(ex)); ch=true; continue; } }
+    /* the same leg already in จัดตาราง (same ship, side and time) → it becomes พ; otherwise it's a new ship (พ) */
+    const ex=S.mv.find(m=>sameLeg(m,x) && m.datetime===x.m.datetime);
     if(ex){ if(!+ex.late){ ex.late=1; persist(ex); ch=true; } }
     else { const m={id:newId(), ...x.m}; S.mv.push(m); persist(m); ch=true; toast(`เพิ่ม ${m.ship} (พ) ในจัดตารางแล้ว`); } }
   if(ch){ cacheSet(); renderAll(); } }
@@ -2030,6 +2036,12 @@ function cutLate(){ if(!BD) return; const gone=[];
   for(const x of lateHalves().values()){ if(x.m.drf!=='งด') continue; const ex=S.mv.find(m=>sameLeg(m,x) && +m.late); if(!ex) continue;
     S.mv=S.mv.filter(m=>m.id!==ex.id); api('deleteMovement',{},{id:ex.id}).catch(err=>toast('ลบไม่สำเร็จ: '+err.message)); gone.push(ex.ship); }
   if(gone.length){ cacheSet(); renderAll(); setTimeout(()=>toast(`งด ${gone.join(', ')} (พ) · เอาออกจากจัดตารางแล้ว`),1500); } }
+/* carry พ changes over as soon as the user leaves the row, the page, or sends to LINE — not only on the next full redraw */
+let slT=null; const syncLateSoon=(ms=300)=>{ clearTimeout(slT); slT=setTimeout(()=>{ try{ syncLate(); }catch(e){} },ms); };
+document.addEventListener('focusout',e=>{ const i=e.target.closest && e.target.closest('#board .ce'); if(!i) return;
+  setTimeout(()=>{ const a=document.activeElement, same=a && a.closest && a.closest('#board .ce') && a.dataset.b===i.dataset.b && a.dataset.r===i.dataset.r; if(!same) syncLateSoon(0); },250); });
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='hidden') try{ syncLate(); }catch(e){} });
+window.addEventListener('pagehide',()=>{ try{ syncLate(); }catch(e){} });
 function renderBoard(){ setTimeout(syncLate,0);
   if(!BD) return; renderAddBlk();
   const keep=SEL;
@@ -2382,7 +2394,7 @@ async function lineCanvas(){
 }
 function lineName(){ const [y,m,d]=S.D.split('-').map(Number); const t=new Date(); return `SCHEDULE ${d}-${m}-${String((y+543)%100).padStart(2,'0')} ${pad(t.getHours())}${pad(t.getMinutes())}.png`; }
 $('lineCopy').addEventListener('click',async()=>{
-  const b=$('lineCopy'); b.disabled=true; cutLate(); logGone();   /* ships taken off since the last send = done → สมุดบันทึกเรือ */   /* พ ships marked งด in Drf leave จัดตาราง */
+  const b=$('lineCopy'); b.disabled=true; try{ syncLate(); }catch(e){} cutLate(); logGone();   /* ships taken off since the last send = done → สมุดบันทึกเรือ */   /* พ ships marked งด in Drf leave จัดตาราง */
   try{
     const canvas=await lineCanvas();
     const blob=await new Promise(r=>canvas.toBlob(r,'image/png'));
