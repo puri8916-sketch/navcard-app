@@ -2259,10 +2259,7 @@ function delBlock(bi){
 }
 BOARD.addEventListener('click',e=>{ const b=e.target.closest('[data-delblk]'); if(b) delBlock(+b.dataset.delblk); });
 $('lineSince').addEventListener('input',e=>{ const i=e.target, v=i.value.replace(/\D/g,'').slice(0,2); if(i.value!==v) i.value=v; });   /* day number only */
-let pullArm=false;
 $('linePull').addEventListener('click',()=>{
-  if(!pullArm){ pullArm=true; $('linePull').textContent='ยืนยัน: แทนที่ด้วยข้อมูลจัดตาราง'; $('linePull').classList.add('arm'); setTimeout(()=>{ pullArm=false; $('linePull').textContent='⟳ ดึงจากจัดตารางใหม่'; $('linePull').classList.remove('arm'); },3500); return; }
-  pullArm=false; $('linePull').textContent='⟳ ดึงจากจัดตารางใหม่'; $('linePull').classList.remove('arm');
   pushUndo(); const nb=boardFromSchedule(S.D); const dd=+String($('lineSince').value||'').replace(/\D/g,''); if(dd && dd===+S.D.slice(8,10)){ const keep=BD.blocks.filter(x=>x.date!==S.D); BD.blocks=[...keep, nb.blocks[nb.blocks.length-1]]; }   /* วันที่ = this table's day → only this day's table is replaced, the day before stays as it is */
   else BD.blocks=nb.blocks; SEL=null; boardSave(); renderBoard(); toast('ดึงข้อมูลจากจัดตารางแล้ว (ย้อนกลับได้)');
 });
