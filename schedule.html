@@ -290,6 +290,19 @@ table.lsheet.board{width:100%;font-size:17px}
 .fc-pal{position:absolute;top:calc(100% + 4px);left:0;z-index:60;background:var(--surface);border:1px solid var(--line);border-radius:8px;box-shadow:0 8px 22px rgb(0 0 0 / .2);padding:8px;display:grid;grid-template-columns:repeat(4,28px);gap:6px}
 .fc-pal button,.mcol button{width:28px;height:28px;border:1px solid rgb(0 0 0 / .2);border-radius:4px;cursor:pointer;padding:0}
 .fc-pal button.auto{grid-column:1/-1;width:auto;height:30px;background:var(--surface);color:var(--ink);font-size:16px}
+.mtb{display:flex;align-items:center;gap:6px;padding:6px 10px 4px}
+.mtb button{display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line);background:var(--surface);color:#000;cursor:pointer;height:34px;padding:0 8px;border-radius:6px}
+.mtb button:hover{background:var(--hover,#eef2f5)}
+.mtb .mtb-b{font:700 18px/1 var(--f-sheet);width:34px}
+.mtb .sp{display:inline-flex}.mtb .sp .main{flex-direction:column;gap:2px;border-top-right-radius:0;border-bottom-right-radius:0;min-width:36px}
+.mtb .sp .drop{border-left:0;border-top-left-radius:0;border-bottom-left-radius:0;padding:0 5px;font-size:12px;color:#444}
+.mtb .bar{display:block;width:20px;height:5px;border-radius:1px;background:#FF0000}
+.mtb .fA{font:700 17px/1 var(--f-sheet)}
+.mtb svg{width:18px;height:16px;display:block}
+.mtb-pal{display:flex;flex-wrap:wrap;gap:5px;padding:4px 12px 8px;max-width:230px}
+.mtb-pal[hidden]{display:none}
+.mtb-pal button{width:24px;height:24px;border:1px solid rgb(0 0 0 / .2);border-radius:4px;cursor:pointer;padding:0}
+.mtb-pal button.auto,.mtb-pal button.none{width:auto;height:26px;padding:0 10px;background:#fff;color:#000;font:400 14px var(--f-ui,inherit)}
 .mcol{padding:6px 12px 4px}.mcol>span{font-size:15px;color:var(--muted)}.mcol>div{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px}
 .mcol button{width:22px;height:22px}.mcol button.auto{background:#fff;color:#000;font:700 13px var(--f-sheet)}
 .cmenu hr{border:0;border-top:1px solid var(--line);margin:4px 2px}
@@ -1436,26 +1449,38 @@ function gAuto(){ if(!layoutOf(S.D)) return toast('ตารางนี้จ�
 
 /* right-click menu for จัดตาราง */
 const FC=['#000000','#FF0000','#C00000','#FFC000','#00B050','#0070C0','#002060','#7030A0','#808080'];   // font colours (Excel standard)
+/* right-click menus: Excel-style colour buttons on top — [B] [bucket ▾] [A ▾]; the main part applies the last colour, ▾ opens the palette */
+const BUCKET='<svg viewBox="0 0 20 18" aria-hidden="true"><path d="M8 1.5 2 7.5l5.5 5.5L13.5 7z" fill="none" stroke="#333" stroke-width="1.6" stroke-linejoin="round"/><path d="M3.2 8.3h9.6L7.5 13.6z" fill="#333" opacity=".35"/><path d="M15.5 9.5s-2 2.4-2 3.6a2 2 0 0 0 4 0c0-1.2-2-3.6-2-3.6z" fill="#333"/></svg>';
+function mtbHTML(attr, opt){ /* attr: data-col / data-gcol */
+  return `<div class="mtb">${opt.bold?'<button type="button" class="mtb-b" data-mt="bold" title="ตัวหนา / ยกเลิกตัวหนา (Ctrl+B)">B</button>':''}`+
+    (opt.fill?`<span class="sp"><button type="button" class="main" data-mt="fill" title="พื้นหลังเทาอ่อน">${BUCKET}<span class="bar" style="background:${FILL}"></span></button><button type="button" class="drop" data-mt="filldrop" title="เลือกพื้นหลัง" aria-label="เลือกพื้นหลัง">▾</button></span>`:'')+
+    `<span class="sp"><button type="button" class="main" data-mt="font" title="สีตัวอักษร"><span class="fA">A</span><span class="bar mtb-fbar"></span></button><button type="button" class="drop" data-mt="fontdrop" title="เลือกสีตัวอักษร" aria-label="เลือกสีตัวอักษร">▾</button></span></div>`+
+    (opt.fill?`<div class="mtb-pal" data-pal="fill" hidden><button type="button" data-fill="1" style="background:${FILL}" title="เทาอ่อน"></button><button type="button" class="none" data-fill="0">ไม่มีพื้นหลัง</button></div>`:'')+
+    `<div class="mtb-pal" data-pal="font" hidden>${FC.map(k=>`<button type="button" ${attr}="${k}" style="background:${k}" title="${k}"></button>`).join('')}<button type="button" ${attr}="" class="auto" title="อัตโนมัติ">อัตโนมัติ</button></div>`;
+}
+function mtbOpen(menu){ menu.querySelectorAll('.mtb-pal').forEach(p=>p.hidden=true); menu.querySelectorAll('.mtb-fbar').forEach(b=>b.style.background=curColor); }
+function mtbToggle(menu, which){ menu.querySelectorAll('.mtb-pal').forEach(p=>p.hidden = p.dataset.pal!==which || !p.hidden); }
 const GM=$('gmenu');
-GM.innerHTML=[['undo','↶ ย้อนกลับ','Ctrl+Z'],['redo','↷ ทำซ้ำ','Ctrl+Y'],['-'],['cut','ตัด','Ctrl+X'],['copy','คัดลอก','Ctrl+C'],['paste','วาง','Ctrl+V'],['insblank','แทรก',''],['clear','ลบ','Delete'],['selall','เลือกทั้งหมด','Ctrl+A'],['copyall','คัดลอกทั้งตาราง',''],['-'],['colors'],['-'],['delblank','ลบแถว',''],['auto','จัดอัตโนมัติใหม่','']]
-  .map(x=>x[0]==='-'?'<hr>':x[0]==='colors'?`<div class="mcol"><span>สีตัวอักษร</span><div>${FC.map(k=>`<button type="button" data-gcol="${k}" style="background:${k}" title="${k}"></button>`).join('')}<button type="button" data-gcol="" class="auto" title="อัตโนมัติ (ดำ)">A</button></div></div>`:`<button type="button" data-gm="${x[0]}"><span>${x[1]}</span><kbd>${x[2]}</kbd></button>`).join('');
+GM.innerHTML=[['colors'],['-'],['cut','ตัด','Ctrl+X'],['copy','คัดลอก','Ctrl+C'],['paste','วาง','Ctrl+V'],['insblank','แทรก',''],['clear','ลบ','Delete'],['selall','เลือกทั้งหมด','Ctrl+A'],['copyall','คัดลอกทั้งตาราง',''],['-'],['delblank','ลบแถว',''],['auto','จัดอัตโนมัติใหม่','']]
+  .map(x=>x[0]==='-'?'<hr>':x[0]==='colors'?mtbHTML('data-gcol',{}):`<button type="button" data-gm="${x[0]}"><span>${x[1]}</span><kbd>${x[2]}</kbd></button>`).join('');
 function hideGMenu(){ GM.hidden=true; }
 G.addEventListener('mousedown',()=>{ GSEP=null; });
 G.addEventListener('contextmenu',e=>{
   const sep=e.target.closest('tr.sep[data-li]');
-  if(sep){ e.preventDefault(); hidePop(); GSEP=+sep.dataset.li; GM.hidden=false; const W=window.innerWidth, H=window.innerHeight;
+  if(sep){ e.preventDefault(); hidePop(); GSEP=+sep.dataset.li; mtbOpen(GM); GM.hidden=false; const W=window.innerWidth, H=window.innerHeight;
     GM.style.left=Math.min(e.clientX, W-GM.offsetWidth-8)+'px'; GM.style.top=Math.max(8,Math.min(e.clientY, H-GM.offsetHeight-8))+'px'; return; }
   GSEP=null;
   const td=e.target.closest('td[data-gr]'); if(!td) return; e.preventDefault(); hidePop();
   const r=+td.dataset.gr, c=+td.dataset.gc, R=grect();
   if(!R || r<R.r0 || r>R.r1 || c<R.c0 || c>R.c1){ gSet(r,c,false); gQuiet=true; gcell(r,c)?.focus({preventScroll:true}); gQuiet=false; }
-  GM.hidden=false; const W=window.innerWidth, H=window.innerHeight;
+  mtbOpen(GM); GM.hidden=false; const W=window.innerWidth, H=window.innerHeight;
   GM.style.left=Math.min(e.clientX, W-GM.offsetWidth-8)+'px'; GM.style.top=Math.max(8,Math.min(e.clientY, H-GM.offsetHeight-8))+'px';
 });
 GM.addEventListener('mousedown',e=>e.preventDefault());
 document.addEventListener('mousedown',e=>{ if(!GM.hidden && !e.target.closest('#gmenu')) hideGMenu(); });
 document.addEventListener('scroll',()=>hideGMenu(),true);
 GM.addEventListener('click',async e=>{
+  const t=e.target.closest('[data-mt]'); if(t){ const a=t.dataset.mt; if(a==='fontdrop'){ mtbToggle(GM,'font'); return; } if(a==='font'){ hideGMenu(); gPickColor(curColor); return; } }
   const k=e.target.closest('[data-gcol]'); if(k){ hideGMenu(); gPickColor(k.dataset.gcol); return; }
   const b=e.target.closest('[data-gm]'); if(!b) return; hideGMenu(); const a=b.dataset.gm;
   if(a==='undo'){ gUndo(); return; } if(a==='redo'){ gRedo(); return; }
@@ -2236,21 +2261,24 @@ BOARD.addEventListener('focusout',e=>{ const i=e.target.closest('.ce'); if(i && 
 /* right-click menu */
 const MENU=$('cmenu');
 const MENU_ITEMS=[
-  ['undo','↶ ย้อนกลับ','Ctrl+Z'],['redo','↷ ทำซ้ำ','Ctrl+Y'],['-'],   /* same order as จัดตาราง's menu */
+  ['colors'],['-'],   /* same order as จัดตาราง's menu; B / พื้นหลัง / สีตัวอักษร are the buttons on top */
   ['cut','ตัด','Ctrl+X'],['copy','คัดลอก','Ctrl+C'],['paste','วาง','Ctrl+V'],['insup','แทรก',''],['clear','ลบ','Delete'],['-'],
-  ['colors'],['bold','𝐁 ตัวหนา / ยกเลิกตัวหนา','Ctrl+B'],['fill','▦ พื้นหลังเทาอ่อน',''],['nofill','ล้างพื้นหลัง',''],['-'],
   ['delrow','ลบแถว',''],['autoarr','จัดอัตโนมัติใหม่','']];
-MENU.innerHTML = MENU_ITEMS.map(x=>x[0]==='-'?'<hr>':x[0]==='colors'?`<div class="mcol"><span>สีตัวอักษร</span><div>${FC.map(k=>`<button type="button" data-col="${k}" style="background:${k}" title="${k}"></button>`).join('')}<button type="button" data-col="" class="auto" title="อัตโนมัติ (ดำ)">A</button></div></div>`:`<button type="button" data-m="${x[0]}" class="${x[3]||''}"><span>${x[1]}</span><kbd>${x[2]}</kbd></button>`).join('');
+MENU.innerHTML = MENU_ITEMS.map(x=>x[0]==='-'?'<hr>':x[0]==='colors'?mtbHTML('data-col',{bold:true,fill:true}):`<button type="button" data-m="${x[0]}" class="${x[3]||''}"><span>${x[1]}</span><kbd>${x[2]}</kbd></button>`).join('');
 function hideMenu(){ MENU.hidden=true; }
 BOARD.addEventListener('contextmenu',e=>{
   const td=e.target.closest('td[data-r]'); if(!td) return; e.preventDefault(); hidePop();
   const {b,r,c}=cellOf(td); const R=rect();
   if(!R || R.b!==b || r<R.r0 || r>R.r1 || c<R.c0 || c>R.c1){ setSel(b,r,c,false); focusCell(b,r,c,true); }
-  MENU.hidden=false; const W=window.innerWidth, H=window.innerHeight, mw=MENU.offsetWidth, mh=MENU.offsetHeight;
+  mtbOpen(MENU); MENU.hidden=false; const W=window.innerWidth, H=window.innerHeight, mw=MENU.offsetWidth, mh=MENU.offsetHeight;
   MENU.style.left=Math.min(e.clientX, W-mw-8)+'px'; MENU.style.top=Math.max(8,Math.min(e.clientY, H-mh-8))+'px';
 });
 MENU.addEventListener('mousedown',e=>e.preventDefault());
-MENU.addEventListener('click',e=>{ const k=e.target.closest('[data-col]'); if(k){ hideMenu(); pickColor(k.dataset.col); return; } const b=e.target.closest('[data-m]'); if(!b) return; hideMenu(); boardAct(b.dataset.m); });
+MENU.addEventListener('click',e=>{ const t=e.target.closest('[data-mt]'); if(t){ const a=t.dataset.mt;
+    if(a==='fontdrop'||a==='filldrop'){ mtbToggle(MENU,a==='fontdrop'?'font':'fill'); return; }
+    hideMenu(); if(a==='font') pickColor(curColor); else if(a==='fill') boardAct('fill'); else if(a==='bold') boardAct('bold'); return; }
+  const f=e.target.closest('[data-fill]'); if(f){ hideMenu(); boardAct(f.dataset.fill==='1'?'fill':'nofill'); return; }
+  const k=e.target.closest('[data-col]'); if(k){ hideMenu(); pickColor(k.dataset.col); return; } const b=e.target.closest('[data-m]'); if(!b) return; hideMenu(); boardAct(b.dataset.m); });
 document.addEventListener('mousedown',e=>{ if(!MENU.hidden && !e.target.closest('#cmenu')) hideMenu(); });
 document.addEventListener('scroll',()=>hideMenu(),true);
 
