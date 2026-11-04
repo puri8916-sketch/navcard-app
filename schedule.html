@@ -320,8 +320,8 @@ table.lsheet.board{width:100%;font-size:17px}
 .cmenu hr{border:0;border-top:1px solid var(--line);margin:4px 2px}
 #measure{position:absolute;left:-99999px;top:0;width:1091px;visibility:hidden}
 #pdfStage{position:fixed;left:-99999px;top:0;width:1091px;background:#fff}
-#pdfStage table.sheet{border-collapse:separate;border-spacing:0;border-top:.4px solid #A6A6A6;border-left:.4px solid #A6A6A6}
-#pdfStage .sheet td{height:var(--rh,24px);border:0;border-right:.4px solid #A6A6A6;border-bottom:.4px solid #A6A6A6}
+#pdfStage table.sheet{border-collapse:separate;border-spacing:0;border:0}
+#pdfStage .sheet td{height:var(--rh,24px);border:0}   /* lines: drawn into the PDF as hairlines */
 #pdfStage .sheet td.date,#pdfStage .sheet td.title{height:calc(var(--rh,24px)*2)}
 @page{size:A4 landscape;margin:4.3mm}
 @media print{
@@ -1758,10 +1758,17 @@ async function buildPdf(){
   // like Excel: the table always uses the full page width; when there are many rows the rows get lower instead of the whole table shrinking
   const sh=sheetHTML(S.D); const rowH=Math.max(15, Math.min(24, Math.floor(758/sh.nRows)));
   const stage=document.createElement('div'); stage.id='pdfStage'; stage.style.setProperty('--rh',rowH+'px'); stage.innerHTML=shrinkToFit(sh.html); document.body.append(stage);
+  /* grid lines are drawn as real PDF lines (hairline, like Excel's printout) — a picture of the lines prints thick */
+  const o=stage.getBoundingClientRect(), SW=o.width, SH=o.height, edges=new Set();
+  for(const td of stage.querySelectorAll('td')){ const r=td.getBoundingClientRect(), x0=r.left-o.left, y0=r.top-o.top, x1=r.right-o.left, y1=r.bottom-o.top, q=v=>Math.round(v*4)/4;
+    edges.add(`h|${q(y0)}|${q(x0)}|${q(x1)}`); edges.add(`h|${q(y1)}|${q(x0)}|${q(x1)}`); edges.add(`v|${q(x0)}|${q(y0)}|${q(y1)}`); edges.add(`v|${q(x1)}|${q(y0)}|${q(y1)}`); }
   let canvas; try{ canvas=await html2canvas(stage,{scale:4,backgroundColor:'#ffffff',logging:false}); } finally{ stage.remove(); }
   const pdf=new jspdf.jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
   const M=4.3, W=297-2*M, H=210-2*M; let w=W, h=canvas.height*W/canvas.width; if(h>H){ h=H; w=canvas.width*H/canvas.height; }   // always one A4 page
-  pdf.addImage(canvas.toDataURL('image/jpeg',0.95),'JPEG',M+(W-w)/2,M,w,h);
+  const X0=M+(W-w)/2, Y0=M, kx=w/SW, ky=h/SH;
+  pdf.addImage(canvas.toDataURL('image/jpeg',0.95),'JPEG',X0,Y0,w,h);
+  pdf.setDrawColor(110,110,110); pdf.setLineWidth(0.08);
+  for(const e of edges){ const [t,a,b,c]=e.split('|'); const A=+a,B=+b,C=+c; if(t==='h') pdf.line(X0+B*kx,Y0+A*ky,X0+C*kx,Y0+A*ky); else pdf.line(X0+A*kx,Y0+B*ky,X0+A*kx,Y0+C*ky); }
   const [y,m,d]=S.D.split('-').map(Number);
   const mon=MONTHS[m-1].charAt(0)+MONTHS[m-1].slice(1).toLowerCase();
   return {pdf, name:`${d} ${mon} ${y}.pdf`};   /* e.g. 2 November 2026.pdf */
