@@ -340,6 +340,20 @@ table.log tbody td:nth-child(2),table.log tbody td:nth-child(11),table.log tbody
 /* the whole page (title bar, tabs, date, buttons, search) in the logbook font too */
 :root{--f-body:"LogTimes","Times New Roman",Times,"Tahoma","Leelawadee UI","Noto Sans Thai",serif;--f-mono:"LogTimes","Times New Roman",Times,"Tahoma","Leelawadee UI","Noto Sans Thai",serif}
 button,input,select,textarea{font-family:var(--f-body)}
+/* แจ้งเรืออย.: legs of the chosen day from the log → tick the ones marked อย. on the third party's sheet → text (log times) */
+.ay{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:16px;align-items:start;margin-top:10px}
+@media (max-width:820px){.ay{grid-template-columns:1fr}}
+.ay-list,.ay-out{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px}
+.ay-h{font-size:17px;font-weight:700;color:#000;margin-bottom:8px}.ay-n{font-weight:400;color:var(--muted);font-size:15px}
+.ay-tools{display:flex;gap:6px;margin-bottom:6px}
+.ay-row{display:grid;grid-template-columns:26px 52px minmax(0,1fr) 92px minmax(0,1fr);gap:8px;align-items:center;padding:9px 6px;border-bottom:1px solid var(--line);font-size:17px;cursor:pointer;color:#000}
+.ay-row:hover{background:var(--hover)}.ay-row input{width:20px;height:20px}
+.ay-row.on{background:#EAF7E4}.ay-row .k{font-weight:700}.ay-row .t{font-variant-numeric:tabular-nums}
+.ay-row .k.IN{color:#0B6B2E}.ay-row .k.SH{color:#B25E00}.ay-row .k.OUT{color:#1A56DB}
+.ay-bubble{background:#C5F2A8;border-radius:14px;padding:12px 16px;font:16px/1.25 Tahoma,"Leelawadee UI","Noto Sans Thai",sans-serif;white-space:pre-wrap;min-height:60px;margin-bottom:10px;color:#111}
+.ay-bubble:empty::before{content:"ติ๊กเรือที่มี อย. ในรูป";color:#557}
+.ay-empty{color:var(--muted);padding:14px 4px}
+body.ay-mode #view-log,body.ay-mode #view-ves,body.ay-mode #view-cfg,body.ay-mode .bar nav.tabs,body.ay-mode #calcPanel{display:none!important}
 .thdbtn{font-size:15px;white-space:nowrap}
 </style>
 </head>
@@ -461,6 +475,16 @@ button,input,select,textarea{font-family:var(--f-body)}
     </div>
   </section>
 
+  <section id="view-ay" hidden>
+    <div class="ay">
+      <div class="ay-list"><div class="ay-h">ขาเรือในสมุด · <span id="ayDay"></span> <span class="ay-n" id="ayN"></span></div>
+        <div class="ay-tools"><button type="button" class="btn tb" id="ayAll">เลือกทั้งหมด</button><button type="button" class="btn tb" id="ayNone">ไม่เลือก</button></div>
+        <div id="ayRows"></div></div>
+      <div class="ay-out"><div class="ay-h">ข้อความ <span class="ay-n" id="ayCnt"></span></div>
+        <div class="ay-bubble" id="ayText"></div>
+        <button type="button" class="btn primary" id="ayCopy">คัดลอกข้อความ</button></div>
+    </div>
+  </section>
   <section id="view-ves" hidden>
     <div class="panel">
       <div class="toolbar">
@@ -661,6 +685,45 @@ $("nextDay").onclick=()=>{toDay();setDate(shiftDate(curDate,1))};
 $("todayBtn").onclick=()=>{toDay();setDate(isoToday())};
 $("datePick").onchange=e=>{if(e.target.value){toDay();setDate(e.target.value)}};
 function setDate(iso){curDate=iso;$("datePick").value=iso;calLabel();$("sheetTab").textContent=beTab(iso);renderLog()}
+/* ---------- แจ้งเรืออย. (menu of its own: window.__ONLY__='ay') ---------- */
+const AY=window.__ONLY__==="ay";
+function ayLegs(day){
+  const out=[];
+  for(const c of allCalls){ const v=(c.vessel||"").trim(); if(!v)continue;
+    const sh=c.shifts||[];
+    const eT=wParse(c.eta||(c.pilotIn==="-CAP-"?c.capIn:""),c.date);
+    if(eT&&eT.iso===day)out.push({id:c.id+"|i",k:"IN",kt:"เข้า",ship:v,t:eT,berth:c.berth||""});
+    let cur=c.berth||"";
+    sh.forEach((s,i)=>{const t=wParse(s.order||(s.pilot==="-CAP-"?s.capTime:""),c.date);const fb=s.fromBerth||cur,tb=s.berth||"";
+      if(t&&t.iso===day)out.push({id:c.id+"|s"+i,k:"SH",kt:"ย้าย",ship:v,t,berth:(fb||"")+"<>"+(tb||"")});if(tb)cur=tb});
+    const aT=wParse(c.atd||(c.pilotOut==="-CAP-"?c.capOut:""),c.date);
+    if(aT&&aT.iso===day)out.push({id:c.id+"|o",k:"OUT",kt:"ออก",ship:v,t:aT,berth:cur});
+  }
+  return out.sort((a,b)=>a.t.key<b.t.key?-1:a.t.key>b.t.key?1:0);
+}
+const ayKey=d=>"ay_ticks:"+d;
+function ayGet(d){try{return new Set(JSON.parse(localStorage.getItem(ayKey(d))||"[]"))}catch(e){return new Set()}}
+function aySet(d,set){try{localStorage.setItem(ayKey(d),JSON.stringify([...set]))}catch(e){}}
+const ayLine=x=>`${x.kt} ${x.ship} ${x.t.txt} ${x.berth}`.trim();
+function renderAy(){
+  if(!AY)return; const day=curDate, legs=ayLegs(day), on=ayGet(day);
+  $("ayDay").textContent=beTab(day); $("ayN").textContent=legs.length?`(${legs.length} ขา)`:"";
+  const box=$("ayRows"); box.replaceChildren();
+  if(!legs.length)box.append(el("div",{class:"ay-empty"},"ไม่มีขาเรือในวันที่เลือก"));
+  for(const x of legs){const cb=el("input",{type:"checkbox"});cb.checked=on.has(x.id);
+    const row=el("label",{class:"ay-row"+(cb.checked?" on":"")},cb,el("span",{class:"k "+x.k},x.kt),el("span",{},x.ship),el("span",{class:"t"},x.t.txt),el("span",{},x.berth));
+    cb.addEventListener("change",()=>{const s=ayGet(day);cb.checked?s.add(x.id):s.delete(x.id);aySet(day,s);renderAy()});box.append(row)}
+  const pick=legs.filter(x=>on.has(x.id));
+  $("ayText").textContent=pick.map(ayLine).join("\n\n"); $("ayCnt").textContent=pick.length?`(${pick.length} รายการ)`:"";
+  $("ayCopy").disabled=!pick.length;
+}
+if(AY){
+  document.title="แจ้งเรืออย."; document.body.classList.add("ay-mode"); $("view-ay").hidden=false; const br=document.querySelector(".bar .brand b"); if(br)br.textContent="แจ้งเรืออย.";
+  $("ayAll").onclick=()=>{aySet(curDate,new Set(ayLegs(curDate).map(x=>x.id)));renderAy()};
+  $("ayNone").onclick=()=>{aySet(curDate,new Set());renderAy()};
+  $("ayCopy").onclick=async()=>{const t=$("ayText").textContent;if(!t)return;
+    try{await navigator.clipboard.writeText(t);toast("คัดลอกข้อความแล้ว")}catch(e){const ta=el("textarea",{});ta.value=t;document.body.append(ta);ta.select();try{document.execCommand("copy");toast("คัดลอกข้อความแล้ว")}catch(x){toast("คัดลอกไม่ได้")}ta.remove()}};
+}
 
 /* ---------- daily log ---------- */
 const isOpen=c=>c.status!=="ปิดการเงิน"&&!String(c.closeNo||"").trim();
@@ -678,7 +741,7 @@ function fitTable(){const box=document.querySelector("#view-log .tablebox"),t=bo
   box.style.maxHeight=Math.max(260,Math.floor(window.innerHeight-box.getBoundingClientRect().top-10))+"px";
   t.style.zoom="";const w=t.scrollWidth,cw=box.clientWidth;if(w>cw+2)t.style.zoom=String(Math.max(.8,Math.floor(cw/w*1000)/1000))}
 window.addEventListener("resize",()=>{clearTimeout(fitTable._t);fitTable._t=setTimeout(fitTable,80)});
-function renderLog(){requestAnimationFrame(fitTable);
+function renderLog(){if(window.__ONLY__==="ay")setTimeout(renderAy,0);requestAnimationFrame(fitTable);
   calls=allCalls.filter(c=>c.date===curDate);
   const body=$("logBody");body.replaceChildren();
   $("sCount").textContent=calls.length;

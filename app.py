@@ -267,7 +267,8 @@ def _sync_script():
 
 _P_LOG, _P_SCHED, _P_CLOSE = "สมุดบันทึกเรือ", "จัดตารางเรือ", "ปิดการ์ด"
 _P_NOTICE = "แจ้งเรือขาดย้ายท่า"
-_PAGES = [_P_SCHED, _P_LOG, _P_CLOSE, _P_NOTICE]   # จัดตารางเรือ first: the page the site opens on
+_P_AY = "แจ้งเรืออย."
+_PAGES = [_P_SCHED, _P_LOG, _P_CLOSE, _P_NOTICE, _P_AY]   # จัดตารางเรือ first: the page the site opens on
 if st.session_state.get("page_choice") not in _PAGES:
     st.session_state["page_choice"] = _PAGES[0]
 
@@ -408,7 +409,7 @@ def _calc_html_build():
     return _calc_html.replace("<script>", _sync_script() + "<script>", 1)
 
 
-if _page == _P_LOG:
+if _page in (_P_LOG, _P_AY):
     # Daily pilot log (replaces the per-day tabs of the Google Sheet "เล่มบันทึกข้อมูล").
     # Data lives in this browser's localStorage; the page has its own backup/restore buttons.
     import csv as _csv
@@ -428,6 +429,8 @@ if _page == _P_LOG:
     _inject += "window.__DEFAULT_SHIPS__=" + json.dumps(nc.load_default_ships(os.path.join(_HERE, "ships.csv")),
                                                        ensure_ascii=False).replace("</", "<\\/") + ";"
     _inject += "window.__CALC_HTML__=" + json.dumps(_calc_html_build(), ensure_ascii=False).replace("</", "<\\/") + ";"
+    if _page == _P_AY:   # แจ้งเรืออย.: the same log data, only the อย. text panel
+        _inject += "window.__ONLY__='ay';"
     _log_theme = {_THEME_OPTIONS[0]: "light", _THEME_OPTIONS[1]: "dark"}.get(_theme_choice)
     if _log_theme:
         _inject += "window.__THEME__='" + _log_theme + "';"
