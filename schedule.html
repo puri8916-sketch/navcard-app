@@ -1775,7 +1775,8 @@ const PILOT_COLS=[7,15], DRF_COLS=[3,12];   /* Drf: blue bold by default */
 const blankRow=()=>({c:Array(17).fill(''), r:Array(17).fill(false), h:Array(17).fill('')});
 let curColor='#FF0000';
 const isBlack=v=>/^(#000(000)?|black|rgb\(0,\s*0,\s*0\))$/i.test(String(v||'').trim());
-const colOf=(row,c)=>{ const v=row.r[c]; if(v && !(DRF_COLS.includes(c) && isBlack(v))) return v===true?'#FF0000':v;   /* Drf: black (set by hand earlier) shows as the default blue */ return String(row.c[c<9?0:9]||'').trim()==='พ'?'#FF0000':''; };   // old data stored red as true; a พ ship's side of the row is red   // old data stored red as true
+const isNgod=(row,c)=>DRF_COLS.includes(c) && String(row.c[c]||'').includes('งด');   /* งด in Drf: always red */
+const colOf=(row,c)=>{ if(isNgod(row,c)) return '#FF0000'; const v=row.r[c]; if(v && !(DRF_COLS.includes(c) && isBlack(v))) return v===true?'#FF0000':v;   /* Drf: black (set by hand earlier) shows as the default blue */ return String(row.c[c<9?0:9]||'').trim()==='พ'?'#FF0000':''; };   // old data stored red as true; a พ ship's side of the row is red   // old data stored red as true
 const FILL='#C8C8C8';   // พื้นหลังเทา (cells saved with the old #E0E0E0 show in the new grey too)
 const bgOf=(row,c)=>{ const v=(row.g&&row.g[c])||''; return v==='#E0E0E0'?FILL:v; };
 const tdStyle=(row,c)=>{ const k=colOf(row,c), g=bgOf(row,c); const st=(k?`color:${k};`:'')+(g?`background:${g};`:''); return st?` style="${st}"`:''; };
@@ -1784,7 +1785,7 @@ const hOf=(row,c)=>(row.h&&row.h[c])||'';
 const isBold=(row,c)=>{ const w=row.w&&row.w[c]; return w==='b' || (w!=='n' && (PILOT_COLS.includes(c)||DRF_COLS.includes(c))); };
 const wCls=(row,c)=>{ const w=row.w&&row.w[c]; return w==='b'?'wb':w==='n'?'wn':''; };
 function setH(row,c,v){ if(!row.h) row.h=Array(17).fill(''); row.h[c]=v; }
-const cellHTML=(row,c)=>{ let h=hOf(row,c); if(h && DRF_COLS.includes(c)) h=h.replace(/<span style="color:\s*(#000000|#000|black|rgb\(0,\s*0,\s*0\))">(.*?)<\/span>/gi,'$2'); return h||esc(row.c[c]); };
+const cellHTML=(row,c)=>{ let h=hOf(row,c); if(h && isNgod(row,c)) return esc(row.c[c]); if(h && DRF_COLS.includes(c)) h=h.replace(/<span style="color:\s*(#000000|#000|black|rgb\(0,\s*0,\s*0\))">(.*?)<\/span>/gi,'$2'); return h||esc(row.c[c]); };
 const DAYPFX=/^\d{1,2}-$/;   /* a time cell holding only the day ("30-") */
 const cellOut=(row,c)=>([4,5,13].includes(c)&&DAYPFX.test(String(row.c[c]||'').trim()))?'':cellHTML(row,c);   /* image: an unfinished "30-" stays blank */
 // keep only text + colour spans from an edited cell
@@ -2043,6 +2044,7 @@ BOARD.addEventListener('input',e=>{ const i=e.target.closest('.ce'); if(!i||!BD)
     if(c===1||c===10){ const tc=c===1?4:13, t=BOARD.querySelector(`.ce[data-b="${b}"][data-r="${r}"][data-c="${tc}"]`), cur=String(row.c[tc]||'').trim();   /* day shows in ETA/ETD as soon as the name is typed */
       if(i.value.trim() && !cur){ row.c[tc]=`${+addDays(BD.blocks[b].date||BD.date,1).slice(8)}-`; if(t){ t.textContent=row.c[tc]; fitInput(t); } }
       else if(!i.value.trim() && DAYPFX.test(cur)){ row.c[tc]=''; if(t){ t.textContent=''; fitInput(t); } } }
+    if(DRF_COLS.includes(c)) i.style.color=colOf(row,c)||'';   /* งด → red at once */
     if(c===0||c===9){ const late=i.value.trim()==='พ'; for(let k=c;k<c+(c===0?9:8);k++){ const t=k===c?i:BOARD.querySelector(`.ce[data-b="${b}"][data-r="${r}"][data-c="${k}"]`); if(t&&!row.r[k]) t.style.color=late?'#FF0000':''; } } }
   fitInput(i); buildPop(i); boardSave(); });
 BOARD.addEventListener('change',e=>{ const i=e.target.closest('.ce'); if(!i||!BD||i.dataset.r===undefined) return;
