@@ -188,7 +188,7 @@ label.f input.capt{color:var(--pen-green)}
 .empty b{display:block;color:var(--ink);font-size:16px;margin-bottom:4px}
 .dash{color:var(--muted);opacity:.45}
 .filters{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;margin-bottom:10px}
-.filters #q{flex:1 1 240px;min-width:0;border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:6px 10px}
+.filters #q{flex:0 1 300px;width:300px;min-width:160px;border:1px solid var(--line);border-radius:6px;padding:6px 10px 6px 34px;background:var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2.4' stroke-linecap='round'%3E%3Ccircle cx='10.5' cy='10.5' r='6.5'/%3E%3Cpath d='M15.5 15.5 21 21'/%3E%3C/svg%3E") no-repeat 11px center}
 .filters .seg button{background:var(--surface)}
 .filters .seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .cnt{font-family:var(--f-mono);margin-left:6px;font-weight:600}
@@ -430,7 +430,7 @@ button,input,select,textarea{font-family:var(--f-body)}
       <span class="hint" id="wMsg" role="status"></span>
     </div>
     <div class="filters">
-      <input id="q" type="search" placeholder="ค้นหาชื่อเรือ / เลขการ์ด / Agent" aria-label="ค้นหาประวัติเรือ" autocomplete="off">
+      <input id="q" type="search" placeholder="ค้นหาเรือ / เลขการ์ด / Agent" aria-label="ค้นหาประวัติเรือ" autocomplete="off">
       <div class="seg" id="fSeg" role="group" aria-label="สถานะการ์ด">
         <button type="button" data-v="all" aria-pressed="true">ทั้งหมด</button>
         <button type="button" data-v="open" aria-pressed="false">ยังไม่ปิดการ์ด<b class="cnt" id="openN">0</b></button>
