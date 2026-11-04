@@ -2004,6 +2004,10 @@ function lateHalves(){ const out=new Map();
       out.set(`${X}|${side}|${ship}`,{X,side,m}); } }
   return out; }
 const sameLeg=(m,x)=>m.ship===x.m.ship && (x.side==='L'?m.type==='IN':m.type!=='IN') && schedOf(m.datetime)===x.X;
+function nearName(a,b){ a=String(a||'').toUpperCase().replace(/[^A-Z0-9]/g,''); b=String(b||'').toUpperCase().replace(/[^A-Z0-9]/g,''); if(!a||!b) return false;
+  if(a.length>=4 && b.length>=4 && (a.includes(b)||b.includes(a))) return true;
+  const d=Array.from({length:b.length+1},(_,j)=>j); for(let i=1;i<=a.length;i++){ let p=d[0]; d[0]=i; for(let j=1;j<=b.length;j++){ const t=d[j]; d[j]=Math.min(d[j]+1,d[j-1]+1,p+(a[i-1]===b[j-1]?0:1)); p=t; } }
+  return d[b.length]<=2 && Math.min(a.length,b.length)>=5; }
 function syncLate(){ if(!BD) return; const cur=lateHalves();
   /* what the พ rows looked like at the last sync is kept with each day's table (ls), so an edit is still carried over
      after a reload, a change of day or on another device — not only while this page stays open */
@@ -2023,7 +2027,7 @@ function syncLate(){ if(!BD) return; const cur=lateHalves();
       if(!ex) continue; let any=false; for(const f of F) if(String(ex[f]??'')!==String(x.m[f]??'')){ ex[f]=x.m[f]; any=true; }
       if(any){ persist(cl(ex)); ch=true; } continue; }
     /* a name fixed on แก้ไข (same side + time, the old name is gone) → rename, not a second ship */
-    const ren=[...prev.entries()].find(([pk,p])=>!cur.has(pk) && p.X===x.X && p.side===x.side && p.m.datetime===x.m.datetime);
+    const ren=[...prev.entries()].find(([pk,p])=>!cur.has(pk) && p.X===x.X && p.side===x.side && p.m.datetime===x.m.datetime && nearName(p.m.ship,x.m.ship));   /* only a typo fix / words added — a different ship at the same time is a new ship */
     if(ren){ const p=ren[1], side=t=>x.side==='L'?t==='IN':t!=='IN';
       const ex=S.mv.find(m=>+m.late && m.ship===p.m.ship && side(m.type) && m.datetime===p.m.datetime);
       if(ex){ prev.delete(ren[0]); Object.assign(ex,{ship:x.m.ship}); ['pob','type','from','to','loa','drf','pilot','agent'].forEach(f=>{ if(String(ex[f]??'')!==String(x.m[f]??'')) ex[f]=x.m[f]; }); persist(cl(ex)); ch=true; continue; } }
