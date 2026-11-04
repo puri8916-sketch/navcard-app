@@ -1941,7 +1941,14 @@ function lateHalves(){ const out=new Map();
 const sameLeg=(m,x)=>m.ship===x.m.ship && (x.side==='L'?m.type==='IN':m.type!=='IN') && schedOf(m.datetime)===x.X;
 function syncLate(){ if(!BD) return; const cur=lateHalves(), prev=BD.lateSnap; BD.lateSnap=cur; if(!prev) return;   /* first look: remember only */
   let ch=false;
-  for(const [k,x] of cur){ if(prev.has(k) || x.m.drf==='งด') continue;
+  for(const [k,x] of cur){ if(x.m.drf==='งด') continue;
+    const p=prev.get(k);
+    if(p){   /* a พ ship edited on แก้ไข (time, berth, Drf, pilot …) → the same change in จัดตาราง */
+      const F=['datetime','pob','type','from','to','loa','drf','pilot','agent'].filter(f=>String(p.m[f]??'')!==String(x.m[f]??'')); if(!F.length) continue;
+      const side=t=>x.side==='L'?t==='IN':t!=='IN';
+      const ex=S.mv.find(m=>+m.late && m.ship===p.m.ship && side(m.type) && m.datetime===p.m.datetime) || S.mv.find(m=>+m.late && sameLeg(m,p));
+      if(!ex) continue; let any=false; for(const f of F) if(String(ex[f]??'')!==String(x.m[f]??'')){ ex[f]=x.m[f]; any=true; }
+      if(any){ persist(cl(ex)); ch=true; } continue; }
     const ex=S.mv.find(m=>sameLeg(m,x));
     if(ex){ if(!+ex.late){ ex.late=1; persist(ex); ch=true; } }
     else { const m={id:newId(), ...x.m}; S.mv.push(m); persist(m); ch=true; toast(`เพิ่ม ${m.ship} (พ) ในจัดตารางแล้ว`); } }
