@@ -2752,9 +2752,9 @@ function psbBuild(rd, book, have){
   // 50 m rule (PTT table always in), duplicates (same ship + time already on the board / earlier in the file)
   const key=m=>`${psbKey(m.ship)}|${m.datetime}`, seen=new Set(have.map(m=>`${psbKey(baseShip(m.ship))}|${m.datetime}`));
   const list=[];
-  const TMR=addDays(todayYmd(),1); let other=0;   /* only tomorrow's ships (today 4th → the 5th); the rest of the file is left out */
+  const TODAY=todayYmd(), TMR=addDays(TODAY,1), FROM=`${TODAY} ${S.settings.cutoff||'17:00'}`; let other=0;   /* today's table from the cut-off (17:00) on + all of tomorrow; the rest of the file is left out */
   for(const m of out.sort((a,b)=>a.datetime<b.datetime?-1:a.datetime>b.datetime?1:0)){
-    if(m.datetime.slice(0,10)!==TMR){ other++; continue; }
+    if(!(m.datetime>=FROM && m.datetime.slice(0,10)<=TMR)){ other++; continue; }
     if(/^SC\b/.test(psbKey(m.ship)?norm(m.ship):'') && !/^PTT/.test(m.from) && !/^PTT/.test(m.to)){ skip.push({m,why:'SC'}); continue; }   // SC … ยกเว้นนำร่อง ยกเว้นเข้าท่าน้ำมัน
     if(m._src!=='ptt' && m._m!=null && m._m<PSB_MIN_M){ skip.push({m,why:`${+m._m.toFixed(2)} ม.`}); continue; }
     const k=key(m); m._dup=seen.has(k); seen.add(k);
@@ -2766,7 +2766,7 @@ function psbBuild(rd, book, have){
       if(ex){ m._dup=true; m._dupAt=ex.datetime; } }
     m._warn = m._dup ? '' : !m._reg ? 'ยังไม่ลงทะเบียน' : m._m==null ? 'ไม่ทราบ LOA' : '';
     list.push(m); }
-  return {list, skip, other, day:TMR};
+  return {list, skip, other, day:TMR, from:FROM};
 }
 let PSB=null;
 $('psbBtn').addEventListener('click',()=>$('psbFile').click());
@@ -2789,9 +2789,9 @@ function psbShow(){
   const P=$('impPanel'), L=PSB.list;
   const route=m=>m.type==='IN'?esc(m.to):m.type==='OUT'?esc(m.from):`${esc(m.from)}&lt;&gt;${esc(m.to)}`;
   const tm=m=>`${shortDate(m.datetime.slice(0,10))} ${m.datetime.slice(11).replace(':','')}`;
-  const sk=PSB.skip.filter(x=>(x.m?x.m.datetime:x.l.dt).slice(0,10)===PSB.day);
-  P.innerHTML=`<h3>นำเข้า PSB · เฉพาะวันพรุ่งนี้ ${shortDate(PSB.day)} <span class="dim" style="font-weight:400">(ไฟล์ ${esc(PSB.rd.title||PSB.name)}${PSB.other?` · ข้ามวันอื่น ${PSB.other} ขา`:''})</span></h3>
-  ${L.length?'':`<div class="dim">ไม่มีเรือของวันที่ ${shortDate(PSB.day)} ในไฟล์นี้</div>`}
+  const sk=PSB.skip.filter(x=>{ const d=x.m?x.m.datetime:x.l.dt; return d>=PSB.from && d.slice(0,10)<=PSB.day; });
+  P.innerHTML=`<h3>นำเข้า PSB · ${shortDate(PSB.from.slice(0,10))} ${PSB.from.slice(11).replace(':','')} – ${shortDate(PSB.day)} <span class="dim" style="font-weight:400">(ไฟล์ ${esc(PSB.rd.title||PSB.name)}${PSB.other?` · ข้ามวันอื่น ${PSB.other} ขา`:''})</span></h3>
+  ${L.length?'':`<div class="dim">ไม่มีเรือช่วง ${shortDate(PSB.from.slice(0,10))} ${PSB.from.slice(11).replace(':','')} – ${shortDate(PSB.day)} ในไฟล์นี้</div>`}
   <div style="overflow-x:auto"><table><thead><tr><th><input type="checkbox" id="psbAll"></th><th>วัน เวลา</th><th>ขา</th><th class="l">เรือ</th><th>LOA ม.</th><th class="l">ท่า</th><th class="l">AGENT</th><th class="l"></th></tr></thead><tbody>
   ${L.map((m,i)=>`<tr${m._dup?' class="dim"':''}><td><input type="checkbox" class="psbC" data-i="${i}" ${m._dup||m._warn?'':'checked'} ${m._dup?'disabled':''}></td><td>${tm(m)}</td><td>${PSB_T[m.type]}</td><td class="l">${esc(m.ship)}</td><td>${m._m!=null?+m._m.toFixed(2):'-'}</td><td class="l">${route(m)}</td><td class="l">${esc(m.agent)}</td>
     <td class="l">${m._dup?'มีในตารางแล้ว'+(m._dupAt&&m._dupAt!==m.datetime?` (${tm({datetime:m._dupAt})})`:''):m._warn?`<b style="color:#d93025">⚠ ${m._warn}</b>`:m._src==='ptt'?'PTT':''}</td></tr>`).join('')}
