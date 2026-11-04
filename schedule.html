@@ -1437,7 +1437,7 @@ function gAuto(){ if(!layoutOf(S.D)) return toast('ตารางนี้จ�
 /* right-click menu for จัดตาราง */
 const FC=['#000000','#FF0000','#C00000','#FFC000','#00B050','#0070C0','#002060','#7030A0','#808080'];   // font colours (Excel standard)
 const GM=$('gmenu');
-GM.innerHTML=[['undo','↶ ย้อนกลับ','Ctrl+Z'],['redo','↷ ทำซ้ำ','Ctrl+Y'],['-'],['cut','ตัด','Ctrl+X'],['copy','คัดลอก','Ctrl+C'],['paste','วาง','Ctrl+V'],['insblank','แทรก',''],['clear','ลบ','Delete'],['selall','เลือกทั้งหมด','Ctrl+A'],['copyall','คัดลอกทั้งตาราง',''],['-'],['colors'],['-'],['delblank','ลบแถวว่าง',''],['auto','จัดอัตโนมัติใหม่','']]
+GM.innerHTML=[['undo','↶ ย้อนกลับ','Ctrl+Z'],['redo','↷ ทำซ้ำ','Ctrl+Y'],['-'],['cut','ตัด','Ctrl+X'],['copy','คัดลอก','Ctrl+C'],['paste','วาง','Ctrl+V'],['insblank','แทรก',''],['clear','ลบ','Delete'],['selall','เลือกทั้งหมด','Ctrl+A'],['copyall','คัดลอกทั้งตาราง',''],['-'],['colors'],['-'],['delblank','ลบแถว',''],['auto','จัดอัตโนมัติใหม่','']]
   .map(x=>x[0]==='-'?'<hr>':x[0]==='colors'?`<div class="mcol"><span>สีตัวอักษร</span><div>${FC.map(k=>`<button type="button" data-gcol="${k}" style="background:${k}" title="${k}"></button>`).join('')}<button type="button" data-gcol="" class="auto" title="อัตโนมัติ (ดำ)">A</button></div></div>`:`<button type="button" data-gm="${x[0]}"><span>${x[1]}</span><kbd>${x[2]}</kbd></button>`).join('');
 function hideGMenu(){ GM.hidden=true; }
 G.addEventListener('mousedown',()=>{ GSEP=null; });
