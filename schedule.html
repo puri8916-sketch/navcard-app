@@ -863,19 +863,20 @@ function applyLayout(list, lrows){
   while(out.length && out[out.length-1].blank) out.pop();
   return out;
 }
-function insertNew(rows, m){
-  const side=m.type==='IN'?'L':'R', k=bKey(String(mvBerth(m)||'').split('<>')[0]);
-  let i=k ? rows.findIndex(r=>!r.blank && !r[side] && (r.L||r.R).datetime===m.datetime && bKey(String(mvBerth(r.L||r.R)||'').split('<>')[0])===k) : -1;
-  if(i>=0){ rows[i][side]=m; return; }
-  // วางต่อจากแถวสุดท้ายที่มีเรือเวลาก่อนหน้า (ถ้าเว้นห่างพอ ค่อยมีแถวคั่น)
-  let last=-1; rows.forEach((r,k)=>{ if(!r.blank && [r.L,r.R].some(x=>x && sortMv(x,m)<0)) last=k; });
-  i=last+1;
-  const pr=last>=0 ? rows[last] : null, pt=pr && [pr.L,pr.R].filter(Boolean).map(x=>x.datetime).sort().pop();
-  if(rows[i] && rows[i].blank && !(pt && needGap(pt,m.datetime))){ /* อยู่ก่อนแถวคั่น */ }
-  else if(pt && needGap(pt,m.datetime) && !(rows[i-1] && rows[i-1].blank) && !(rows[i] && rows[i].blank)){ rows.splice(i,0,{blank:true}); i++; }
-  else if(rows[i] && rows[i].blank) i++;
-  rows.splice(i,0,{[side]:m});
+function insertNew(rows, m){   /* เรือเพิ่ม: แค่เรียงเวลาฝั่งเดียวกัน · ลงช่องว่างฝั่งนั้นแถวแรกที่ถึง (แถวเดียวกับอีกฝั่งได้) · ไม่สร้างแถวคั่น */
+  const side=m.type==='IN'?'L':'R';
+  let lastLE=-1; rows.forEach((r,k)=>{ if(!r.blank && r[side] && sortMv(r[side],m)<=0) lastLE=k; });
+  let nextGT=rows.length; for(let k=lastLE+1;k<rows.length;k++) if(!rows[k].blank && rows[k][side]){ nextGT=k; break; }
+  for(let k=lastLE+1;k<nextGT;k++) if(!rows[k].blank && !rows[k][side]){ rows[k][side]=m; return; }
+  let at=nextGT; while(at>lastLE+1 && rows[at-1] && rows[at-1].blank) at--;   // stick to the ships above, not after a separator
+  rows.splice(at,0,{[side]:m});
 }
+/* a day shown by the automatic arrangement keeps that arrangement once ships are added to it */
+function freezeDay(D){ if(!D || layoutOf(D)) return; const list=S.mv.filter(m=>inWin(m,D) && !+m.late).sort(sortMv); if(!list.length) return;
+  setLayout(D, autoRows(list).map(r=>r.blank?['','']:[r.L?r.L.id:'', r.R?r.R.id:''])); }
+/* …and the place a new ship got is kept, so it doesn't move when more ships are added */
+function fixDay(D){ if(!D || !layoutOf(D)) return; const list=S.mv.filter(m=>inWin(m,D) && !+m.late);
+  setLayout(D, arrangeRows(list, D).map(r=>r.blank?['','']:[r.L?r.L.id:'', r.R?r.R.id:''])); }
 function arrangeRows(items, D){ const list=items.slice().sort(sortMv); const lay=D && layoutOf(D); return lay ? applyLayout(list, lay.rows) : autoRows(list); }
 function buildMain(items, D){
   const list=items.slice().sort(sortMv); const rows=[{blank:true}, ...arrangeRows(list, D), {blank:true}]; const no=new Map(); let n=1;
@@ -1145,9 +1146,11 @@ async function commitDraft(p, fromBlur){
   if(side==='L'){ m.type='IN'; m.to=norm(q('berth').value)||s.berth||''; m.from='';
     const pv=q('pob').value.trim(); m.pob = pv ? (parseTime(pv,base)||dt) : dt; }
   else { const b=parseBerthR(q('berth').value||lastBerth(ship,dt)||s.berth||''); m.type=b.type; m.from=b.from; m.to=b.to; m.pob=''; }
+  if(!late) freezeDay(schedOf(dt));
   S.mv.push(m); gRecord(null,m); ensureShip(m); persist(m);
   const tr=sh.closest('tr[data-li]'), lay=layoutOf(S.D);
   if(tr && lay && !late && schedOf(dt)===S.D){ const rows=curLayRows(); const li=+tr.dataset.li; if(rows[li]){ rows[li][side==='L'?0:1]=m.id; setLayout(S.D, rows); } }
+  if(!late) fixDay(schedOf(dt));
   const sd=schedOf(dt); if(!late && sd!==S.D) toast(`บันทึกแล้ว · เวลา ${fmtT(dt)} อยู่ตารางวันที่ ${shortDate(sd)}`);
   const wantNew = late ? (side==='L'?'lateL':'lateR') : (side==='L'?'newL':'newR');
   rerender(`${wantNew}:ship`);
@@ -2662,6 +2665,7 @@ async function psbRun(){
   const P=$('impPanel'), pick=[...P.querySelectorAll('.psbC:checked:not(:disabled)')].map(c=>PSB.list[+c.dataset.i]);
   if(!pick.length) return; $('impGo').disabled=true; const msg=$('impMsg');
   const list=pick.map(m=>{ const o={}; for(const k in m) if(k[0]!=='_') o[k]=m[k]; return o; });
+  [...new Set(list.filter(m=>!+m.late).map(m=>schedOf(m.datetime)))].forEach(freezeDay);
   let done=0; msg.textContent=`กำลังบันทึก 0/${list.length}…`;
   try{
     let batch=true;
@@ -2671,6 +2675,7 @@ async function psbRun(){
       part.forEach(m=>{ pick[done]._dup=true; done++; if(!S.mv.some(x=>x.id===m.id)) S.mv.push(cl(m)); });
       msg.textContent=`กำลังบันทึก ${done}/${list.length}…`; }
     gBatchStart(); list.forEach(m=>gRecord(null,m)); gBatchEnd();
+    [...new Set(list.filter(m=>!+m.late).map(m=>schedOf(m.datetime)))].forEach(fixDay);
     // new ships go into ทะเบียนเรือ (LOA ft, agent from the file)
     const seenNew=new Set(); for(const m of pick) if(!m._reg && !S.shipIdx.has(m.ship) && !seenNew.has(m.ship)){ seenNew.add(m.ship);
       const full=list.find(x=>x.ship===m.ship&&x.agent)||m; ensureShip({ship:m.ship, loa:m.loa, type:m.type, to:/^PSB-/.test(m.to)?m.to:'', from:/^PSB-/.test(m.from)?m.from:'', agent:full.agent}); }
