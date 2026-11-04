@@ -1588,7 +1588,8 @@ function showTab(t){ const g=tabGrp(t); if(!TD.line && !TD.work && S.D){ TD.line
     else if(TD[g]!==S.D){ const D=TD[g]; S.D=D; $('schedDate').value=D; renderAll();
       if(!covered(D)) loadMovements(D).then(()=>{ cacheSet(); renderAll(); if(!$('view-line').hidden && S.D===D) openBoard(D); }).catch(err=>toast('โหลดข้อมูลไม่สำเร็จ: '+err.message)); } }
   for(const x of ['work','print','line','ships','pilots']){ $('tab-'+x).setAttribute('aria-selected', x===t); $('view-'+x).hidden = x!==t; }
-  $('dateNav').hidden = !(t==='line'||t==='work'); /* day strip only on แก้ไข / จัดตาราง; พิมพ์ prints the จัดตาราง day */ if(t==='work') fitAll(); if(t==='print'){ renderPrint(); } if(t==='line'){ if(!$('lineSince').value) $('lineSince').value=String(+todayYmd().slice(8)); if(!BD || BD.date!==S.D) openBoard(S.D); else fitBoard(); } $('view-setup').hidden = t!=='setup'; hidePop(); }
+  $('dateNav').hidden = !(t==='line'||t==='work'); /* day strip only on แก้ไข / จัดตาราง; พิมพ์ prints the จัดตาราง day */ if(t==='work') fitAll(); if(t==='print'){ renderPrint(); } if(t==='line'){ if(!$('lineSince').value) $('lineSince').value=String(+todayYmd().slice(8)); const stale=BD && Object.keys(BD.all).some(d=>{ const r=(S.boards||{})[d]; return r && (r.updated||0)>(BD.all[d].updated||0); });
+    if(!BD || BD.date!==S.D || stale) openBoard(S.D); else fitBoard(); }   /* another device changed a day while this tab was away → show its table */ $('view-setup').hidden = t!=='setup'; hidePop(); }
 $('tab-work').addEventListener('click',()=>showTab('work')); $('tab-print').addEventListener('click',()=>showTab('print'));
 $('tab-line').addEventListener('click',()=>showTab('line'));
 $('tab-ships').addEventListener('click',()=>{ renderShips(); showTab('ships'); });
@@ -1846,7 +1847,8 @@ async function pollBoards(){
     if(!boardsApi){ const i=await api('init'); boards=i.boards||{}; }
     S.boards=S.boards||{}; let newer=false;
     for(const [d,x] of Object.entries(boards||{})){ if(!x || !x.rows) continue; const cur=S.boards[d];
-      if(!cur || (x.updated||0)>(cur.updated||0)){ S.boards[d]=x; if(BD.all[d] && (x.updated||0)>(BD.all[d].updated||0)) newer=true; } }
+      if(!cur || (x.updated||0)>(cur.updated||0)) S.boards[d]=x;
+      if(BD.all[d] && (x.updated||0)>(BD.all[d].updated||0)) newer=true; }   /* compare with the table on screen (S.boards may already hold it from another refresh) */
     const typing=document.activeElement && document.activeElement.closest && document.activeElement.closest('#board');
     if(newer && !typing && !Object.keys(BD.pending||{}).length){ const keepSel=SEL; openBoard(S.D); SEL=keepSel&&BD.blocks[keepSel.b]?keepSel:null; renderBoard(); toast('อัปเดตตารางแก้ไขจากเครื่องอื่นแล้ว'); }
     else if(newer) BD.remoteWaiting=true;
@@ -1937,7 +1939,7 @@ function boardFromSchedule(D){
    (27's table is the bottom of view 27 and the top of view 28 — the same data) */
 const BKEY=D=>'shipsched_board:'+(CFG.API_URL||'demo')+':'+D;      // older per-view boards
 const KB=d=>'shipsched_day:'+(CFG.API_URL||'demo')+':'+d;
-const dayKey=b=>JSON.stringify([b.label,b.rows,!!b.hidden,b.sent||null,b.ls||null]);
+const dayKey=b=>JSON.stringify([b.label,b.rows,!!b.hidden,b.sent||null]);   /* ls (พ snapshot) rides along with a real change — it never saves a day by itself (a stale copy here must not overwrite another device's newer table) */
 function dayLocal(d){ try{ return JSON.parse(localStorage.getItem(KB(d))||'null'); }catch(e){ return null; } }
 function dayRemote(d){ const x=(S.boards||{})[d]; return x && x.rows ? x : null; }
 function dayLegacy(d){
@@ -2046,7 +2048,6 @@ function syncLate(){ if(!BD) return; const cur=lateHalves();
   if(!prev){ prev=new Map(); for(const [k,x] of cur){ const ex=S.mv.filter(m=>+m.late && sameLeg(m,x)); if(ex.length===1) prev.set(k,{X:x.X,side:x.side,m:{...ex[0]}}); } }   /* first time: the table on แก้ไข wins */
   BD.lateSnap=cur; let lsCh=false;
   for(const b of BD.blocks){ const X=b.date||BD.date, ls={}; for(const [k,x] of cur) if(x.X===X) ls[k]=x; if(JSON.stringify(ls)!==JSON.stringify(b.ls||{})){ b.ls=ls; lsCh=true; } }
-  if(lsCh) setTimeout(boardSave,0);
   let ch=false;
   for(const [k,x] of cur){ if(x.m.drf==='งด') continue;
     const p=prev.get(k);
