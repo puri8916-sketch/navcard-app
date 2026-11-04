@@ -1372,7 +1372,10 @@ function gPaste(cells){
   for(const p of drafts) commitDraft(p,true);
   gBatchEnd(); rerender();
 }
-const inGrid=e=>e.target && e.target.closest && e.target.closest('#grid') && e.target.dataset && e.target.dataset.gr!==undefined;
+const inGrid=e=>{ const t=e.target; if(t && t.closest && t.closest('#grid') && t.dataset && t.dataset.gr!==undefined) return true;
+  /* selection that starts on a NO. cell (no input there): the key goes to the page — still the grid's copy/cut/paste */
+  const ws=window.getSelection(); if(ws && !ws.isCollapsed && !G.contains(ws.anchorNode)) return false;   /* text picked elsewhere on the page: normal copy */
+  return !!(GSEL && !$('view-work').hidden && t && (t===document.body || t===document.documentElement || (t.closest && t.closest('#grid') && !t.matches('input,textarea,select')))); };
 document.addEventListener('copy',e=>{ if(!inGrid(e)||!GSEL) return; const i=e.target;
   if(!gmulti() && i.selectionStart!==i.selectionEnd && !(i.selectionStart===0 && i.selectionEnd===i.value.length)) return;
   const all=gAllSel(), t=all?gAllText():gTSV(); GCLIP=t; e.clipboardData.setData('text/plain',t.text); if(all) e.clipboardData.setData('text/html',gAllHTML()); e.preventDefault(); if(all) toast('คัดลอกทั้งตารางแล้ว'); });   /* everything selected → the whole day incl. date, headers, totals */
