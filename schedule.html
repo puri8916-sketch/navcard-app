@@ -299,6 +299,14 @@ table.lsheet.board{width:100%;font-size:17px}
 .mtb .bar{display:block;width:20px;height:5px;border-radius:1px;background:#FF0000}
 .mtb .fA{font:700 17px/1 var(--f-sheet)}
 .mtb svg{width:18px;height:16px;display:block}
+.cmenu .mtb button{display:inline-flex;width:auto;height:34px;padding:0 8px;border:1px solid var(--line);border-radius:6px;justify-content:center;align-items:center;gap:3px;font-size:inherit}
+.cmenu .mtb .ic{display:grid;justify-items:center;grid-template-rows:auto 5px;row-gap:3px;line-height:1;height:auto}
+.cmenu .mtb .ic .bar{height:5px;display:block}
+.cmenu .mtb .sp .main{display:grid;place-items:center;line-height:1;border-top-right-radius:0;border-bottom-right-radius:0;min-width:38px}
+.cmenu .mtb .sp .drop{border-left:0;border-top-left-radius:0;border-bottom-left-radius:0;padding:0 5px}
+.cmenu .mtb .mtb-b{width:34px;padding:0}
+.cmenu .mtb-pal button{display:block;width:24px;height:24px;padding:0;border:1px solid rgb(0 0 0 / .2);border-radius:4px}
+.cmenu .mtb-pal button.auto,.cmenu .mtb-pal button.none{width:auto;height:26px;padding:0 10px;background:#fff;font-size:14px}
 .mtb-pal{display:flex;flex-wrap:wrap;gap:5px;padding:4px 12px 8px;max-width:230px}
 .mtb-pal[hidden]{display:none}
 .mtb-pal button{width:24px;height:24px;border:1px solid rgb(0 0 0 / .2);border-radius:4px;cursor:pointer;padding:0}
@@ -1453,15 +1461,15 @@ const FC=['#000000','#FF0000','#C00000','#FFC000','#00B050','#0070C0','#002060',
 const BUCKET='<svg viewBox="0 0 20 18" aria-hidden="true"><path d="M8 1.5 2 7.5l5.5 5.5L13.5 7z" fill="none" stroke="#333" stroke-width="1.6" stroke-linejoin="round"/><path d="M3.2 8.3h9.6L7.5 13.6z" fill="#333" opacity=".35"/><path d="M15.5 9.5s-2 2.4-2 3.6a2 2 0 0 0 4 0c0-1.2-2-3.6-2-3.6z" fill="#333"/></svg>';
 function mtbHTML(attr, opt){ /* attr: data-col / data-gcol */
   return `<div class="mtb">${opt.bold?'<button type="button" class="mtb-b" data-mt="bold" title="ตัวหนา / ยกเลิกตัวหนา (Ctrl+B)">B</button>':''}`+
-    (opt.fill?`<span class="sp"><button type="button" class="main" data-mt="fill" title="พื้นหลังเทาอ่อน">${BUCKET}<span class="bar" style="background:${FILL}"></span></button><button type="button" class="drop" data-mt="filldrop" title="เลือกพื้นหลัง" aria-label="เลือกพื้นหลัง">▾</button></span>`:'')+
-    `<span class="sp"><button type="button" class="main" data-mt="font" title="สีตัวอักษร"><span class="fA">A</span><span class="bar mtb-fbar"></span></button><button type="button" class="drop" data-mt="fontdrop" title="เลือกสีตัวอักษร" aria-label="เลือกสีตัวอักษร">▾</button></span></div>`+
+    (opt.fill?`<span class="sp"><button type="button" class="main" data-mt="fill" title="พื้นหลังเทาอ่อน"><span class="ic">${BUCKET}<span class="bar" style="background:${FILL}"></span></span></button><button type="button" class="drop" data-mt="filldrop" title="เลือกพื้นหลัง" aria-label="เลือกพื้นหลัง">▾</button></span>`:'')+
+    `<span class="sp"><button type="button" class="main" data-mt="font" title="สีตัวอักษร"><span class="ic"><span class="fA">A</span><span class="bar mtb-fbar"></span></span></button><button type="button" class="drop" data-mt="fontdrop" title="เลือกสีตัวอักษร" aria-label="เลือกสีตัวอักษร">▾</button></span></div>`+
     (opt.fill?`<div class="mtb-pal" data-pal="fill" hidden><button type="button" data-fill="1" style="background:${FILL}" title="เทาอ่อน"></button><button type="button" class="none" data-fill="0">ไม่มีพื้นหลัง</button></div>`:'')+
     `<div class="mtb-pal" data-pal="font" hidden>${FC.map(k=>`<button type="button" ${attr}="${k}" style="background:${k}" title="${k}"></button>`).join('')}<button type="button" ${attr}="" class="auto" title="อัตโนมัติ">อัตโนมัติ</button></div>`;
 }
 function mtbOpen(menu){ menu.querySelectorAll('.mtb-pal').forEach(p=>p.hidden=true); menu.querySelectorAll('.mtb-fbar').forEach(b=>b.style.background=curColor); }
 function mtbToggle(menu, which){ menu.querySelectorAll('.mtb-pal').forEach(p=>p.hidden = p.dataset.pal!==which || !p.hidden); }
 const GM=$('gmenu');
-GM.innerHTML=[['colors'],['-'],['cut','ตัด','Ctrl+X'],['copy','คัดลอก','Ctrl+C'],['paste','วาง','Ctrl+V'],['insblank','แทรก',''],['clear','ลบ','Delete'],['selall','เลือกทั้งหมด','Ctrl+A'],['copyall','คัดลอกทั้งตาราง',''],['-'],['delblank','ลบแถว',''],['auto','จัดอัตโนมัติใหม่','']]
+GM.innerHTML=[['colors'],['-'],['cut','ตัด','Ctrl+X'],['copy','คัดลอก','Ctrl+C'],['paste','วาง','Ctrl+V'],['insblank','แทรก',''],['clear','ลบ','Delete'],['selall','เลือกทั้งหมด','Ctrl+A'],['-'],['auto','จัดอัตโนมัติ','']]
   .map(x=>x[0]==='-'?'<hr>':x[0]==='colors'?mtbHTML('data-gcol',{}):`<button type="button" data-gm="${x[0]}"><span>${x[1]}</span><kbd>${x[2]}</kbd></button>`).join('');
 function hideGMenu(){ GM.hidden=true; }
 G.addEventListener('mousedown',()=>{ GSEP=null; });
@@ -2263,7 +2271,7 @@ const MENU=$('cmenu');
 const MENU_ITEMS=[
   ['colors'],['-'],   /* same order as จัดตาราง's menu; B / พื้นหลัง / สีตัวอักษร are the buttons on top */
   ['cut','ตัด','Ctrl+X'],['copy','คัดลอก','Ctrl+C'],['paste','วาง','Ctrl+V'],['insup','แทรก',''],['clear','ลบ','Delete'],['-'],
-  ['delrow','ลบแถว',''],['autoarr','จัดอัตโนมัติใหม่','']];
+  ['autoarr','จัดอัตโนมัติ','']];
 MENU.innerHTML = MENU_ITEMS.map(x=>x[0]==='-'?'<hr>':x[0]==='colors'?mtbHTML('data-col',{bold:true,fill:true}):`<button type="button" data-m="${x[0]}" class="${x[3]||''}"><span>${x[1]}</span><kbd>${x[2]}</kbd></button>`).join('');
 function hideMenu(){ MENU.hidden=true; }
 BOARD.addEventListener('contextmenu',e=>{
