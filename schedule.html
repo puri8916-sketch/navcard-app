@@ -1743,11 +1743,21 @@ async function buildPdf(){
   const mon=MONTHS[m-1].charAt(0)+MONTHS[m-1].slice(1).toLowerCase();
   return {pdf, name:`${d} ${mon} ${y}.pdf`};   /* e.g. 2 November 2026.pdf */
 }
+/* where the PDF goes: browsers that can (Chrome / Edge on a computer) ask for the folder + name, and remember the last folder;
+   others (phones, Safari, Firefox) download as before */
+function savePicker(){ for(const w of [window.top, window.parent, window]){ try{ if(w && typeof w.showSaveFilePicker==='function') return w; }catch(e){} } return null; }
+function pdfName(){ const [y,m,d]=S.D.split('-').map(Number); const mon=MONTHS[m-1].charAt(0)+MONTHS[m-1].slice(1).toLowerCase(); return `${d} ${mon} ${y}.pdf`; }
 async function downloadPdf(){
-  const btn=$('pdfBtn'); btn.disabled=true; const label=btn.textContent; btn.textContent='กำลังสร้าง PDF…';
+  const btn=$('pdfBtn'); btn.disabled=true; const label=btn.textContent;
   try{
-    const {pdf,name}=await buildPdf();
-    const a=document.createElement('a'); a.href=URL.createObjectURL(pdf.output('blob')); a.download=name; document.body.append(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),5000);
+    let fh=null; const W=savePicker();
+    if(W){ const t0=performance.now();
+      try{ fh=await W.showSaveFilePicker({id:'skp-schedule-pdf', suggestedName:pdfName(), types:[{description:'PDF',accept:{'application/pdf':['.pdf']}}]}); }   /* ask first: the picker needs the click */
+      catch(err){ if(err && err.name==='AbortError' && performance.now()-t0>400) return; fh=null; } }   /* cancelled → nothing; blocked / closed at once (no picker here) → normal download */
+    btn.textContent='กำลังสร้าง PDF…';
+    const {pdf,name}=await buildPdf(); const blob=pdf.output('blob');
+    if(fh){ try{ const w=await fh.createWritable(); await w.write(blob); await w.close(); toast('บันทึกแล้ว: '+fh.name); return; }catch(err){ /* fall through to a normal download */ } }
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; document.body.append(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),5000);
     toast('ดาวน์โหลด '+name);
   }catch(err){ toast('สร้าง PDF ไม่สำเร็จ: '+err.message); }
   finally{ btn.disabled=false; btn.textContent=label; }
