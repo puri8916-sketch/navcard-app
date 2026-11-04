@@ -882,11 +882,9 @@ function buildMain(items, D){
   for(const r of rows) if(!r.blank) [r.L,r.R].filter(Boolean).sort(sortMv).forEach(m=>no.set(m.id,n++));   // NO. ไล่ตามแถวจากบนลงล่าง
   return {rows,no,nIn:list.filter(m=>m.type==='IN').length,nOut:list.filter(m=>m.type!=='IN').length};
 }
-function buildLate(items){
-  const list=items.slice().sort(sortMv); const rows=[]; const slots=[];
-  for(const m of list){ const s=slots[slots.length-1]; if(s && s.dt===m.datetime) s.items.push(m); else slots.push({dt:m.datetime, items:[m]}); }
-  for(const s of slots){ const outs=s.items.filter(m=>m.type!=='IN'), ins=s.items.filter(m=>m.type==='IN');
-    pairSlot(ins,outs,mvBerth).forEach(r=>rows.push({...r, late:true})); }
+function buildLate(items){   /* เรือเพิ่ม (พ): no auto-arranging — each side just in time order, packed from the top row */
+  const ins=items.filter(m=>m.type==='IN').sort(sortMv), outs=items.filter(m=>m.type!=='IN').sort(sortMv), rows=[];
+  for(let i=0;i<Math.max(ins.length,outs.length);i++){ const r={late:true}; if(ins[i]) r.L=ins[i]; if(outs[i]) r.R=outs[i]; rows.push(r); }
   if(!rows.length) rows.push({blank:true});
   return rows;
 }
