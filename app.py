@@ -182,6 +182,11 @@ def _remember_js(value, max_age):
 
 
 _auth_ls = components.declare_component("auth_ls", path=os.path.join(_HERE, "auth_component"))
+_AUTH_FALLBACK_JS = ("<script>setTimeout(()=>{try{if(window.frameElement&&!window.frameElement.isConnected)return;"
+                     "let t='';try{t=localStorage.getItem('" + _AUTH_COOKIE + "')||''}catch(e){}"
+                     "const d=window.top.document,x=d.createElement('script');"   # runs in the top page: a sandboxed frame may not navigate it
+                     "x.textContent='(function(){var u=new URL(location.href);u.searchParams.set(\\'auth\\','+JSON.stringify(t||'-')+');location.replace(u.toString())})()';"
+                     "d.head.appendChild(x)}catch(e){}},4000)</script>")
 
 
 def _login_gate():
@@ -195,6 +200,7 @@ def _login_gate():
     if not user and not st.session_state.get("_auth_nocookie"):
         user = _cookie_user(users)
         if not user and st.query_params.get("auth"):          # sent back from this device's localStorage
+            st.session_state._auth_ls_done = True            # (also the fallback below) — don't wait for the component again
             user = _check_token(st.query_params.get("auth"), users)
             if user:
                 st.session_state._auth_set = st.query_params.get("auth")
@@ -212,6 +218,9 @@ def _login_gate():
         if got is None:
             st.markdown("<div style='text-align:center;margin-top:30vh;color:#6b7884;font-size:18px'>กำลังเข้าสู่ระบบ…</div>",
                         unsafe_allow_html=True)
+            # fallback: if the component's files don't load (slow network, the app just restarted) don't hang here —
+            # after a few seconds hand the remembered sign-in over through the address (?auth=) instead
+            components.html(_AUTH_FALLBACK_JS, height=0)
             st.stop()
         st.session_state._auth_ls_done = True
         user = _check_token((got or {}).get("t", ""), users)
