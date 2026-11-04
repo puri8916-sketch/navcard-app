@@ -1115,7 +1115,7 @@ function lastBerth(ship, dt, exceptId){
 async function persist(m){
   try{ await api('saveMovement',{},{m}); }catch(err){ toast('บันทึกไม่สำเร็จ: '+err.message); }
 }
-async function ensureShip(m){
+async function ensureShip(m){ return;   /* ships are added to ทะเบียนเรือ by hand only (no automatic registration) */
   if(!m.ship || S.shipIdx.has(m.ship)) return;
   const s={name:m.ship, loa:m.loa, berth:m.type==='IN'?m.to:(m.from||m.to), agent:m.agent, note:''};
   S.ships.push(s); S.shipIdx.set(m.ship,s);
