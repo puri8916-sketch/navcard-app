@@ -1070,13 +1070,15 @@ function fitAll(){   // read all widths first, then write — one layout pass in
   const list=[...$('grid').querySelectorAll('input')].filter(i=>i.value);
   if(!list.length || $('view-work').hidden) return;
   list.forEach(i=>{ if(i.style.fontSize) i.style.fontSize=''; });
-  const m=list.map(i=>[i.scrollWidth,i.clientWidth]);
-  list.forEach((i,k)=>{ const [sw,cw]=m[k]; if(sw>cw+1) i.style.fontSize=Math.max(7,16*(cw-3)/sw).toFixed(1)+'px'; i.scrollLeft=0; i.title=sw>cw+1?i.value:''; });   /* the whole text always visible (no scrolling inside the cell) */
-  list.filter(i=>i.style.fontSize && i.scrollWidth>i.clientWidth+1).forEach(i=>{ i.style.fontSize=Math.max(7,parseFloat(i.style.fontSize)*0.94).toFixed(1)+'px'; });   /* text shapes don't scale exactly: one more small step */
+  /* measure the text itself (canvas) — an input's scrollWidth doesn't report overflowing text in every browser */
+  const m=list.map(i=>{ const cs=getComputedStyle(i); return [textW(i.value,cs), i.clientWidth-(parseFloat(cs.paddingLeft)||0)-(parseFloat(cs.paddingRight)||0), parseFloat(cs.fontSize)]; });
+  list.forEach((i,k)=>{ const [tw,aw,fs]=m[k]; const over=tw>aw+0.5; if(over) i.style.fontSize=Math.max(6,fs*(aw-2)/tw).toFixed(1)+'px'; i.scrollLeft=0; i.title=over?i.value:''; });   /* the whole text always visible (no scrolling inside the cell) */
   $('grid').querySelectorAll('.rt .rto').forEach(o=>{ const i=o.previousElementSibling; o.style.fontSize=i&&i.style.fontSize||''; });   /* coloured letters: same size as the cell */
 }
-function fitInput(i){ i.style.fontSize=''; if(!i.value || i.offsetParent===null) return; const base=parseFloat(getComputedStyle(i).fontSize);
-  if(i.scrollWidth>i.clientWidth+1){ const k=(i.clientWidth-3)/i.scrollWidth; i.style.fontSize=Math.max(7,base*k).toFixed(1)+'px'; } i.scrollLeft=0;
+let TWC=null; function textW(t,cs){ if(!TWC) TWC=document.createElement('canvas').getContext('2d'); TWC.font=`${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`; return TWC.measureText(String(t||'')).width; }
+function fitInput(i){ i.style.fontSize=''; if(!i.value || i.offsetParent===null) return; const cs=getComputedStyle(i), base=parseFloat(cs.fontSize);
+  const tw=textW(i.value,cs), aw=i.clientWidth-(parseFloat(cs.paddingLeft)||0)-(parseFloat(cs.paddingRight)||0);
+  if(tw>aw+0.5){ i.style.fontSize=Math.max(6,base*(aw-2)/tw).toFixed(1)+'px'; i.title=i.value; } else i.title=''; i.scrollLeft=0;
   const o=i.nextElementSibling; if(o && o.classList && o.classList.contains('rto')) o.style.fontSize=getComputedStyle(i).fontSize; }
 function renderAll(){
   renderStrip();
