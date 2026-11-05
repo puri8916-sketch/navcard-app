@@ -1117,9 +1117,17 @@ function lastBerth(ship, dt, exceptId){
   if(prev) return prev.type==='OUT'? '' : prev.to;
   return S.shipIdx.get(ship)?.berth || '';
 }
-async function persist(m){
-  try{ await api('saveMovement',{},{m}); }catch(err){ toast('บันทึกไม่สำเร็จ: '+err.message); }
-}
+/* writes to the sheet: when it is busy (Lock timeout) or the network drops, keep the change and try again by itself — nothing is lost */
+const transientErr=err=>/lock|timeout|timed out|fetch|network|service|exceeded|busy|429|500|502|503|504|ชั่วคราว/i.test(String(err&&err.message||err));
+const PQ=new Map(); let pqT=null, pqN=0, pqBusy=false;
+async function persist(m){ PQ.set(m.id, JSON.parse(JSON.stringify(m))); await flushPQ(); }
+async function flushPQ(){ if(pqBusy) return; pqBusy=true; clearTimeout(pqT); pqT=null; let fail=null;
+  try{ for(const [id,m] of [...PQ]){ try{ await api('saveMovement',{},{m}); if(PQ.get(id)===m) PQ.delete(id); pqN=0; }
+      catch(err){ if(transientErr(err)){ fail=err; break; } if(PQ.get(id)===m) PQ.delete(id); toast('บันทึกไม่สำเร็จ: '+err.message); } } }
+  finally{ pqBusy=false; }
+  if(fail){ pqN++; if(pqN===2) toast('ชีตไม่ว่างชั่วคราว — กำลังลองบันทึกใหม่เอง ('+PQ.size+' รายการ)'); pqT=setTimeout(flushPQ, Math.min(15000,1000*2**(pqN-1))); }
+  else if(PQ.size) setTimeout(flushPQ,0); }
+window.addEventListener('beforeunload',e=>{ if(PQ.size || Object.keys(BPEND).length){ e.preventDefault(); e.returnValue=''; } });   /* still saving → ask before closing */
 async function ensureShip(m){ return;   /* ships are added to ทะเบียนเรือ by hand only (no automatic registration) */
   if(!m.ship || S.shipIdx.has(m.ship)) return;
   const s={name:m.ship, loa:m.loa, berth:m.type==='IN'?m.to:(m.from||m.to), agent:m.agent, note:''};
@@ -1846,7 +1854,7 @@ setInterval(refreshMv,15000);
 let bPollBusy=false, boardsApi=true, bPollLast=0;
 async function pollBoards(){
   if(bPollBusy || !BD || !S.init || !CFG.API_URL || $('view-line').hidden || document.visibilityState==='hidden') return;
-  if(Object.keys(BD.pending||{}).length || bSaveBusy) return;   /* our own change is still on its way */
+  if(Object.keys(BPEND).length || bSaveBusy) return;   /* our own change is still on its way */
   if(!boardsApi && Date.now()-bPollLast<20000) return; bPollBusy=true; bPollLast=Date.now();
   try{
     let boards=null;
@@ -1857,7 +1865,7 @@ async function pollBoards(){
       if(!cur || (x.updated||0)>(cur.updated||0)) S.boards[d]=x;
       if(BD.all[d] && (x.updated||0)>(BD.all[d].updated||0)) newer=true; }   /* compare with the table on screen (S.boards may already hold it from another refresh) */
     const typing=document.activeElement && document.activeElement.closest && document.activeElement.closest('#board');
-    if(newer && !typing && !Object.keys(BD.pending||{}).length){ const keepSel=SEL; openBoard(S.D); SEL=keepSel&&BD.blocks[keepSel.b]?keepSel:null; renderBoard(); toast('อัปเดตตารางแก้ไขจากเครื่องอื่นแล้ว'); }
+    if(newer && !typing && !Object.keys(BPEND).length){ const keepSel=SEL; openBoard(S.D); SEL=keepSel&&BD.blocks[keepSel.b]?keepSel:null; renderBoard(); toast('อัปเดตตารางแก้ไขจากเครื่องอื่นแล้ว'); }
     else if(newer) BD.remoteWaiting=true;
   }catch(e){ /* offline for a moment */ }
   finally{ bPollBusy=false; } }
@@ -1972,11 +1980,17 @@ function boardSave(){
   }
   if(!changed.length) return;
   BD.updated=now; $('boardInfo').textContent = `บันทึก ${new Date(now).toTimeString().slice(0,5)}`;
-  const snap=JSON.parse(JSON.stringify(changed)); BD.pending=Object.assign(BD.pending||{}, Object.fromEntries(snap.map(b=>[b.date,b])));
-  clearTimeout(bSaveT);
-  bSaveT=setTimeout(async()=>{ const list=Object.values(BD.pending||{}); BD.pending={}; bSaveBusy=true;
-    try{ for(const blk of list) await api('saveBoard',{},{board:blk}); }catch(err){ toast('บันทึกตารางแก้ไขขึ้นชีตไม่สำเร็จ: '+scriptOld(err)); } finally{ bSaveBusy=false; } },600);
+  const snap=JSON.parse(JSON.stringify(changed)); Object.assign(BPEND, Object.fromEntries(snap.map(b=>[b.date,b])));
+  clearTimeout(bSaveT); bSaveT=setTimeout(flushBoards,600);
 }
+/* แก้ไข tables waiting to reach the sheet (kept outside BD, so reopening the board doesn't drop them); retried by itself when the sheet is busy */
+const BPEND={}; let bTry=0;
+async function flushBoards(){ if(bSaveBusy) return; clearTimeout(bSaveT); bSaveBusy=true; let fail=null;
+  try{ for(const [d,blk] of Object.entries(BPEND)){ try{ await api('saveBoard',{},{board:blk}); if(BPEND[d]===blk) delete BPEND[d]; bTry=0; }
+      catch(err){ if(transientErr(err)){ fail=err; break; } if(BPEND[d]===blk) delete BPEND[d]; toast('บันทึกตารางแก้ไขขึ้นชีตไม่สำเร็จ: '+scriptOld(err)); } } }
+  finally{ bSaveBusy=false; }
+  if(fail){ bTry++; if(bTry===2) toast('ชีตไม่ว่างชั่วคราว — กำลังลองบันทึกตารางแก้ไขใหม่เอง'); bSaveT=setTimeout(flushBoards, Math.min(15000,1000*2**(bTry-1))); }
+  else if(Object.keys(BPEND).length) bSaveT=setTimeout(flushBoards,0); }
 function openBoard(D){
   const P=addDays(D,-1); let fresh=null;
   BD={date:D, all:{}, blocks:[], saved:{}, pending:{}, updated:0};
