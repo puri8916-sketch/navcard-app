@@ -728,7 +728,7 @@ if(AY){
 /* ---------- daily log ---------- */
 const isOpen=c=>c.status!=="ปิดการเงิน"&&!String(c.closeNo||"").trim();
 function matchQ(c){if(!searchQ)return true;const hay=norm([invIn(c)||invOut(c)?INV_TXT:"",c.vessel,c.job,c.agent,c.agentOut,c.berth,c.from,c.remark,c.closeNo,...(c.shifts||[]).map(x=>x.agent)].join(" "));return searchQ.split(" ").every(t=>hay.includes(t))}
-function matchS(c){return fStatus==="all"||(fStatus==="open"?isOpen(c):c.status===fStatus)}
+function matchS(c){return fStatus==="all"||(fStatus==="open"?(closeF?c.status!=="ปิดการเงิน":isOpen(c)):c.status===fStatus)}   /* with a ลำดับการปิด filter, ยังไม่ปิดการ์ด = numbered but not ✓ ปิด yet */
 function setSeg(id,v){document.querySelectorAll("#"+id+" button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.v===v))}
 function hl(text){
   text=String(text||"");if(!searchQ||!text)return text;
@@ -757,7 +757,7 @@ function renderLog(){if(window.__ONLY__==="ay")setTimeout(renderAy,0);requestAni
   const filtered=!!searchQ||fStatus!=="all"||scope==="all"||!!closeF;
   $("clearF").hidden=!filtered;
   {const r=$("resN");r.replaceChildren();if(filtered){r.append(`พบ ${rows.length} รายการ`+(closeF&&cfMonV&&cfMonV!=="*"?" ในเดือน "+TH_MS[+cfMonV.slice(5,7)-1]+" "+String((+cfMonV.slice(0,4)+543)%100).padStart(2,"0"):scope==="all"?" จากทุกวัน":" ในวันที่ "+beTab(curDate)));
-    if(closeF){const sm=cnSummary(rows);if(sm){r.append(sm.txt);if(sm.miss)r.append(el("span",{class:"gapnote"},sm.miss));if(sm.dup)r.append(el("span",{class:"gapnote"},sm.dup))}}}}
+    if(closeF){const sm=cnSummary(fStatus==="all"?rows:base.filter(c=>matchQ(c)&&matchC(c)));if(sm){r.append(sm.txt);if(sm.miss)r.append(el("span",{class:"gapnote"},sm.miss));if(sm.dup)r.append(el("span",{class:"gapnote"},sm.dup))}}}}
   if(!rows.length){
     let title,sub;
     if(filtered){title="ไม่พบรายการที่ตรงกับตัวกรอง";sub=fStatus==="open"?"การ์ดทุกใบปิดการเงินแล้ว":"ลองพิมพ์ชื่อเรือสั้นลง หรือกด “ล้างตัวกรอง”"}
