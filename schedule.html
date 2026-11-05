@@ -2670,6 +2670,7 @@ function psbBerth(v){ const s=norm(v).replace(/\s+/g,' ');
   if(/^PTT/.test(s)) return 'PTT';
   if(/^HIGH\s*SEAS?$|^SEA$/.test(s)) return 'SEA';
   return ''; }   // TOWN … : filled in by hand
+const psbAgent=v=>{ const a=norm(v); return a==='PTTEP'?'PTTED':a; };   /* PSB writes PTTEP, the schedule uses PTTED */
 function psbRead(sh){
   const R=sh.rows, cell=(r,c)=>String(((R[r]||[])[c])??'').replace(/ /g,' ').trim();
   const find=re=>{ for(let r=1;r<R.length;r++){ const row=R[r]; if(!row) continue; for(let c=1;c<row.length;c++) if(re.test(cell(r,c))) return {r,c}; } return null; };
@@ -2700,9 +2701,9 @@ function psbRead(sh){
   // INBOUND B–H, OUTBOUND I–O (columns found from the header row)
   const inC0=lab.in?lab.in.c:2, outC0=lab.out?lab.out.c:inC0+7;
   for(const x of rowsOf(lab.in,inC0,outC0-1,false)){ const ship=norm(x.g('ship')); if(!ship) continue; const dt=when(x.g('eta'));
-    if(!dt){ bad.push(`${ship} (ETA ${x.g('eta')||'-'})`); continue; } legs.push({src:'in',ship,m:parseFloat(x.g('loa')),dt,berth:psbBerth(x.g('berth')),agent:norm(x.g('agent'))}); }
+    if(!dt){ bad.push(`${ship} (ETA ${x.g('eta')||'-'})`); continue; } legs.push({src:'in',ship,m:parseFloat(x.g('loa')),dt,berth:psbBerth(x.g('berth')),agent:psbAgent(x.g('agent'))}); }
   for(const x of rowsOf(lab.out,outC0,outC0+6,false)){ const ship=norm(x.g('ship')); if(!ship) continue; const dt=when(x.g('etd'));
-    if(!dt){ bad.push(`${ship} (ETD ${x.g('etd')||'-'})`); continue; } legs.push({src:'out',ship,m:parseFloat(x.g('loa')),dt,berth:psbBerth(x.g('berth')),agent:norm(x.g('agent'))}); }
+    if(!dt){ bad.push(`${ship} (ETD ${x.g('etd')||'-'})`); continue; } legs.push({src:'out',ship,m:parseFloat(x.g('loa')),dt,berth:psbBerth(x.g('berth')),agent:psbAgent(x.g('agent'))}); }
   for(const key of ['sh','ptt']){ const L=lab[key]; if(!L) continue; let prev='';
     for(const x of rowsOf(L,L.c,L.c+8,true)){ let ship=x.g('ship'); ship=ditto(ship)?prev:norm(ship); if(!ship) continue; prev=ship;
       const dt=when(x.g('etd')); if(!dt){ bad.push(`${ship} (ETD ${x.g('etd')||'-'})`); continue; }
