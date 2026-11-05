@@ -2172,13 +2172,29 @@ BOARD.addEventListener('change',e=>{ const i=e.target.closest('.ce'); if(!i||!BD
     if(dt){ const raw=String(i.value).trim(), t=timeText(raw,dt), o2=c===4?5:c===5?4:-1;
       if(typingKey===null) pushUndo(); row.c[c]=t; keepRich(row,c,raw,t); i.value=t;
       const filled = o2>=0; if(filled) mirrorTime(row,c,o2,dt);   /* text around the time stays in its own cell */   /* ETA and POB always move together, colour too */
-      if(c===5){ const pos=filled?relayout(b,r,4):null; boardSave(); if(pos){ SEL={b,r1:pos.r,c1:c,r2:pos.r,c2:c}; } renderBoard(); return; } } }
+      if(c===5){ const pos=filled&&!hadTime(i,base)?placeHalf(b,r,4):null; boardSave(); if(pos){ SEL={b,r1:pos.r,c1:c,r2:pos.r,c2:c}; } renderBoard(); return; } } }
   if((c===4||c===13) && i.value.trim()){
     const blk=BD.blocks[b]; const base=blk.date||BD.date;
-    if(parseTime(i.value,base)){ const pos=relayout(b,r,c); boardSave(); if(pos){ SEL={b,r1:pos.r,c1:c,r2:pos.r,c2:c}; } renderBoard(); return; }
+    if(parseTime(i.value,base)){ const pos=hadTime(i,base)?null:placeHalf(b,r,c); boardSave(); if(pos){ SEL={b,r1:pos.r,c1:c,r2:pos.r,c2:c}; } renderBoard(); return; }   /* a ship's first time puts it in order once; changing a time later leaves the row where it is (จัดอัตโนมัติ by hand) */
   }
   boardSave(); syncLate(); });
 
+const hadTime=(i,base)=>{ const o=String(i._old??'').trim(); return !!o && !DAYPFX.test(o) && !!parseTime(o,base); };   /* the cell held a real time before this edit */
+/* a ship's first time on แก้ไข: only that ship moves to its place by time (like จัดตาราง's เรือเพิ่ม) — the rows arranged by hand stay put.
+   Its side goes into the first free cell after the last earlier ship of the same side (same row as a ship on the other side is fine), no new gap rows. */
+function placeHalf(bi, r0, c0){
+  const blk=BD.blocks[bi], base=blk.date||BD.date, rows=blk.rows, src=rows[r0]; if(!src) return null;
+  const a=c0<9?0:9, z=c0<9?9:17, tc=c0<9?4:13, dt=parseTime(src.c[tc],base); if(!dt) return null;
+  const hf=[]; for(let k=a;k<z;k++){ hf.push({c:src.c[k], r:src.r[k], h:hOf(src,k), g:bgOf(src,k), w:(src.w&&src.w[k])||''}); src.c[k]=''; src.r[k]=''; setH(src,k,''); if(src.g) src.g[k]=''; if(src.w) src.w[k]=''; }
+  if(rowEmpty(src) && r0>0) rows.splice(r0,1);
+  const has=row=>row.c.slice(a,z).some(v=>String(v).trim()), tOf=row=>parseTime(row.c[tc],base)||'';
+  let lastLE=-1; rows.forEach((row,k)=>{ if(has(row) && tOf(row) && tOf(row)<=dt) lastLE=k; });
+  let nextGT=rows.length; for(let k=lastLE+1;k<rows.length;k++) if(has(rows[k])){ nextGT=k; break; }
+  let at=-1; for(let k=lastLE+1;k<nextGT;k++) if(!has(rows[k]) && !rowEmpty(rows[k])){ at=k; break; }
+  if(at<0){ at=Math.min(nextGT, rows.length); while(at>lastLE+1 && rows[at-1] && rowEmpty(rows[at-1])) at--; if(at===0 && rows[0] && rowEmpty(rows[0])) at=1; rows.splice(at,0,blankRow()); }
+  const row=rows[at]; hf.forEach((x,i)=>{ row.c[a+i]=x.c; row.r[a+i]=x.r; setH(row,a+i,x.h); if(x.g){ if(!row.g) row.g=Array(17).fill(''); row.g[a+i]=x.g; } if(x.w){ if(!row.w) row.w=Array(17).fill(''); row.w[a+i]=x.w; } });
+  blk.rows=oneTrailing(rows); return {r:blk.rows.indexOf(row)};
+}
 /* time changed → put that ship back in time order (NO. and colours travel with it) */
 function relayout(bi, r0, c0){
   const blk=BD.blocks[bi], base=blk.date||BD.date, rows=blk.rows;
