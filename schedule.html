@@ -268,6 +268,11 @@ table.lsheet.xl{width:auto;font-size:26.67px}
 #board.linepaper{width:100%;min-width:1180px}
 table.lsheet.board{width:100%;font-size:17px}
 .lsheet.board td{padding:0;height:34px}
+/* ผก. ขึ้นเรือแล้ว: a tap gutter outside the sheet (not in the LINE picture), the ship's half of the row turns light yellow */
+.lsheet.board td.stg{border:0!important;background:transparent!important;text-align:center;vertical-align:middle}
+.lsheet.board .stb{width:24px;height:24px;border-radius:50%;border:2px solid #B9C2CB;background:#fff;cursor:pointer;padding:0;font-size:13px;line-height:20px;color:#fff}
+.lsheet.board .stb:hover{border-color:#E0A800}.lsheet.board .stb.on{background:#F2B705;border-color:#D49A00}
+.lsheet.board td.pob{background:#FFF4C2}
 .lsheet.board td.date{font-size:26px}.lsheet.board td.title{font-size:21px}
 .lsheet.board .ce{width:100%;min-height:35px;line-height:35px;white-space:nowrap;overflow:hidden;text-align:center;padding:0 3px;outline:0;cursor:cell}
 .lsheet.board td.l .ce{text-align:left}
@@ -1956,7 +1961,8 @@ function dayLegacy(d){
 function getDay(d){ const a=dayLocal(d), r=dayRemote(d); let x=a&&r?((a.updated||0)>=(r.updated||0)?a:r):(a||r); if(!x) x=dayLegacy(d); return x?JSON.parse(JSON.stringify(x)):null; }
 let bSaveBusy=false;
 function boardSave(){
-  if(!BD) return; const now=Date.now(), changed=[]; setTimeout(undoSave,0);
+  if(!BD) return;
+  for(const b of BD.blocks) for(const r of b.rows) if(r.st){ for(const sd of Object.keys(r.st)){ const a=sd==='L'?0:9, z=sd==='L'?9:17; if(!r.c.slice(a,z).some(v=>String(v).trim())) delete r.st[sd]; } if(!Object.keys(r.st).length) delete r.st; }   /* ship taken off → its ขึ้นแล้ว mark goes too */ const now=Date.now(), changed=[]; setTimeout(undoSave,0);
   for(const d of Object.keys(BD.all)){ const vis=BD.blocks.find(x=>x.date===d); if(vis){ vis.hidden=false; BD.all[d]=vis; } else BD.all[d].hidden=true; }
   for(const blk of Object.values(BD.all)){
     const k=dayKey(blk); if(BD.saved[blk.date]===k) continue;      // only days that really changed are written
@@ -1998,20 +2004,26 @@ function redo(){ if(!REDO.length) return toast('ไม่มีให้ทำ�
 /* drawing */
 function boardTable(b,bi){
   const tot=LCOLW.reduce((a,x)=>a+x,0);
-  let h=`<table class="lsheet board"><colgroup>${LCOLW.map(w=>`<col style="width:${(w/tot*100).toFixed(3)}%">`).join('')}</colgroup>`;
-  h+=`<tr><td class="date" colspan="2"><div class="ce" contenteditable="true" data-b="${bi}" data-hd="1" aria-label="วันที่">${esc(b.label)}</div></td><td class="title" colspan="15">SHIP'S&nbsp;&nbsp; SCHEDULE&nbsp; FOR&nbsp; SONGKHLA&nbsp;&nbsp; PILOT<button type="button" class="blkdel" data-delblk="${bi}" title="เอาตารางของวันนี้ออกทั้งตาราง (ย้อนกลับได้)">✕ เอาตารางวันนี้ออก</button></td></tr>`;
-  h+=`<tr><td class="h-in" colspan="9">ENTERING</td><td class="h-out" colspan="8">SAILING &amp; SHIFTING</td></tr>`;
-  h+=`<tr>${LHEAD.map(t=>`<td class="hd">${t}</td>`).join('')}</tr>`;
+  const GW=1.9, k=(100-2*GW)/100;   /* two status gutters (ผก. ขึ้นเรือแล้ว), one each side */
+  let h=`<table class="lsheet board"><colgroup><col style="width:${GW}%">${LCOLW.map(w=>`<col style="width:${(w/tot*100*k).toFixed(3)}%">`).join('')}<col style="width:${GW}%"></colgroup>`;
+  h+=`<tr><td class="stg"></td><td class="date" colspan="2"><div class="ce" contenteditable="true" data-b="${bi}" data-hd="1" aria-label="วันที่">${esc(b.label)}</div></td><td class="title" colspan="15">SHIP'S&nbsp;&nbsp; SCHEDULE&nbsp; FOR&nbsp; SONGKHLA&nbsp;&nbsp; PILOT<button type="button" class="blkdel" data-delblk="${bi}" title="เอาตารางของวันนี้ออกทั้งตาราง (ย้อนกลับได้)">✕ เอาตารางวันนี้ออก</button></td></tr>`;
+  h+=`<tr><td class="stg"></td><td class="h-in" colspan="9">ENTERING</td><td class="h-out" colspan="8">SAILING &amp; SHIFTING</td><td class="stg"></td></tr>`;
+  h+=`<tr><td class="stg"></td>${LHEAD.map(t=>`<td class="hd">${t}</td>`).join('')}<td class="stg"></td></tr>`;
+  const gut=(row,ri,side)=>{ const a=side==='L'?0:9, z=side==='L'?9:17; if(!row.c.slice(a,z).some(v=>String(v).trim())) return '<td class="stg"></td>';
+    const on=!!(row.st&&row.st[side]); return `<td class="stg"><button type="button" class="stb${on?' on':''}" data-stb="${bi}|${ri}|${side}" title="${on?'ผก. ขึ้นเรือแล้ว (กดเพื่อยกเลิก)':'กดเมื่อ ผก. ขึ้นเรือแล้ว'}" aria-pressed="${on}">${on?'✓':''}</button></td>`; };
   b.rows.forEach((row,ri)=>{
-    h+=`<tr data-b="${bi}" data-r="${ri}">`;
+    h+=`<tr data-b="${bi}" data-r="${ri}">${gut(row,ri,'L')}`;
     for(let c=0;c<17;c++){
-      const f=LF[c]; const cls=[c===1||c===10?'l':'', PILOT_COLS.includes(c)?'pc':'', DRF_COLS.includes(c)?'dc':'', (c===0||c===9)&&String(row.c[c]||'').trim()==='พ'?'pw':'', wCls(row,c)].filter(Boolean).join(' ');
+      const f=LF[c]; const cls=[c===1||c===10?'l':'', PILOT_COLS.includes(c)?'pc':'', DRF_COLS.includes(c)?'dc':'', (c===0||c===9)&&String(row.c[c]||'').trim()==='พ'?'pw':'', wCls(row,c), row.st&&row.st[c<9?'L':'R']?'pob':''].filter(Boolean).join(' ');
       h+=`<td class="${cls}" data-b="${bi}" data-r="${ri}" data-c="${c}"${tdStyle(row,c)}><div class="ce" contenteditable="true"${colOf(row,c)?` style="color:${colOf(row,c)}"`:''} data-b="${bi}" data-r="${ri}" data-c="${c}"${f?` data-f="${f[0]}" data-side="${f[1]}"`:''} spellcheck="false">${cellHTML(row,c)}</div></td>`;
     }
-    h+='</tr>';
+    h+=`${gut(row,ri,'R')}</tr>`;
   });
   return h+'</table>';
 }
+document.addEventListener('mousedown',e=>{ if(e.target.closest && e.target.closest('#board [data-stb]')) e.preventDefault(); });
+document.addEventListener('click',e=>{ const t=e.target.closest && e.target.closest('#board [data-stb]'); if(!t||!BD) return; const [bi,ri,side]=t.dataset.stb.split('|'); const row=BD.blocks[+bi]&&BD.blocks[+bi].rows[+ri]; if(!row) return;
+  pushUndo(); row.st=row.st||{}; if(row.st[side]) delete row.st[side]; else row.st[side]=1; if(!Object.keys(row.st).length) delete row.st; boardSave(); renderBoard(); });
 // a day's table that was taken out can be added back (empty) for a sudden extra ship
 function renderAddBlk(){
   const have=new Set(BD.blocks.map(b=>b.date)), want=[addDays(BD.date,-1), BD.date].filter(d=>!have.has(d));
@@ -2188,6 +2200,7 @@ function placeHalf(bi, r0, c0){
   const blk=BD.blocks[bi], base=blk.date||BD.date, rows=blk.rows, src=rows[r0]; if(!src) return null;
   const a=c0<9?0:9, z=c0<9?9:17, tc=c0<9?4:13, dt=parseTime(src.c[tc],base); if(!dt) return null;
   const hf=[]; for(let k=a;k<z;k++){ hf.push({c:src.c[k], r:src.r[k], h:hOf(src,k), g:bgOf(src,k), w:(src.w&&src.w[k])||''}); src.c[k]=''; src.r[k]=''; setH(src,k,''); if(src.g) src.g[k]=''; if(src.w) src.w[k]=''; }
+  const sd=c0<9?'L':'R', st=!!(src.st&&src.st[sd]); if(src.st){ delete src.st[sd]; if(!Object.keys(src.st).length) delete src.st; }
   if(rowEmpty(src) && r0>0) rows.splice(r0,1);
   const has=row=>row.c.slice(a,z).some(v=>String(v).trim()), tOf=row=>parseTime(row.c[tc],base)||'';
   let lastLE=-1; rows.forEach((row,k)=>{ if(has(row) && tOf(row) && tOf(row)<=dt) lastLE=k; });
@@ -2195,6 +2208,7 @@ function placeHalf(bi, r0, c0){
   let at=-1; for(let k=lastLE+1;k<nextGT;k++) if(!has(rows[k]) && !rowEmpty(rows[k])){ at=k; break; }
   if(at<0){ at=Math.min(nextGT, rows.length); while(at>lastLE+1 && rows[at-1] && rowEmpty(rows[at-1])) at--; if(at===0 && rows[0] && rowEmpty(rows[0])) at=1; rows.splice(at,0,blankRow()); }
   const row=rows[at]; hf.forEach((x,i)=>{ row.c[a+i]=x.c; row.r[a+i]=x.r; setH(row,a+i,x.h); if(x.g){ if(!row.g) row.g=Array(17).fill(''); row.g[a+i]=x.g; } if(x.w){ if(!row.w) row.w=Array(17).fill(''); row.w[a+i]=x.w; } });
+  if(st){ row.st=row.st||{}; row.st[sd]=1; }
   blk.rows=oneTrailing(rows); return {r:blk.rows.indexOf(row)};
 }
 /* time changed → put that ship back in time order (NO. and colours travel with it) */
@@ -2204,7 +2218,7 @@ function relayout(bi, r0, c0){
   rows.forEach((row,ri)=>{
     for(const [side,a,z,tc] of [['L',0,9,4],['R',9,17,13]]){
       const c=row.c.slice(a,z); if(!c.some(v=>String(v).trim())) continue;
-      const hf={side, c, r:row.r.slice(a,z), h:Array.from({length:z-a},(x,k)=>hOf(row,a+k)), g:Array.from({length:z-a},(x,k)=>bgOf(row,a+k)), w:Array.from({length:z-a},(x,k)=>(row.w&&row.w[a+k])||''), dt:parseTime(row.c[tc],base)||'', ord:halves.length};
+      const hf={side, c, r:row.r.slice(a,z), h:Array.from({length:z-a},(x,k)=>hOf(row,a+k)), g:Array.from({length:z-a},(x,k)=>bgOf(row,a+k)), w:Array.from({length:z-a},(x,k)=>(row.w&&row.w[a+k])||''), st:!!(row.st&&row.st[side]), dt:parseTime(row.c[tc],base)||'', ord:halves.length};
       if(ri===r0 && c0>=a && c0<z) moved=hf;
       halves.push(hf);
     }
@@ -2212,7 +2226,7 @@ function relayout(bi, r0, c0){
   const timed=halves.filter(x=>x.dt).sort((x,y)=>x.dt<y.dt?-1:x.dt>y.dt?1:(berthRank(x.c[x.side==='L'?6:5])-berthRank(y.c[y.side==='L'?6:5]))||x.ord-y.ord), untimed=halves.filter(x=>!x.dt);
   const out=[blankRow()]; let prev=null; const slots=[];
   for(const x of timed){ const s=slots[slots.length-1]; if(s && s.dt===x.dt) s.items.push(x); else slots.push({dt:x.dt, items:[x]}); }
-  const place=(L,R)=>{ const row=blankRow(); for(const [hf,a] of [[L,0],[R,9]]) if(hf){ hf.c.forEach((v,k)=>{ row.c[a+k]=v; row.r[a+k]=hf.r[k]; row.h[a+k]=hf.h[k]; if(hf.g[k]){ if(!row.g) row.g=Array(17).fill(''); row.g[a+k]=hf.g[k]; } if(hf.w&&hf.w[k]){ if(!row.w) row.w=Array(17).fill(''); row.w[a+k]=hf.w[k]; } }); hf.at=out.length; } out.push(row); };
+  const place=(L,R)=>{ const row=blankRow(); for(const [hf,a] of [[L,0],[R,9]]) if(hf){ if(hf.st){ row.st=row.st||{}; row.st[a?'R':'L']=1; } hf.c.forEach((v,k)=>{ row.c[a+k]=v; row.r[a+k]=hf.r[k]; row.h[a+k]=hf.h[k]; if(hf.g[k]){ if(!row.g) row.g=Array(17).fill(''); row.g[a+k]=hf.g[k]; } if(hf.w&&hf.w[k]){ if(!row.w) row.w=Array(17).fill(''); row.w[a+k]=hf.w[k]; } }); hf.at=out.length; } out.push(row); };
   for(const s of slots){
     if(needGap(prev, s.dt)) out.push(blankRow());
     const ins=s.items.filter(x=>x.side==='L'), outs=s.items.filter(x=>x.side==='R');
@@ -2415,7 +2429,10 @@ function delBlock(bi){
 BOARD.addEventListener('click',e=>{ const b=e.target.closest('[data-delblk]'); if(b) delBlock(+b.dataset.delblk); });
 $('lineSince').addEventListener('input',e=>{ const i=e.target, v=i.value.replace(/\D/g,'').slice(0,2); if(i.value!==v) i.value=v; });   /* day number only */
 $('linePull').addEventListener('click',()=>{
-  pushUndo(); const nb=boardFromSchedule(S.D); const dd=+String($('lineSince').value||'').replace(/\D/g,''); if(dd && dd===+S.D.slice(8,10)){ const keep=BD.blocks.filter(x=>x.date!==S.D); BD.blocks=[...keep, nb.blocks[nb.blocks.length-1]]; }   /* วันที่ = this table's day → only this day's table is replaced, the day before stays as it is */
+  pushUndo(); const nb=boardFromSchedule(S.D);
+  { const key=(d,side,row)=>{ const a=side==='L'?0:9, tc=side==='L'?4:13; return `${d}|${side}|${baseShip(row.c[a+1])}|${String(row.c[tc]||'').trim()}`; }, on=new Set();   /* ผก. ขึ้นเรือแล้ว survives a pull */
+    BD.blocks.forEach(b=>b.rows.forEach(r=>{ if(r.st) for(const sd of Object.keys(r.st)) on.add(key(b.date,sd,r)); }));
+    nb.blocks.forEach(b=>b.rows.forEach(r=>{ for(const sd of ['L','R']) if(on.has(key(b.date,sd,r))){ r.st=r.st||{}; r.st[sd]=1; } })); } const dd=+String($('lineSince').value||'').replace(/\D/g,''); if(dd && dd===+S.D.slice(8,10)){ const keep=BD.blocks.filter(x=>x.date!==S.D); BD.blocks=[...keep, nb.blocks[nb.blocks.length-1]]; }   /* วันที่ = this table's day → only this day's table is replaced, the day before stays as it is */
   else BD.blocks=nb.blocks; SEL=null; boardSave(); renderBoard(); toast('ดึงข้อมูลจากจัดตารางแล้ว (ย้อนกลับได้)');
 });
 
