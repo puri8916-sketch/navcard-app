@@ -15,7 +15,7 @@ import importlib as _importlib
 if not hasattr(nc, "auto_remarks"):
     nc = _importlib.reload(nc)
 
-st.set_page_config(page_title="SKP·AI Pilot Analysis", page_icon=os.path.join(os.path.dirname(os.path.abspath(__file__)), "skp_icon.png"), layout="wide",
+st.set_page_config(page_title="SKP·Port Premium", page_icon=os.path.join(os.path.dirname(os.path.abspath(__file__)), "skp_icon.png"), layout="wide",
                    initial_sidebar_state="collapsed")
 
 _BASE_CSS = """
@@ -279,7 +279,7 @@ def _go(p):
 
 # Streamlit hides the sidebar's collapse (<<) button until hover; keep it visible so the
 # menu can be hidden for more room, and make the reopen (>>) button easy to see.
-st.logo(os.path.join(_HERE, "skp_logo.png"), size="large")   # SKP·AI Pilot Analysis (mermaid of Laem Samila), top-left
+st.logo(os.path.join(_HERE, "skp_logo.png"), size="large")   # SKP·Port Premium, top-left
 st.markdown("""<style>
 [data-testid="stMain"] [data-testid="stElementContainer"]:has(iframe[srcdoc*="navauth"]){position:absolute!important;width:0!important;height:0!important;overflow:hidden}
 .st-key-profile_pop{position:fixed!important;top:10px;right:16px;z-index:999990;width:auto!important}
@@ -386,7 +386,7 @@ with st.sidebar:
         mk("link",{id:"navPwa",rel:"manifest",href:base+"manifest.json"});mk("link",{rel:"apple-touch-icon",href:base+"apple-touch-icon.png"});
         mk("meta",{name:"apple-mobile-web-app-title",content:"SKP"});mk("meta",{name:"application-name",content:"SKP"});
         mk("meta",{name:"apple-mobile-web-app-capable",content:"yes"});mk("meta",{name:"mobile-web-app-capable",content:"yes"});mk("meta",{name:"theme-color",content:"#0B3B6E"});
-        if(!/SKP/.test(D.title))D.title="SKP·AI Pilot Analysis"}catch(e){}};
+        if(!/SKP/.test(D.title))D.title="SKP·Port Premium"}catch(e){}};
       let w=window.parent;for(let i=0;i<4&&w;i++){add(w);if(w===w.parent)break;w=w.parent}})();
     </script>""", height=0)
     _theme_choice = _THEME_OPTIONS[0]   # always light (the light/dark switch was removed)
