@@ -1404,6 +1404,8 @@ async function gCopyAll(){ const t=gAllText(); GCLIP=t; const text=t.text;
 function gPaste(cells){
   const R=grect(); if(!R) return; const single=cells.length===1 && cells[0].length===1;
   const h=single?R.r1-R.r0+1:cells.length, w=single?R.c1-R.c0+1:Math.max(...cells.map(x=>x.length));
+  if(!single){ const first=String(cells[0]?.[0]??'').trim(), noLike=!first||first==='พ'||/^\d{1,3}$/.test(first);   /* a whole side (NO. … AGENT) on any cell of that side → from its NO. column */
+    if(noLike && w===8 && R.c0>=9) R.c0=9; else if(noLike && w===9 && R.c0<9) R.c0=0; }
   const edit=new Map(), drafts=new Set();
   for(let a=0;a<h;a++) for(let b=0;b<w;b++){
     const i=gcell(R.r0+a,R.c0+b); if(!i) continue; const v=single?cells[0][0]:(cells[a]?.[b]??'');
@@ -2289,17 +2291,20 @@ function pasteGrid(cells, red, hh){
   if(!needSel()) return; const R=rect(); pushUndo(); const rows=BD.blocks[R.b].rows;
   const single = cells.length===1 && cells[0].length===1;
   const h = single ? R.r1-R.r0+1 : cells.length, w = single ? R.c1-R.c0+1 : Math.max(...cells.map(x=>x.length));
+  /* a whole side of a row (NO. … AGENT) pasted on any cell of that side → it lands from that side's NO. column, like replacing the ship */
+  let C0=R.c0; if(!single){ const first=String(cells[0]?.[0]??'').trim(), noLike=!first||first==='พ'||/^\d{1,3}$/.test(first);
+    if(noLike && w===8 && R.c0>=9) C0=9; else if(noLike && w===9 && R.c0<9) C0=0; }
   for(let i=0;i<h;i++){ const r=R.r0+i; if(r>=rows.length) rows.push(blankRow());
-    for(let j=0;j<w;j++){ const c=R.c0+j; if(c>16) break; const v=single?cells[0][0]:(cells[i]?.[j]??''); rows[r].c[c]=v; setH(rows[r],c, hh ? (single?hh[0][0]:(hh[i]?.[j]||'')) : ''); if(red) rows[r].r[c]=single?red[0][0]:(red[i]?.[j]||''); } }
+    for(let j=0;j<w;j++){ const c=C0+j; if(c>16) break; const v=single?cells[0][0]:(cells[i]?.[j]??''); rows[r].c[c]=v; setH(rows[r],c, hh ? (single?hh[0][0]:(hh[i]?.[j]||'')) : ''); if(red) rows[r].r[c]=single?red[0][0]:(red[i]?.[j]||''); } }
   /* pasted times: 1600 → 31-1600, ETA/POB fill each other, then put the ships back in time order */
   const base=BD.blocks[R.b].date||BD.date; let timed=false;
   for(let i=0;i<h;i++){ const row=rows[R.r0+i]; if(!row) continue;
-    for(let j=0;j<w;j++){ const c=R.c0+j; if(![4,5,13].includes(c)) continue; const v=String(row.c[c]||'').trim(); if(!v) continue;
+    for(let j=0;j<w;j++){ const c=C0+j; if(![4,5,13].includes(c)) continue; const v=String(row.c[c]||'').trim(); if(!v) continue;
       const dt=parseTime(v,base); if(!dt) continue; const t=timeText(v,dt); if(t!==v){ row.c[c]=t; keepRich(row,c,v,t); } timed=true;
-      const o2=c===4?5:c===5?4:-1; if(o2>=0 && !(R.c0<=o2 && o2<R.c0+w)) mirrorTime(row,c,o2,dt); } }
-  if([1,10].some(c=>R.c0<=c && c<R.c0+w)) timed=false;   /* a whole ship pasted somewhere: keep it where it was put */
+      const o2=c===4?5:c===5?4:-1; if(o2>=0 && !(C0<=o2 && o2<C0+w)) mirrorTime(row,c,o2,dt); } }
+  if([1,10].some(c=>C0<=c && c<C0+w)) timed=false;   /* a whole ship pasted somewhere: keep it where it was put */
   const pos = timed ? relayout(R.b,-1,-1) : null;
-  SEL = timed ? null : {b:R.b, r1:R.r0, c1:R.c0, r2:R.r0+h-1, c2:Math.min(16,R.c0+w-1)}; boardSave(); renderBoard();
+  SEL = timed ? null : {b:R.b, r1:R.r0, c1:C0, r2:R.r0+h-1, c2:Math.min(16,C0+w-1)}; boardSave(); renderBoard();
 }
 function parseTSV(t){ return t.replace(/\r/g,'').replace(/\n$/,'').split('\n').map(l=>l.split('\t')); }
 function inBoard(e){ return e.target && e.target.closest && e.target.closest('#board') && e.target.dataset.r!==undefined; }
