@@ -188,6 +188,13 @@ label.f input.capt{color:var(--pen-green)}
 .empty b{display:block;color:var(--ink);font-size:16px;margin-bottom:4px}
 .dash{color:var(--muted);opacity:.45}
 .filters{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;margin-bottom:10px}
+/* the tool + filter rows fold up out of the way (remembered on this device) */
+.tools-wrap{display:grid;grid-template-rows:1fr;transition:grid-template-rows .25s ease}.tools-wrap>.tools-in{overflow:hidden;min-height:0}
+.tools-wrap.folded{grid-template-rows:0fr}
+.tools-tgl-row{display:flex;justify-content:center;margin:-4px 0 6px}
+.tools-tgl{border:1px solid var(--line);background:var(--surface);color:#2f3c48;border-radius:0 0 10px 10px;border-top:0;padding:2px 16px 3px;font-size:13px;cursor:pointer;line-height:1.3}
+.tools-tgl:hover{background:var(--hover)}
+.tools-wrap.folded+.tools-tgl-row{margin-top:8px}.tools-wrap.folded+.tools-tgl-row .tools-tgl{border-radius:10px;border-top:1px solid var(--line)}
 .filters #q{flex:0 1 300px;width:300px;min-width:160px;border:1px solid var(--line);border-radius:6px;padding:6px 10px 6px 34px;background:var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2.4' stroke-linecap='round'%3E%3Ccircle cx='10.5' cy='10.5' r='6.5'/%3E%3Cpath d='M15.5 15.5 21 21'/%3E%3C/svg%3E") no-repeat 11px center}
 .filters .seg button{background:var(--surface)}
 .filters .seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
@@ -388,6 +395,7 @@ body.ay-mode #view-log,body.ay-mode #view-ves,body.ay-mode #view-cfg,body.ay-mod
 
   <aside class="calcpanel" id="calcPanel" hidden aria-label="เครื่องคิดเลข ×3.2808"><div class="cp-head"><b>🧮 เครื่องคิดเลข ×3.2808</b><button type="button" class="btn tb" id="calcX" aria-label="ปิดเครื่องคิดเลข">✕</button></div></aside>
   <section id="view-log">
+    <div class="tools-wrap" id="toolsWrap"><div class="tools-in">
     <div class="stats">
       <button class="btn primary addship" id="addBtn">＋ เพิ่มเรือ</button>
       <div class="spacer"></div>
@@ -458,6 +466,8 @@ body.ay-mode #view-log,body.ay-mode #view-ves,body.ay-mode #view-cfg,body.ay-mod
       <button class="linkbtn" id="clearF" type="button" hidden>ล้างตัวกรอง</button>
       <span class="hint" id="resN"></span>
     </div>
+    </div></div>
+    <div class="tools-tgl-row"><button type="button" class="tools-tgl" id="toolsTgl" aria-expanded="true" title="ซ่อน / แสดงแถบเครื่องมือ">︿ ซ่อน</button></div>
     <div class="tablebox">
       <table class="log">
         <thead>
@@ -684,6 +694,8 @@ $("prevDay").onclick=()=>{toDay();setDate(shiftDate(curDate,-1))};
 $("nextDay").onclick=()=>{toDay();setDate(shiftDate(curDate,1))};
 $("todayBtn").onclick=()=>{toDay();setDate(isoToday())};
 $("datePick").onchange=e=>{if(e.target.value){toDay();setDate(e.target.value)}};
+(()=>{const w=$("toolsWrap"),b=$("toolsTgl");const set=f=>{w.classList.toggle("folded",f);b.textContent=f?"﹀ แสดงเครื่องมือ":"︿ ซ่อน";b.setAttribute("aria-expanded",String(!f));try{localStorage.setItem("log_tools_folded",f?"1":"")}catch(e){};setTimeout(()=>{try{fitTable()}catch(e){}},280)};
+  let f0=false;try{f0=localStorage.getItem("log_tools_folded")==="1"}catch(e){};set(f0);b.onclick=()=>set(!w.classList.contains("folded"))})();
 function setDate(iso){curDate=iso;$("datePick").value=iso;calLabel();$("sheetTab").textContent=beTab(iso);renderLog()}
 /* ---------- แจ้งเรืออย. (menu of its own: window.__ONLY__='ay') ---------- */
 const AY=window.__ONLY__==="ay";
