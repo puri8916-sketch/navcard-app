@@ -748,7 +748,7 @@ function renderLog(){if(window.__ONLY__==="ay")setTimeout(renderAy,0);requestAni
   $("sShift").textContent=calls.reduce((n,c)=>n+(c.shifts?.length||0),0);
   $("sOk").textContent=calls.filter(c=>c.status==="ปิดการเงิน").length;
   $("openN").textContent=allCalls.filter(isOpen).length;
-  {const sel=$("cfMon");sel.hidden=!closeF;if(closeF){const ms=new Set(allCalls.filter(c=>c.date&&String(c.closeNo||"").trim()).map(c=>c.date.slice(0,7)));ms.add(curDate.slice(0,7));if(cfMonV&&cfMonV!=="*")ms.add(cfMonV);
+  {const sel=$("cfMon");sel.hidden=!closeF;if(closeF){const ms=new Set(allCalls.filter(c=>c.date&&String(c.closeNo||"").trim()).map(cnMonth));ms.add(curDate.slice(0,7));if(cfMonV&&cfMonV!=="*")ms.add(cfMonV);
     const opts=[["*","ทุกเดือน"],...[...ms].sort().reverse().map(k=>[k,`${TH_MS[+k.slice(5,7)-1]} ${String((+k.slice(0,4)+543)%100).padStart(2,"0")}`])];
     const html=opts.map(([v,t])=>`<option value="${v}">${t}</option>`).join("");if(sel.dataset.h!==html){sel.innerHTML=html;sel.dataset.h=html}sel.value=cfMonV||"*"}}
   const base=scope==="all"?allCalls:calls;
@@ -842,7 +842,9 @@ $("logBody").addEventListener("pointerdown",e=>{
   g.addEventListener("pointermove",mv);g.addEventListener("pointerup",up);g.addEventListener("pointercancel",up);
 });
 function cnParts(v){const m=String(v||"").trim().match(/^(.*?)\s*\/\s*(\d+)\s*$/);return m?{p:m[1].trim(),n:+m[2]}:null}
-function matchC(c){if(!closeF)return true;const v=String(c.closeNo||"").trim();if(!v)return false;if(cfMonV&&cfMonV!=="*"&&(c.date||"").slice(0,7)!==cfMonV)return false;
+/* month of a card for ลำดับการปิด: the month it sailed (ATD); not sailed yet → the month of its page */
+function cnMonth(c){const t=wParse(c.atd||(c.pilotOut==="-CAP-"?c.capOut:""),c.date);return t?t.iso.slice(0,7):(c.date||"").slice(0,7)}
+function matchC(c){if(!closeF)return true;const v=String(c.closeNo||"").trim();if(!v)return false;if(cfMonV&&cfMonV!=="*"&&cnMonth(c)!==cfMonV)return false;
   if(closeF.includes("/"))return v.replace(/\s+/g,"").toUpperCase().startsWith(closeF.replace(/\s+/g,"").toUpperCase());
   const pp=cnParts(v);return pp?pp.p.toUpperCase()===closeF.toUpperCase():v.toUpperCase()===closeF.toUpperCase()}
 function cnCompare(a,b){const x=cnParts(a.closeNo),y=cnParts(b.closeNo);if(x&&y)return x.p.localeCompare(y.p,undefined,{numeric:true})||x.n-y.n;return String(a.closeNo||"").localeCompare(String(b.closeNo||""),undefined,{numeric:true})}
