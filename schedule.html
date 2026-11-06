@@ -865,17 +865,17 @@ function pairSlot(ins, outs, berthOf){
 }
 const order = m => m.type==='IN' ? 1 : 0;   // same minute + same berth: sailing/shifting before entering
 function sortMv(a,b){ return a.datetime<b.datetime?-1:a.datetime>b.datetime?1:(berthRank(mvBerth(a))-berthRank(mvBerth(b)))||(order(a)-order(b)); }
-// แถวคั่น: ห่างกัน ≥ 1 ชม. · เรือตั้งแต่ 20:00 ถึงเที่ยงคืนไม่คั่นกันเอง (ก่อน 20:00 → 20:00 ขึ้นไป ยังคั่น)
+// แถวคั่น: จัดตาราง ห่างกัน ≥ 2 ชม. (ห่าง 1 ชม. ไม่คั่น) · แก้ไข ≥ 1 ชม. · เรือตั้งแต่ 20:00 ถึงเที่ยงคืนไม่คั่นกันเอง (ก่อน 20:00 → 20:00 ขึ้นไป ยังคั่น)
 const NOGAP_FROM='20:00';
-const GAP_H=1;   /* a separator row between ships 1 hour or more apart */
-function needGap(prev, dt){ if(!prev || !dt) return false; if((minutes(dt)-minutes(prev))/60 < GAP_H) return false;
+const GAP_S=2, GAP_H=1;   /* separator row: จัดตาราง 2 h or more apart · แก้ไข board 1 h or more */
+function needGap(prev, dt, h=GAP_H){ if(!prev || !dt) return false; if((minutes(dt)-minutes(prev))/60 < h) return false;
   return !(prev.slice(0,10)===dt.slice(0,10) && prev.slice(11,16)>=NOGAP_FROM); }
 // จัดอัตโนมัติ (ครั้งแรก): เรียงเวลา → ท่า, จับคู่แถว, แถวคั่น
-function autoRows(list){
+function autoRows(list, gh=GAP_S){
   const rows=[], slots=[]; let prev=null;
   for(const m of list){ const s=slots[slots.length-1]; if(s && s.dt===m.datetime) s.items.push(m); else slots.push({dt:m.datetime, items:[m]}); }
   for(const s of slots){
-    if(needGap(prev, s.dt)) rows.push({blank:true});
+    if(needGap(prev, s.dt, gh)) rows.push({blank:true});
     pairSlot(s.items.filter(m=>m.type==='IN'), s.items.filter(m=>m.type!=='IN'), mvBerth).forEach(r=>rows.push(r));
     prev=s.dt;
   }
@@ -909,7 +909,19 @@ function freezeDay(D){ if(!D || layoutOf(D)) return; const list=S.mv.filter(m=>i
 /* …and the place a new ship got is kept, so it doesn't move when more ships are added */
 function fixDay(D){ if(!D || !layoutOf(D)) return; const list=S.mv.filter(m=>inWin(m,D) && !+m.late);
   setLayout(D, arrangeRows(list, D).map(r=>r.blank?['','']:[r.L?r.L.id:'', r.R?r.R.id:''])); }
-function arrangeRows(items, D){ const list=items.slice().sort(sortMv); const lay=D && layoutOf(D); return lay ? applyLayout(list, lay.rows) : autoRows(list); }
+function arrangeRows(items, D, gh){ const list=items.slice().sort(sortMv); let lay=D && layoutOf(D); if(lay) lay=gapMig(D, lay, list); return lay ? applyLayout(list, lay.rows) : autoRows(list, gh); }
+/* once: separator rows the old 1-hour rule put into a saved จัดตาราง layout (ships 1–2 h apart) come out; separators added by hand later stay */
+const GAPMIG=Date.UTC(2026,10,6,8,0), gapDone=new Set();
+function gapMig(D, lay, list){ if((lay.updated||0)>=GAPMIG || gapDone.has(D) || D<addDays(todayYmd(),-1)) return lay; gapDone.add(D);
+  const byId=new Map(list.map(m=>[m.id,m])), dts=r=>[r[0],r[1]].map(id=>byId.get(id)).filter(Boolean).map(m=>m.datetime).sort();
+  const rows=lay.rows, out=[];
+  rows.forEach((r,k)=>{ if(r[0]||r[1]){ out.push(r); return; }
+    let p=null, n=null; for(let j=k-1;j>=0 && !p;j--){ const d=dts(rows[j]); if(d.length) p=d[d.length-1]; }
+    for(let j=k+1;j<rows.length && !n;j++){ const d=dts(rows[j]); if(d.length) n=d[0]; }
+    if(p && n && needGap(p,n,GAP_H) && !needGap(p,n,GAP_S)) return;   /* 1–2 h apart: drop */
+    out.push(r); });
+  if(out.length===rows.length) return lay;
+  setLayout(D, out); return layoutOf(D); }
 function buildMain(items, D){
   const list=items.slice().sort(sortMv); const rows=[{blank:true}, ...arrangeRows(list, D), {blank:true}]; const no=new Map(); let n=1;
   for(const r of rows) if(!r.blank) [r.L,r.R].filter(Boolean).sort(sortMv).forEach(m=>no.set(m.id,n++));   // NO. ไล่ตามแถวจากบนลงล่าง
@@ -1463,7 +1475,7 @@ document.addEventListener('keydown',e=>{
 });
 /* ---------- ย้ายแถวเอง (หลังจัดอัตโนมัติครั้งแรก) ---------- */
 let GSEP=null;   // a separator row chosen with right-click
-function curLayRows(){ const lay=layoutOf(S.D); if(lay) return cl(lay.rows);
+function curLayRows(){   /* the rows as shown (data-li indexes them): a saved layout is normalised first — leading/double separators, ships gone, ships added */
   return arrangeRows(S.mv.filter(m=>inWin(m,S.D) && !+m.late), S.D).map(r=>r.blank?['','']:[r.L?r.L.id:'', r.R?r.R.id:'']); }
 function gPos(){ if(GSEP!==null) return {li:GSEP, side:null, c:null};
   if(!GSEL) return null; const i=gcell(GSEL.r1,GSEL.c1) || G.querySelector(`td[data-gr="${GSEL.r1}"][data-gc="${GSEL.c1}"]`); const tr=i && i.closest('tr[data-li]');
@@ -1508,7 +1520,7 @@ function mtbHTML(attr, opt){ /* attr: data-col / data-gcol */
 function mtbOpen(menu){ menu.querySelectorAll('.mtb-pal').forEach(p=>p.hidden=true); menu.querySelectorAll('.mtb-fbar').forEach(b=>b.style.background=curColor); }
 function mtbToggle(menu, which){ menu.querySelectorAll('.mtb-pal').forEach(p=>p.hidden = p.dataset.pal!==which || !p.hidden); }
 const GM=$('gmenu');
-GM.innerHTML=[['colors'],['-'],['cut','ตัด','Ctrl+X'],['copy','คัดลอก','Ctrl+C'],['paste','วาง','Ctrl+V'],['insblank','แทรก',''],['clear','ลบ','Delete'],['selall','เลือกทั้งหมด','Ctrl+A'],['-'],['auto','จัดอัตโนมัติ','']]
+GM.innerHTML=[['colors'],['-'],['cut','ตัด','Ctrl+X'],['copy','คัดลอก','Ctrl+C'],['paste','วาง','Ctrl+V'],['insblank','แทรก',''],['delblank','ลบแถว',''],['clear','ลบ','Delete'],['selall','เลือกทั้งหมด','Ctrl+A'],['-'],['auto','จัดอัตโนมัติ','']]
   .map(x=>x[0]==='-'?'<hr>':x[0]==='colors'?mtbHTML('data-gcol',{}):`<button type="button" data-gm="${x[0]}"><span>${x[1]}</span><kbd>${x[2]}</kbd></button>`).join('');
 function hideGMenu(){ GM.hidden=true; }
 G.addEventListener('mousedown',()=>{ GSEP=null; });
@@ -1926,7 +1938,7 @@ let UNDO=[], REDO=[], typingKey=null, CLIP=null;
 
 function pairRows(items, D){
   const rows=[{gap:true}];
-  for(const r of arrangeRows(items, D)){ if(r.blank){ if(!rows[rows.length-1].gap) rows.push({gap:true}); } else rows.push(r); }
+  for(const r of arrangeRows(items, D, GAP_H)){ if(r.blank){ if(!rows[rows.length-1].gap) rows.push({gap:true}); } else rows.push(r); }
   return rows;
 }
 function blockFromSchedule(D, items){
