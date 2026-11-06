@@ -590,7 +590,7 @@ html.ios .hbar{position:absolute;bottom:100%!important}
     <div class="scrollx vfit"><div class="paper linepaper" id="board"></div></div>
   </section>
   <section id="view-work" hidden>
-    <div class="ltool"><div class="grp"><button class="btn primary" id="printBtn">ปริ้น</button><button class="btn" id="pdfBtn">ดาวน์โหลด PDF</button><button class="btn tb" id="pdfDirBtn" hidden title="ที่เก็บ PDF">📁</button><span class="note" id="printNote" hidden></span></div><div class="grp"><button class="btn tb" id="gUndo" title="Ctrl+Z">↶ ย้อนกลับ</button><button class="btn tb" id="gRedo" title="Ctrl+Y">↷ ทำซ้ำ</button></div><div class="grp fcolor gfcolor"><button class="btn tb fc-main" id="gColor" title="สีตัวอักษร"><span class="fcA">A</span><span class="fcBar" id="gfcBar"></span></button><button class="btn tb fc-drop" id="gfcDrop" title="เลือกสี" aria-label="เลือกสีตัวอักษร">▾</button><div class="fc-pal" id="gfcPal" hidden></div></div><div class="grp"><button class="btn tb" id="gAutoBtn" hidden>⟲ จัดอัตโนมัติใหม่</button></div><div class="grp"><button class="btn tb" id="psbBtn" title="นำเข้าไฟล์ Excel เรือ PSB (Daily Vessel Movement Schedule)">📥 นำเข้า PSB</button><input type="file" id="psbFile" accept=".xlsx" hidden></div><div class="grp" hidden><button class="btn tb" id="impBtn" title="นำเข้าจากไฟล์ Excel ตารางเรือเดิม (แท็บแยกตามวัน)">📥 นำเข้าไฟล์ตาราง</button><input type="file" id="impFile" accept=".xlsx" hidden></div></div>
+    <div class="ltool"><div class="grp"><button class="btn primary" id="printBtn">ปริ้น</button><button class="btn" id="pdfBtn">ดาวน์โหลด PDF</button><button class="btn tb" id="pdfDirBtn" hidden title="ที่เก็บ PDF">📁</button><span class="note" id="printNote" hidden></span></div><div class="grp"><button class="btn tb" id="gUndo" title="Ctrl+Z">↶ ย้อนกลับ</button><button class="btn tb" id="gRedo" title="Ctrl+Y">↷ ทำซ้ำ</button></div><div class="grp"><button class="btn tb boldbtn" id="gBold" title="ตัวหนา (Ctrl+B)" aria-label="ตัวหนา"><b>B</b></button></div><div class="grp fcolor gfcolor"><button class="btn tb fc-main" id="gColor" title="สีตัวอักษร"><span class="fcA">A</span><span class="fcBar" id="gfcBar"></span></button><button class="btn tb fc-drop" id="gfcDrop" title="เลือกสี" aria-label="เลือกสีตัวอักษร">▾</button><div class="fc-pal" id="gfcPal" hidden></div></div><div class="grp"><button class="btn tb" id="gAutoBtn" hidden>⟲ จัดอัตโนมัติใหม่</button></div><div class="grp"><button class="btn tb" id="psbBtn" title="นำเข้าไฟล์ Excel เรือ PSB (Daily Vessel Movement Schedule)">📥 นำเข้า PSB</button><input type="file" id="psbFile" accept=".xlsx" hidden></div><div class="grp" hidden><button class="btn tb" id="impBtn" title="นำเข้าจากไฟล์ Excel ตารางเรือเดิม (แท็บแยกตามวัน)">📥 นำเข้าไฟล์ตาราง</button><input type="file" id="impFile" accept=".xlsx" hidden></div></div>
     <div class="panel imp" id="impPanel" hidden></div>
     <div class="sheetwrap vfit"><table class="eg" id="grid"></table></div>
   </section>
@@ -951,7 +951,7 @@ function sheetHTML(D){
   h += `<tr><td class="h-in" colspan="9">ENTERING</td><td class="h-out" colspan="9">SAILING &amp; SHIFTING</td></tr>`;
   h += `<tr>${['NO.',"SHIP'S&nbsp; NAME",'LOA','Drf','ETA','POB','BERTH','Pilot','AGENT','NO.',"SHIP'S&nbsp; NAME",'LOA','Drf','ETD','BERTH','Pilot','AGENT'].map(t=>`<td class="hd">${t}</td>`).join('')}<td class="r">PILOT ON DUTY</td></tr>`;
   let ri=0;
-  const fs=(m,f)=>{ const c=fcOf(m,f); return c?` style="color:${c}"`:''; };
+  const fs=fStyle;
   const cellsL=(m,lateRow)=> m ? `<td class="${lateRow?'pc':''}">${lateRow?'พ':(main.no.get(m.id)||'')}</td><td class="l"${fs(m,'ship')}>${esc(m.ship)}</td><td${fs(m,'loa')}>${esc(m.loa)}</td><td${fs(m,'drf')}>${esc(m.drf)}</td><td${fs(m,'t')}>${fmtT(m.datetime)}</td><td${fs(m,'pob')}>${fmtT(m.pob||m.datetime)}</td><td${fs(m,'berth')}>${richHTML(String(m.to||''),frRanges(m,'berth',String(m.to||'')))}</td><td class="pc"${fs(m,'pilot')}>${esc(m.pilot)}</td><td${fs(m,'agent')}>${esc(m.agent)}</td>`
                                : '<td></td>'.repeat(9);
   const cellsR=(m,lateRow)=> m ? `<td class="${lateRow?'pc':''}">${lateRow?'พ':(main.no.get(m.id)||'')}</td><td class="l"${fs(m,'ship')}>${esc(m.ship)}</td><td${fs(m,'loa')}>${esc(m.loa)}</td><td${fs(m,'drf')}>${esc(m.drf)}</td><td${fs(m,'t')}>${fmtT(m.datetime)}</td><td${fs(m,'berth')}>${richHTML(berthText(m),frRanges(m,'berth',berthText(m)))}</td><td class="pc"${fs(m,'pilot')}>${esc(m.pilot)}</td><td${fs(m,'agent')}>${esc(m.agent)}</td>`
@@ -1026,8 +1026,9 @@ function halfHTML(side, m, o){
       if(f==='no'){ const lt=+m.late; h+=`<td class="no${lt?' lt':''}${mid}">${lt?'พ':(o.no??'')}</td>`; continue; }   /* number only — clicking it no longer makes the ship พ */
       const need = f==='pilot' && !m.pilot ? ' need' : '';
       const fc = fcOf(m,f), fv=fieldVal(m,f,side), rr = f==='berth' ? frRanges(m,'berth',String(fv||'')) : [];
-      let cell = inputHTML(m.id,f,side,fv,`data-base="${o.base}"${fc?` style="color:${fc}"`:''}${rr.length?' data-rt="1"':''}`);
-      if(rr.length) cell=`<div class="rt">${cell}<span class="rto" aria-hidden="true"${fc?` style="color:${fc}"`:''}>${richHTML(String(fv),rr)}</span></div>`;   /* coloured letters drawn over the cell; typing shows the plain text */
+      const st=fStyle(m,f);
+      let cell = inputHTML(m.id,f,side,fv,`data-base="${o.base}"${st}${rr.length?' data-rt="1"':''}`);
+      if(rr.length) cell=`<div class="rt">${cell}<span class="rto" aria-hidden="true"${st}>${richHTML(String(fv),rr)}</span></div>`;   /* coloured letters drawn over the cell; typing shows the plain text */
       if(f==='ship') h+=`<td class="shipc">${cell}</td>`;
       else h+=`<td class="${need.trim()}">${cell}</td>`;
     }
@@ -1296,6 +1297,7 @@ G.addEventListener('keydown',e=>{
   const i=e.target.closest('input'); if(!i) return;
   const mod=e.ctrlKey||e.metaKey, k=e.key;
   if(mod && (isZ(e)||isY(e)) && i.value===i.defaultValue){ e.preventDefault(); if(isZ(e) && !e.shiftKey) gUndo(); else gRedo(); return; }
+  if(mod && !e.shiftKey && (k==='b'||k==='B'||e.code==='KeyB')){ e.preventDefault(); gSetBold(); return; }
   const open=!pop.hidden && cb.inp===i;
   if(open && (e.key==='ArrowDown'||e.key==='ArrowUp')){ e.preventDefault(); const n=cb.items.length; cb.act=(cb.act+(e.key==='ArrowDown'?1:-1)+n)%n;
     [...pop.children].forEach((c,k)=>c.classList.toggle('act',k===cb.act)); pop.children[cb.act]?.scrollIntoView({block:'nearest'}); return; }
@@ -1373,6 +1375,18 @@ function paintRanges(text,ranges,a,b,col){ const cs=Array(text.length).fill('');
   const out=[]; let k=0; while(k<cs.length){ if(!cs[k]){ k++; continue; } let e=k; while(e<cs.length&&cs[e]===cs[k]) e++; out.push([k,e,cs[k]]); k=e; } return out; }
 function richHTML(text,ranges){ if(!ranges.length) return esc(text); let h='', k=0; for(const [a,b,c] of ranges.slice().sort((x,y)=>x[0]-y[0])){ if(a>k) h+=esc(text.slice(k,a)); h+=`<span style="color:${c}">${esc(text.slice(a,b))}</span>`; k=b; } return h+esc(text.slice(k)); }
 function fcOf(m,f){ return (noteObj(m).fc||{})[f]||''; }
+function fbOf(m,f){ return (noteObj(m).fb||{})[f]||''; }   /* 'b' bold · 'n' not bold (overrides a bold-by-default column) · '' default */
+function setFb(m,f,v){ const o=noteObj(m), fb=o.fb||{}; if(v) fb[f]=v; else delete fb[f]; if(Object.keys(fb).length) o.fb=fb; else delete o.fb; m.note=Object.keys(o).length?JSON.stringify(o):''; }
+const fbCss=(m,f)=>{ const b=fbOf(m,f); return b==='b'?'font-weight:700;':b==='n'?'font-weight:400;':''; };
+const fStyle=(m,f)=>{ const c=fcOf(m,f), w=fbCss(m,f); return c||w?` style="${c?'color:'+c+';':''}${w}"`:''; };
+function gSetBold(){
+  const ins=gTargets().filter(i=>!i.dataset.draft); if(!ins.length) return toast('เลือกช่องของเรือก่อน');
+  const on=!ins.every(i=>+getComputedStyle(i).fontWeight>=600);   /* like Excel: all bold → unbold, otherwise bold */
+  const by=new Map(); ins.forEach(i=>{ const m=mvOf(i); if(!m) return; if(!by.has(m.id)) by.set(m.id,{m,before:cl(m),fs:[]}); by.get(m.id).fs.push(i); });
+  gBatchStart(); for(const {m,before,fs} of by.values()){ fs.forEach(i=>{ i.style.fontWeight=''; const def=+getComputedStyle(i).fontWeight>=600;   /* column bold by default (Pilot) */
+      setFb(m,i.dataset.f, on ? (def?'':'b') : (def?'n':'')); });
+    if(JSON.stringify(before)!==JSON.stringify(m)){ gRecord(before,m); persist(m); } } gBatchEnd(); rerender();
+}
 function setFc(m,f,col){ const o=noteObj(m), fc=o.fc||{}; if(col) fc[f]=col; else delete fc[f]; if(Object.keys(fc).length) o.fc=fc; else delete o.fc; m.note=Object.keys(o).length?JSON.stringify(o):''; }
 function gSetColor(col){
   const ins=gTargets().filter(i=>!i.dataset.draft); if(!ins.length) return toast('เลือกช่องของเรือก่อน');
@@ -1521,7 +1535,7 @@ function mtbOpen(menu){ menu.querySelectorAll('.mtb-pal').forEach(p=>p.hidden=tr
 function mtbToggle(menu, which){ menu.querySelectorAll('.mtb-pal').forEach(p=>p.hidden = p.dataset.pal!==which || !p.hidden); }
 const GM=$('gmenu');
 GM.innerHTML=[['colors'],['-'],['cut','ตัด','Ctrl+X'],['copy','คัดลอก','Ctrl+C'],['paste','วาง','Ctrl+V'],['insblank','แทรก',''],['delblank','ลบแถว',''],['clear','ลบ','Delete'],['selall','เลือกทั้งหมด','Ctrl+A'],['-'],['auto','จัดอัตโนมัติ','']]
-  .map(x=>x[0]==='-'?'<hr>':x[0]==='colors'?mtbHTML('data-gcol',{}):`<button type="button" data-gm="${x[0]}"><span>${x[1]}</span><kbd>${x[2]}</kbd></button>`).join('');
+  .map(x=>x[0]==='-'?'<hr>':x[0]==='colors'?mtbHTML('data-gcol',{bold:true}):`<button type="button" data-gm="${x[0]}"><span>${x[1]}</span><kbd>${x[2]}</kbd></button>`).join('');
 function hideGMenu(){ GM.hidden=true; }
 G.addEventListener('mousedown',()=>{ GSEP=null; });
 G.addEventListener('contextmenu',e=>{
@@ -1539,7 +1553,7 @@ GM.addEventListener('mousedown',e=>e.preventDefault());
 document.addEventListener('mousedown',e=>{ if(!GM.hidden && !e.target.closest('#gmenu')) hideGMenu(); });
 document.addEventListener('scroll',()=>hideGMenu(),true);
 GM.addEventListener('click',async e=>{
-  const t=e.target.closest('[data-mt]'); if(t){ const a=t.dataset.mt; if(a==='fontdrop'){ mtbToggle(GM,'font'); return; } if(a==='font'){ hideGMenu(); gPickColor(curColor); return; } }
+  const t=e.target.closest('[data-mt]'); if(t){ const a=t.dataset.mt; if(a==='fontdrop'){ mtbToggle(GM,'font'); return; } if(a==='font'){ hideGMenu(); gPickColor(curColor); return; } if(a==='bold'){ hideGMenu(); gSetBold(); return; } }
   const k=e.target.closest('[data-gcol]'); if(k){ hideGMenu(); gPickColor(k.dataset.gcol); return; }
   const b=e.target.closest('[data-gm]'); if(!b) return; hideGMenu(); const a=b.dataset.gm;
   if(a==='undo'){ gUndo(); return; } if(a==='redo'){ gRedo(); return; }
@@ -1946,7 +1960,7 @@ function blockFromSchedule(D, items){
   const rows = pairRows(items, D).map(pr=>{
     const row=blankRow(); if(pr.gap) return row;
     const put=(m,off,vals)=>{ const red=!!+m.late; vals.forEach((v,i)=>{ row.c[off+i]=String(v??''); row.r[off+i]=red?'#FF0000':''; }); if(+m.late) row.r[off]='#FF0000'; };
-    const fcs=(m,off,F)=>F.forEach((f,i)=>{ const c=f!=='no'&&fcOf(m,f); if(c) row.r[off+i]=c; });
+    const fcs=(m,off,F)=>F.forEach((f,i)=>{ const c=f!=='no'&&fcOf(m,f); if(c) row.r[off+i]=c; const w=f!=='no'&&fbOf(m,f); if(w){ row.w=row.w||Array(17).fill(''); row.w[off+i]=w; } });
     const rich=(m,c,t)=>{ const rr=frRanges(m,'berth',String(t||'')); if(rr.length) row.h[c]=richHTML(String(t),rr); };   /* part of BERTH in its own colour → the same on แก้ไข */
     if(pr.L){ const m=pr.L; put(m,0,[+m.late?'พ':(nos.get(m.id)||''), m.ship, m.loa, m.drf, fmtT(m.datetime), fmtT(m.pob||m.datetime), m.to, m.pilot, m.agent]); fcs(m,0,FL); rich(m,6,m.to); }
     if(pr.R){ const m=pr.R; put(m,9,[+m.late?'พ':(nos.get(m.id)||''), m.ship, m.loa, m.drf, fmtT(m.datetime), berthText(m), m.pilot, m.agent]); fcs(m,9,FR); rich(m,14,berthText(m)); }
@@ -2446,6 +2460,7 @@ document.addEventListener('mousedown',e=>{ if(!$('fcPal').hidden && !e.target.cl
 $('gfcPal').innerHTML = $('fcPal').innerHTML;
 ['gColor','gfcDrop','gfcPal'].forEach(id=>$(id).addEventListener('mousedown',e=>e.preventDefault()));
 $('gColor').addEventListener('click',()=>gSetColor(curColor));
+$('gBold').addEventListener('mousedown',e=>e.preventDefault()); $('gBold').addEventListener('click',()=>gSetBold());
 $('gfcDrop').addEventListener('click',()=>{ $('gfcPal').hidden=!$('gfcPal').hidden; });
 $('gfcPal').addEventListener('click',e=>{ const k=e.target.closest('[data-col]'); if(k) gPickColor(k.dataset.col); });
 document.addEventListener('mousedown',e=>{ if(!$('gfcPal').hidden && !e.target.closest('.gfcolor')) $('gfcPal').hidden=true; });
