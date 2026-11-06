@@ -865,9 +865,9 @@ function pairSlot(ins, outs, berthOf){
 }
 const order = m => m.type==='IN' ? 1 : 0;   // same minute + same berth: sailing/shifting before entering
 function sortMv(a,b){ return a.datetime<b.datetime?-1:a.datetime>b.datetime?1:(berthRank(mvBerth(a))-berthRank(mvBerth(b)))||(order(a)-order(b)); }
-// แถวคั่น: จัดตาราง ห่างกัน ≥ 2 ชม. (ห่าง 1 ชม. ไม่คั่น) · แก้ไข ≥ 1 ชม. · เรือตั้งแต่ 20:00 ถึงเที่ยงคืนไม่คั่นกันเอง (ก่อน 20:00 → 20:00 ขึ้นไป ยังคั่น)
+// แถวคั่น: ห่างกัน ≥ 2 ชม. (ห่าง 1 ชม. ไม่คั่น) ทั้งจัดตารางและแก้ไข · เรือตั้งแต่ 20:00 ถึงเที่ยงคืนไม่คั่นกันเอง (ก่อน 20:00 → 20:00 ขึ้นไป ยังคั่น)
 const NOGAP_FROM='20:00';
-const GAP_S=2, GAP_H=1;   /* separator row: จัดตาราง 2 h or more apart · แก้ไข board 1 h or more */
+const GAP_S=2, GAP_H=2;   /* separator row only when ships are 2 h or more apart (1 h apart: no separator) — จัดตาราง and แก้ไข */
 function needGap(prev, dt, h=GAP_H){ if(!prev || !dt) return false; if((minutes(dt)-minutes(prev))/60 < h) return false;
   return !(prev.slice(0,10)===dt.slice(0,10) && prev.slice(11,16)>=NOGAP_FROM); }
 // จัดอัตโนมัติ (ครั้งแรก): เรียงเวลา → ท่า, จับคู่แถว, แถวคั่น
@@ -918,7 +918,7 @@ function gapMig(D, lay, list){ if((lay.updated||0)>=GAPMIG || gapDone.has(D) || 
   rows.forEach((r,k)=>{ if(r[0]||r[1]){ out.push(r); return; }
     let p=null, n=null; for(let j=k-1;j>=0 && !p;j--){ const d=dts(rows[j]); if(d.length) p=d[d.length-1]; }
     for(let j=k+1;j<rows.length && !n;j++){ const d=dts(rows[j]); if(d.length) n=d[0]; }
-    if(p && n && needGap(p,n,GAP_H) && !needGap(p,n,GAP_S)) return;   /* 1–2 h apart: drop */
+    if(p && n && (minutes(n)-minutes(p))>=60 && !needGap(p,n,GAP_S)) return;   /* 1–2 h apart: drop */
     out.push(r); });
   if(out.length===rows.length) return lay;
   setLayout(D, out); return layoutOf(D); }
@@ -2018,6 +2018,20 @@ async function flushBoards(){ if(bSaveBusy) return; clearTimeout(bSaveT); bSaveB
   finally{ bSaveBusy=false; }
   if(fail){ bTry++; if(bTry===2) toast('ชีตไม่ว่างชั่วคราว — กำลังลองบันทึกตารางแก้ไขใหม่เอง'); bSaveT=setTimeout(flushBoards, Math.min(15000,1000*2**(bTry-1))); }
   else if(Object.keys(BPEND).length) bSaveT=setTimeout(flushBoards,0); }
+/* once: separator rows the old 1-hour rule put on แก้ไข (ships less than 2 h apart) come out */
+const BGAPMIG=Date.UTC(2026,10,6,9,10);
+function boardGapMig(b){ if((b.updated||0)>=BGAPMIG || !b.date || b.date<addDays(todayYmd(),-1)) return;
+  const X=b.date, empty=r=>!r.c.some(v=>String(v||'').trim());
+  const dts=r=>[r.c[4],r.c[13]].map(t=>parseTime(String(t||'').trim(),X)).filter(Boolean).sort();
+  const rows=b.rows, keep=[];
+  rows.forEach((r,k)=>{ if(!empty(r)){ keep.push(r); return; }
+    let p=null, n=null, j;
+    for(j=k-1;j>=0;j--){ if(empty(rows[j])) continue; const d=dts(rows[j]); if(d.length) p=d[d.length-1]; break; }
+    if(j<k-1){ keep.push(r); return; }   /* only a single separator between two ships; runs of empty rows stay */
+    for(j=k+1;j<rows.length;j++){ if(empty(rows[j])) break; const d=dts(rows[j]); if(d.length) n=d[0]; break; }
+    if(p && n && n>=p && !needGap(p,n,GAP_H)) return;
+    keep.push(r); });
+  if(keep.length!==rows.length) b.rows=keep; }
 function openBoard(D){
   const P=addDays(D,-1); let fresh=null;
   BD={date:D, all:{}, blocks:[], saved:{}, pending:{}, updated:0};
@@ -2027,6 +2041,7 @@ function openBoard(D){
     else BD.saved[d]=dayKey(b);
     b.date=d; BD.all[d]=b; if(!b.hidden) BD.blocks.push(b); BD.updated=Math.max(BD.updated,b.updated||0);
   }
+  for(const b of BD.blocks) boardGapMig(b);
   for(const b of Object.values(BD.all)) if(!b.sent) b.sent=boardHalves(b);   /* starting point for "taken off → สมุดบันทึกเรือ" (no first LINE send needed) */
   undoLoad(); SEL=null;
   boardSave(); renderBoard();
