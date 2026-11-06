@@ -2500,15 +2500,27 @@ function boardHalves(blk){ const X=blk.date||BD.date, out={};
     const g=k=>String(row.c[a+k]||'').trim(), ship=norm(g(1)); if(!ship) continue;
     const h = side==='L' ? {side,ship,X,no:g(0),loa:g(2),drf:g(3),t:g(4),pob:g(5),berth:g(6),pilot:g(7),agent:g(8)}
                          : {side,ship,X,no:g(0),loa:g(2),drf:g(3),t:g(4),berth:g(5),pilot:g(6),agent:g(7)};
-    out[side+'|'+ship]=h; }
+    let k=side+'|'+ship, n=2; while(out[k]) k=side+'|'+ship+'#'+(n++);   /* same ship twice on a side (shift + sail) keeps both rows */
+    out[k]=h; }
   return out; }
-function logGone(){ if(!BD) return; const gone=[], all={};
-  BD.blocks.forEach(b=>Object.assign(all, boardHalves(b)));
-  for(const blk of BD.blocks){ const cur=boardHalves(blk), prev=blk.sent;
-    if(prev) for(const k in prev){ const h=prev[k]; if(cur[k] || all[k]) continue;
-      if(h.drf==='งด' || !parseTime(h.t, h.X)) continue;   /* cancelled / no time: nothing happened */
-      gone.push(h); }
-    blk.sent=cur; }
+function logGone(){ if(!BD) return; const gone=[];
+  /* compare per side+ship over ALL shown tables: a row only counts as taken off when the ship has fewer rows on that side than at the last send.
+     a time/berth edit or a drag to the other day keeps the count → not logged; the rows left over after matching are the ones taken off */
+  const grp=o=>{ const g={}; for(const h of Object.values(o)) (g[h.side+'|'+h.ship]=g[h.side+'|'+h.ship]||[]).push(h); return g; };
+  const prevAll={}, curAll={};
+  BD.blocks.forEach((b,i)=>{ for(const [k,h] of Object.entries(b.sent||{})) prevAll[i+'@'+k]=h; for(const [k,h] of Object.entries(boardHalves(b))) curAll[i+'@'+k]=h; });
+  const P=grp(prevAll), C=grp(curAll);
+  for(const k in P){ let left=[...P[k]]; const cur=[...(C[k]||[])];
+    if(left.length<=cur.length) continue;
+    const same=(a,b)=>a.t===b.t && a.berth===b.berth && a.X===b.X;
+    for(const c of [...cur]){ const j=left.findIndex(h=>same(h,c)); if(j>=0){ left.splice(j,1); cur.splice(cur.indexOf(c),1); } }   /* untouched rows first */
+    for(const c of cur){ if(!left.length) break;   /* edited rows: closest time */
+      const tc=parseTime(c.t,c.X)||''; let bi=0, bd=Infinity;
+      left.forEach((h,j)=>{ const th=parseTime(h.t,h.X)||''; const d=(th&&tc)?Math.abs(new Date(th)-new Date(tc)):1e15; if(d<bd){bd=d;bi=j;} });
+      left.splice(bi,1); }
+    for(const h of left){ if(h.drf==='งด' || !parseTime(h.t, h.X)) continue;   /* cancelled / no time: nothing happened */
+      gone.push(h); } }
+  for(const blk of BD.blocks) blk.sent=boardHalves(blk);
   boardSave();
   if(gone.length) setTimeout(()=>askLog(gone),600); }
 function askLog(list){
@@ -2543,13 +2555,15 @@ async function writeLog(list){
   const lt=dt=>`${dt.slice(8,10)}-${dt.slice(5,7)}-${dt.slice(11,13)}${dt.slice(14,16)}`;   /* 31-10-0930 like the log */
   const pil=p=>/^0+$/.test(p)?'-CAP-':String(p||'').replace(/^P\.?/i,'');
   const key=c=>(c.date||'')+' '+(c.eta||c.atd||'');
-  const open=ship=>calls.filter(c=>norm(c.vessel)===ship && !c.atd).sort((a,b)=>key(a)<key(b)?1:-1)[0];
+  const sk=v=>norm(baseShip(v)).replace(/^(M\.?V\.?|M\.?T\.?|T\.?B\.?)\s+/,'').replace(/[^A-Z0-9\u0E00-\u0E7F]/g,'');   /* 'BAHTERA INTAN' = 'M.V. Bahtera-Intan' */
+  const same=(c,ship)=>sk(c.vessel)===sk(ship);
+  const open=ship=>calls.filter(c=>same(c,ship) && !c.atd).sort((a,b)=>key(a)<key(b)?1:-1)[0];
   const blank=(date,h)=>({date,by:beYY(date),fy:fyYY(date),job:'',vessel:h.ship,from:'',loa:h.loa,loaM:'',lbp:'',ng:'',agent:h.agent,eta:'',order:'',invIn:false,pilotIn:'',capIn:'',berth:'',draughtIn:'',
     atd:'',invOut:false,paknam:'',pilotOut:'',capOut:'',draughtOut:'',agentOut:h.agent,remark:'',status:'',closeNo:'',cnAt:0,shifts:[],t:Date.now(),updated:Date.now(),marks:{}});
   const ops=[], touched=new Map();
   for(const h0 of list){ const h={...h0, ship:baseShip(h0.ship)}; const dt=parseTime(h.t,h.X); const T=lt(dt), date=dt.slice(0,10);
     if(h.side==='L'){
-      if(calls.some(c=>norm(c.vessel)===h.ship && c.eta===T)) continue;
+      if(calls.some(c=>same(c,h.ship) && c.eta===T)) continue;
       const pob=parseTime(h.pob,h.X); const c={id:'c'+Date.now().toString(36)+Math.random().toString(36).slice(2,6), ...blank(date,h), eta:T, order:lt(pob||dt), pilotIn:pil(h.pilot), berth:h.berth, draughtIn:h.drf};
       calls.push(c); touched.set(c.id,c); continue; }
     const shift=String(h.berth).includes('<>');
@@ -2558,7 +2572,7 @@ async function writeLog(list){
       if(c && (c.shifts||[]).some(x=>x.order===T)) continue;
       if(!c){ c={id:'c'+Date.now().toString(36)+Math.random().toString(36).slice(2,6), ...blank(date,h)}; calls.push(c); }
       c.shifts=[...(c.shifts||[]), {order:T,pilot:pil(h.pilot),capTime:'',fromBerth:fb||'',berth:tb||'',draught:h.drf,agent:h.agent}]; }
-    else { if(calls.some(c=>norm(c.vessel)===h.ship && c.atd===T)) continue;
+    else { if(calls.some(c=>same(c,h.ship) && c.atd===T)) continue;
       if(!c){ c={id:'c'+Date.now().toString(36)+Math.random().toString(36).slice(2,6), ...blank(date,h)}; calls.push(c); }
       Object.assign(c,{atd:T,pilotOut:pil(h.pilot),draughtOut:h.drf,agentOut:h.agent||c.agentOut}); }
     c.updated=Date.now(); touched.set(c.id,c); }
