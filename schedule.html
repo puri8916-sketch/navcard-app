@@ -534,6 +534,9 @@ html.only-notice body{padding-bottom:0!important}
 .lg-list{max-height:50vh;overflow:auto;margin:10px 0;border:1px solid var(--line);border-radius:8px}
 .lg-row{display:flex;gap:10px;align-items:center;padding:9px 12px;border-bottom:1px solid var(--line);font-size:17px;cursor:pointer}
 .lg-row:last-child{border-bottom:0}.lg-row input{width:20px;height:20px}
+.lg-row>label.lg-main{display:flex;gap:10px;align-items:center;flex:1;min-width:0;cursor:pointer}
+.lg-inv{display:inline-flex;align-items:center;gap:4px;font-size:14px;white-space:nowrap;padding:2px 8px;border:1px solid var(--line);border-radius:8px;cursor:pointer}
+.lg-inv.on{background:#FFF4E5;border-color:#E8710A;color:#B45309;font-weight:700}.lg-inv input{width:18px;height:18px}
 .lg-row b{flex:1;min-width:0}.lg-row .pc{color:var(--pilot);font-weight:700}
 .lg-k{padding:1px 8px;border-radius:10px;font-size:14px;font-weight:700;color:#fff;background:#06C755}.lg-k.kย้าย{background:#E8710A}.lg-k.kออก{background:#1A56DB}
 /* iOS app shell (see the script before the main one) */
@@ -2592,17 +2595,22 @@ function logGone(){ if(!BD) return; const gone=[];
   for(const blk of BD.blocks) blk.sent=boardHalves(blk);
   boardSave();
   if(gone.length) setTimeout(()=>askLog(gone),600); }
-function askLog(list){
+async function askLog(list){
   list.sort((a,b)=>parseTime(a.t,a.X)<parseTime(b.t,b.X)?-1:1);
   const kind=h=>h.side==='L'?'เข้า':(String(h.berth).includes('<>')?'ย้าย':'ออก');
+  /* แยกใบแจ้งหนี้: an ออก (not ย้าย) leg whose agent differs from the open inbound record in the log → ticked in advance; untick to log it as usual */
+  let calls=null; try{ calls=(await loadCalls()).calls; }catch(e){}
+  const isOut=h=>h.side==='R' && !String(h.berth).includes('<>');
+  const inv=list.map(h=>{ if(!calls || !isOut(h)) return false; const c=openCall(calls,baseShip(h.ship)); return !!(c && norm(h.agent) && norm(c.agent||c.agentOut) && norm(h.agent)!==norm(c.agent||c.agentOut)); });
   const M=document.createElement('div'); M.className='crop-m';
   M.innerHTML=`<div class="crop-box lg-box" role="dialog" aria-label="บันทึกลงสมุดบันทึกเรือ"><h3>บันทึกลงสมุดบันทึกเรือ</h3>
     <div class="crop-hint">เรือที่เอาออกจากตารางตั้งแต่ส่ง LINE ครั้งก่อน (ถือว่าทำแล้วตามเวลาในตาราง)</div>
-    <div class="lg-list">${list.map((h,i)=>`<label class="lg-row"><input type="checkbox" data-i="${i}" checked><b>${esc(h.ship)}</b><span class="lg-k k${kind(h)}">${kind(h)}</span><span class="num">${esc(h.t)}</span><span>${esc(h.berth)}</span><span class="pc">${esc(h.pilot)}</span></label>`).join('')}</div>
+    <div class="lg-list">${list.map((h,i)=>`<div class="lg-row"><label class="lg-main"><input type="checkbox" data-i="${i}" checked><b>${esc(h.ship)}</b><span class="lg-k k${kind(h)}">${kind(h)}</span><span class="num">${esc(h.t)}</span><span>${esc(h.berth)}</span><span class="pc">${esc(h.pilot)}</span></label>${isOut(h) && (!calls || openCall(calls,baseShip(h.ship)))?`<label class="lg-inv${inv[i]?' on':''}" title="สร้างเรือใหม่ในสมุดเฉพาะขาออก (เอเยนต์ต่างจากขาเข้า)"><input type="checkbox" data-v="${i}"${inv[i]?' checked':''}>แยกใบแจ้งหนี้</label>`:''}</div>`).join('')}</div>
     <div class="crop-row end"><button type="button" class="btn" data-a="no">ไม่บันทึก</button><button type="button" class="btn primary" data-a="ok">บันทึก</button></div></div>`;
   document.body.appendChild(M);
+  M.addEventListener('change',e=>{ const v=e.target.closest('input[data-v]'); if(v) v.parentElement.classList.toggle('on',v.checked); });
   M.addEventListener('click',async e=>{ const a=e.target.closest('[data-a]')?.dataset.a; if(e.target===M||a==='no'){ M.remove(); return; }
-    if(a!=='ok') return; const pick=[...M.querySelectorAll('input[data-i]:checked')].map(x=>list[+x.dataset.i]); M.remove();
+    if(a!=='ok') return; const pick=[...M.querySelectorAll('input[data-i]:checked')].map(x=>({...list[+x.dataset.i], inv:!!M.querySelector(`input[data-v="${x.dataset.i}"]:checked`)})); M.remove();
     if(!pick.length) return;
     try{ const t0=performance.now(); const n=await writeLog(pick); const sec=((performance.now()-t0)/1000).toFixed(1); toast(n?`บันทึกลงสมุดบันทึกเรือแล้ว ${n} รายการ (${sec} วิ)`:`มีในสมุดบันทึกเรือแล้ว (${sec} วิ)`); }
     catch(err){ toast('บันทึกลงสมุดไม่สำเร็จ: '+err.message); } }); }
@@ -2612,21 +2620,24 @@ async function syncApi(method, q, ops){
   const r = method==='GET' ? await fetch(CFG.API_URL+sep+q+'&key='+encodeURIComponent(CFG.TOKEN))
                            : await fetch(CFG.API_URL,{method:'POST',body:JSON.stringify({key:CFG.TOKEN,ops})});
   const j=await r.json(); if(!j.ok) throw new Error(j.error==='bad_key'?'รหัสไม่ตรง (อัปเดตสคริปต์ Navcard.gs)':(j.error||'ผิดพลาด')); return j; }
-async function writeLog(list){
-  /* reuse the log's own copy on this device (navsync_v1) and fetch only what changed since — much smaller than the whole log */
+/* the log's calls: reuse the log's own copy on this device (navsync_v1) and fetch only what changed since — much smaller than the whole log */
+async function loadCalls(){
   const NC='navsync_v1'; let cache=null; try{ cache=JSON.parse(localStorage.getItem(NC)||'null'); }catch(e){}
   const useC=!!(cache && cache.url===CFG.API_URL && +cache.since>0 && cache.cols && cache.cols.calls);
   const j=await syncApi('GET','action=load&cols=calls&since='+(useC?cache.since:0));
   const cmap=new Map(useC?Object.entries(cache.cols.calls).map(([id,doc])=>[id,{id,...doc}]):[]);
   for(const d of j.docs){ if(d.col!=='calls') continue; if(d.deleted||!d.doc) cmap.delete(d.id); else cmap.set(d.id,{id:d.id,...d.doc}); }
-  const calls=[...cmap.values()];
+  return {NC, calls:[...cmap.values()]}; }
+const shipKey=v=>norm(baseShip(v)).replace(/^(M\.?V\.?|M\.?T\.?|T\.?B\.?)\s+/,'').replace(/[^A-Z0-9\u0E00-\u0E7F]/g,'');   /* 'BAHTERA INTAN' = 'M.V. Bahtera-Intan' */
+const openCall=(calls,ship)=>calls.filter(c=>shipKey(c.vessel)===shipKey(ship) && !c.atd).sort((a,b)=>((a.date||'')+' '+(a.eta||''))<((b.date||'')+' '+(b.eta||''))?1:-1)[0];
+async function writeLog(list){
+  const {NC, calls}=await loadCalls();
   const beYY=iso=>String((+iso.slice(0,4)+543)%100).padStart(2,'0'), fyYY=iso=>String((+iso.slice(0,4)+543+(+iso.slice(5,7)>=10?1:0))%100).padStart(2,'0');
   const lt=dt=>`${dt.slice(8,10)}-${dt.slice(5,7)}-${dt.slice(11,13)}${dt.slice(14,16)}`;   /* 31-10-0930 like the log */
   const pil=p=>/^0+$/.test(p)?'-CAP-':String(p||'').replace(/^P\.?/i,'');
   const key=c=>(c.date||'')+' '+(c.eta||c.atd||'');
-  const sk=v=>norm(baseShip(v)).replace(/^(M\.?V\.?|M\.?T\.?|T\.?B\.?)\s+/,'').replace(/[^A-Z0-9\u0E00-\u0E7F]/g,'');   /* 'BAHTERA INTAN' = 'M.V. Bahtera-Intan' */
-  const same=(c,ship)=>sk(c.vessel)===sk(ship);
-  const open=ship=>calls.filter(c=>same(c,ship) && !c.atd).sort((a,b)=>key(a)<key(b)?1:-1)[0];
+  const same=(c,ship)=>shipKey(c.vessel)===shipKey(ship);
+  const open=ship=>openCall(calls,ship);
   const blank=(date,h)=>({date,by:beYY(date),fy:fyYY(date),job:'',vessel:h.ship,from:'',loa:h.loa,loaM:'',lbp:'',ng:'',agent:h.agent,eta:'',order:'',invIn:false,pilotIn:'',capIn:'',berth:'',draughtIn:'',
     atd:'',invOut:false,paknam:'',pilotOut:'',capOut:'',draughtOut:'',agentOut:h.agent,remark:'',status:'',closeNo:'',cnAt:0,shifts:[],t:Date.now(),updated:Date.now(),marks:{}});
   const ops=[], touched=new Map();
@@ -2642,6 +2653,11 @@ async function writeLog(list){
       if(!c){ c={id:'c'+Date.now().toString(36)+Math.random().toString(36).slice(2,6), ...blank(date,h)}; calls.push(c); }
       c.shifts=[...(c.shifts||[]), {order:T,pilot:pil(h.pilot),capTime:'',fromBerth:fb||'',berth:tb||'',draught:h.drf,agent:h.agent}]; }
     else { if(calls.some(c=>same(c,h.ship) && c.atd===T)) continue;
+      if(c && h.inv){   /* แยกใบแจ้งหนี้: the inbound record gets แยกใบแจ้งหนี้ + this ATD on its ออก side; a new record (ออก only) gets แยกใบแจ้งหนี้ + the inbound ETA on its เข้า side */
+        Object.assign(c,{atd:T, invOut:true}); c.updated=Date.now(); touched.set(c.id,c);
+        const n={id:'c'+Date.now().toString(36)+Math.random().toString(36).slice(2,6), ...blank(date,h), eta:c.eta||'', invIn:true, order:'', berth:c.berth||'', loa:c.loa||h.loa,
+          atd:T, pilotOut:pil(h.pilot), draughtOut:h.drf, agent:h.agent, agentOut:h.agent};
+        calls.push(n); touched.set(n.id,n); continue; }
       if(!c){ c={id:'c'+Date.now().toString(36)+Math.random().toString(36).slice(2,6), ...blank(date,h)}; calls.push(c); }
       Object.assign(c,{atd:T,pilotOut:pil(h.pilot),draughtOut:h.drf,agentOut:h.agent||c.agentOut}); }
     c.updated=Date.now(); touched.set(c.id,c); }
