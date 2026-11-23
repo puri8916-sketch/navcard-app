@@ -41,11 +41,28 @@ def thai_now():
     return datetime.now(_TH_TZ)
 
 
-def thai_card_filename(dt=None):
-    """'การ์ดประจำวันที่ <วัน> <เดือนย่อ> <พ.ศ. 2 หลัก> (รวม).pdf'"""
+def thai_day_range(d0, d1=None, full_year=False):
+    """'23 พ.ย. 69' · '21-23 พ.ย. 69' · '30 ต.ค.-2 พ.ย. 69' · '30 ธ.ค. 69-2 ม.ค. 70' (full_year: 2569)."""
+    d1 = d1 or d0
+    if d1 < d0:
+        d0, d1 = d1, d0
+    y = lambda d: (d.year + 543) if full_year else (d.year + 543) % 100
+    m = lambda d: _TH_MONTHS_SHORT[d.month - 1]
+    if d0 == d1:
+        return f"{d0.day} {m(d0)} {y(d0)}"
+    if (d0.year, d0.month) == (d1.year, d1.month):
+        return f"{d0.day}-{d1.day} {m(d1)} {y(d1)}"
+    if d0.year == d1.year:
+        return f"{d0.day} {m(d0)}-{d1.day} {m(d1)} {y(d1)}"
+    return f"{d0.day} {m(d0)} {y(d0)}-{d1.day} {m(d1)} {y(d1)}"
+
+
+def thai_card_filename(dt=None, span=None):
+    """'การ์ดประจำวันที่ <วัน[-วัน]> <เดือนย่อ> <พ.ศ. 2 หลัก> (รวม).pdf' — span = (first, last) closing day when several days are closed at once"""
+    if span:
+        return f"การ์ดประจำวันที่ {thai_day_range(span[0], span[1])} (รวม).pdf"
     dt = dt or thai_now()
-    be_short = (dt.year + 543) % 100
-    return f"การ์ดประจำวันที่ {dt.day} {_TH_MONTHS_SHORT[dt.month - 1]} {be_short} (รวม).pdf"
+    return f"การ์ดประจำวันที่ {thai_day_range(dt)} (รวม).pdf"
 
 
 def baseline(top, size):

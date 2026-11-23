@@ -123,6 +123,7 @@ def step1(ctx, files):
         de = c2.date_input("ถึงวันที่", value=date.fromisoformat(d1), key=f"rep_de_{k}", format="DD/MM/YYYY")
         if de < ds:
             ds, de = de, ds
+        st.session_state["close_span"] = (ds, de)   # the days closed now → name of the merged card PDF / e-mail subject
         span = [(ds + timedelta(days=i)).isoformat() for i in range((de - ds).days + 1)]
         n = len(cards)
         if len(span) == 1:

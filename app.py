@@ -9,6 +9,8 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 import nav_core as nc
+import report_core as rc_core
+from datetime import date
 import importlib as _importlib
 # Streamlit Cloud re-runs app.py after an update but keeps the old helper modules in memory;
 # reload them when they are older than this app.py (missing new functions -> AttributeError)
@@ -495,6 +497,21 @@ with st.container():   # the ×3.2808 calculator moved to a button in สมุ�
             _ship_memory.pop(_nm, None)
 
 
+    def _close_span():
+        """first and last day closed in this round: the days chosen in ขั้นที่ 1, else the range written in ReportCardIsClosedDaily.xlsx"""
+        sp = st.session_state.get("close_span")
+        if sp:
+            return sp
+        rng = []
+        for _p in _xlsx:
+            try:
+                with open(_p, "rb") as _f:
+                    _d0, _d1, _c = rc_core.parse_daily(_f.read())
+                rng += [date.fromisoformat(_d0), date.fromisoformat(_d1)]
+            except Exception:
+                pass
+        return (min(rng), max(rng)) if rng else None
+
     def _add_remarks():
         """Button callback: parse the pasted '<card no> <message>' lines."""
         rep = st.session_state.report
@@ -530,6 +547,7 @@ with st.container():   # the ×3.2808 calculator moved to a button in สมุ�
     if _sig != st.session_state.get("up_sig"):
         st.session_state.up_sig = _sig
         st.session_state.report = None
+        st.session_state.pop("close_span", None)
         shutil.rmtree(card_dir, ignore_errors=True)
         shutil.rmtree(extracted_dir, ignore_errors=True)
         os.makedirs(card_dir, exist_ok=True)
@@ -814,13 +832,14 @@ with st.container():   # the ×3.2808 calculator moved to a button in สมุ�
                 st.download_button(
                     "⬇️ ดาวน์โหลดไฟล์ PDF รวม",
                     f.read(),
-                    file_name=nc.thai_card_filename(st.session_state.get("upload_dt")),
+                    file_name=nc.thai_card_filename(st.session_state.get("upload_dt"), span=_close_span()),
                     mime="application/pdf",
                 )
             st.success("สร้างไฟล์เสร็จแล้ว!")
             # ✉️ copy "to" + subject for the e-mail — shown only with the download (same day as the PDF's file name)
+            _sp = _close_span()
             _md = st.session_state.get("upload_dt") or nc.thai_now()
-            _subj = f"รายงานการปิดการ์ดนำร่อง วันที่ {_md.day} {nc._TH_MONTHS_SHORT[_md.month - 1]} {_md.year + 543}"
+            _subj = "รายงานการปิดการ์ดนำร่อง วันที่ " + (nc.thai_day_range(_sp[0], _sp[1], full_year=True) if _sp else nc.thai_day_range(_md, full_year=True))
             with st.container(border=True):
                 st.caption("✉️ คัดลอกส่งเมล์")
                 components.html(_MAIL_COPY_HTML.replace("__ROWS__", json.dumps([["ถึง", "พี่ปลา การเงินนำร่อง"], ["ชื่อเรื่อง", _subj]], ensure_ascii=False)), height=118)
