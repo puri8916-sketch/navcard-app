@@ -98,7 +98,7 @@ function schedPost_(e) {
 /* ---------- helpers ---------- */
 function respond_(fn) {
   let out;
-  try { out = { ok: true, data: fn() }; }
+  try { out = { ok: true, data: fn(), now: Date.now() }; }
   catch (err) { out = { ok: false, error: String(err && err.message || err) }; }
   return ContentService.createTextOutput(JSON.stringify(out)).setMimeType(ContentService.MimeType.JSON);
 }
@@ -338,9 +338,10 @@ function saveBoard_(board) {
   if (json.length > 49000) throw new Error('ตารางรูป LINE ยาวเกินไป');
   const r = findRow_(s, 'date', board.date);
   const old = r > 0 ? Number(s.getRange(r, 2).getValue()) || 0 : 0;
-  if (old > Number(board.updated)) return false;   // a newer version from another device is already there
-  s.getRange(r > 0 ? r : s.getLastRow() + 1, 1, 1, 3).setNumberFormat('@').setValues([[board.date, String(board.updated), json]]);
-  return true;
+  // the sheet's clock is the version (device clocks differ): the last save to arrive wins, stamped after the one before it
+  board.updated = Math.max(Date.now(), old + 1);
+  s.getRange(r > 0 ? r : s.getLastRow() + 1, 1, 1, 3).setNumberFormat('@').setValues([[board.date, String(board.updated), JSON.stringify(board)]]);
+  return { updated: board.updated };
 }
 
 /* ---------- ลำดับแถวที่จัดเองในหน้าจัดตาราง (ต่อวัน) ---------- */
@@ -361,9 +362,9 @@ function saveLayout_(lay) {
   if (json.length > 49000) throw new Error('ลำดับแถวยาวเกินไป');
   const r = findRow_(s, 'date', lay.date);
   const old = r > 0 ? Number(s.getRange(r, 2).getValue()) || 0 : 0;
-  if (old > Number(lay.updated)) return false;
+  lay.updated = Math.max(Date.now(), old + 1);   // sheet time = version (device clocks differ)
   s.getRange(r > 0 ? r : s.getLastRow() + 1, 1, 1, 3).setNumberFormat('@').setValues([[lay.date, String(lay.updated), json]]);
-  return true;
+  return { updated: lay.updated };
 }
 
 
@@ -442,7 +443,7 @@ function syncGet_(e) {
 }
 
 /** POST body (text/plain JSON): {key, ops:[{op:'put'|'del', col, id, doc, updated}]}
- *  Last writer wins by `updated` (client time); every applied write gets a new server `seq`. */
+ *  The last write to arrive wins; `updated` = the server `seq` (sheet time), returned per op. */
 function syncPost_(e) {
   let b;
   try { b = JSON.parse(e.postData.contents); } catch (x) { return syncOut_({ ok: false, error: 'bad_json' }); }
@@ -462,15 +463,16 @@ function syncPost_(e) {
       if (!col || !id) { results.push({ id: id, error: 'bad_op' }); return; }
       if (col === 'vessels') { vesselOp_(op); results.push({ id: id, seq: bumpShips_() }); return; }
       const k = col + '\u0000' + id, i = idx[k];
-      const upd = Number(op.updated || Date.now());
-      if (i !== undefined && Number(rows[i][3]) > upd) { results.push({ id: id, skipped: true }); return; }
+      // the sheet's clock is the version: phone and PC clocks differ by minutes, so a client time could refuse a newer edit;
+      // the last write to arrive wins and gets this write's seq as its `updated`
+      const upd = seq;
       const del = op.op === 'del';
       const json = del ? '' : JSON.stringify(op.doc || {});
       if (json.length > 49000) { results.push({ id: id, error: 'too_big' }); return; }
       const row = [col, id, seq, upd, del, json, syncSummary_(col, op.doc, del)];
       if (i !== undefined) { s.getRange(i + 2, 1, 1, SYNC_HEAD.length).setValues([row]); rows[i] = row; }
       else { s.getRange(rows.length + 2, 1, 1, SYNC_HEAD.length).setValues([row]); idx[k] = rows.length; rows.push(row); }
-      results.push({ id: id, seq: seq });
+      results.push({ id: id, seq: seq, updated: upd });
       seq++;
     });
     props.setProperty('SEQ', String(seq - 1));

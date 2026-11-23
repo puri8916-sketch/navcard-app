@@ -76,8 +76,10 @@
     try {
       while (S.outbox.length) {
         const ops = S.outbox.slice(0, 100);
-        await api("POST", ops);
+        const pj = await api("POST", ops);
         S.outbox = S.outbox.filter(o => ops.indexOf(o) < 0);
+        /* the sheet stamps each write with its own time: keep that as the version (phone and PC clocks can differ by minutes) */
+        (pj.results || []).forEach((r, i) => { const o = ops[i]; if (o && r && +r.updated && String(r.id) === String(o.id)) meta(o.col)[o.id] = +r.updated; });
         save();
       }
       const full = fullPending || !S.since;
@@ -85,8 +87,9 @@
       let changed = false;
       for (const d of j.docs) {
         if (S.outbox.some(o => o.col === d.col && o.id === d.id)) continue;   // our newer edit is still on its way
+        /* a row changed in the sheet after our last sync is the current version (our own sends went out before this read),
+           whatever the device clocks say — comparing clock times let a PC a little ahead ignore edits made on a phone */
         const m = meta(d.col);
-        if ((m[d.id] || 0) > d.updated) continue;
         m[d.id] = d.updated;
         if (d.deleted) { if (col(d.col)[d.id] !== undefined) { delete col(d.col)[d.id]; changed = true; } }
         else if (JSON.stringify(col(d.col)[d.id]) !== JSON.stringify(d.doc)) { col(d.col)[d.id] = d.doc; changed = true; }

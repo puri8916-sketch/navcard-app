@@ -816,7 +816,8 @@ async function api0(action, params={}, body=null){
     if(action==='deleteShip'){ demo.db.ships=demo.db.ships.filter(x=>x.name!==body.name); demo.persist(); return true; }
   }
   let r;
-  if(body){ r = await fetch(CFG.API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({token:CFG.TOKEN,action,...body})}); }
+  if(body){ const pb=JSON.stringify({token:CFG.TOKEN,action,...body});   /* phone switched to another app: keepalive lets the save finish in the background */
+    r = await fetch(CFG.API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:pb,keepalive:document.visibilityState==='hidden' && pb.length<60000}); }
   else { r = await fetch(CFG.API_URL+'?'+new URLSearchParams({action,token:CFG.TOKEN,...params})); }
   const j = await r.json(); if(!j.ok) throw new Error(j.error||'ผิดพลาด'); return j.data;
 }
@@ -826,7 +827,7 @@ const CACHE_KEY = () => 'shipsched_cache_v1:'+(CFG.API_URL||'demo');
 function cacheGet(){ try{ return JSON.parse(localStorage.getItem(CACHE_KEY())||'null'); }catch(e){ return null; } }
 function cacheSet(){ try{ localStorage.setItem(CACHE_KEY(), JSON.stringify({init:S.init, mv:S.mv, loaded:S.loaded})); }catch(e){} }
 function applyInit(d){
-  S.init=d;
+  S.init=d; if(!window.__bpl){ window.__bpl=1; setTimeout(()=>{ try{ bpendLoad(); }catch(e){} },800); }
   S.ships = d.ships.filter(s=>s.name); S.shipIdx = new Map(S.ships.map(s=>[s.name.toUpperCase(), s]));
   S.berths = d.berths; S.agents = d.agents; S.pilots = d.pilots; S.duty = d.duty; S.fixed = d.fixed; d.profiles=d.profiles||{}; d.profiles.photos=d.profiles.photos||{}; d.profiles.names=d.profiles.names||{}; S.photos=d.profiles.photos; S.names=d.profiles.names;
   S.settings = {...S.settings, ...d.settings};
@@ -845,7 +846,7 @@ function setLayout(D, rows){
   const rec={date:D, updated:Date.now(), rows:rows||null};
   try{ localStorage.setItem(LAYKEY(D), JSON.stringify(rec)); }catch(e){}
   S.layouts=S.layouts||{}; S.layouts[D]=rec; if(S.init) S.init.layouts=S.layouts; cacheSet();
-  clearTimeout(layT[D]); layT[D]=setTimeout(()=>api('saveLayout',{},{layout:rec}).catch(err=>{
+  clearTimeout(layT[D]); layT[D]=setTimeout(()=>api('saveLayout',{},{layout:rec}).then(r=>{ if(r && typeof r==='object' && +r.updated && S.layouts[D]===rec){ rec.updated=+r.updated; try{ localStorage.setItem(LAYKEY(D), JSON.stringify(rec)); }catch(e){} cacheSet(); } }).catch(err=>{
     if(!layWarned){ layWarned=true; toast(/ไม่รู้จักคำสั่ง/.test(err.message)?'ลำดับแถวเก็บในเครื่องนี้ก่อน · อัปเดต Apps Script (Schedule.gs) เพื่อซิงก์':'บันทึกลำดับแถวไม่สำเร็จ: '+err.message); } }),600);
 }
 const RANGE_BACK=35, RANGE_FWD=35;
@@ -1899,7 +1900,9 @@ async function refreshMv(){
   finally{ mvPollBusy=false; } }
 setInterval(refreshMv,15000);
 /* แก้ไข: tables edited on another device show up within seconds (light 'boards' call; an older sheet script falls back to the full reload) */
-let bPollBusy=false, boardsApi=true, bPollLast=0;
+let bPollBusy=false, boardsApi=true, bPollLast=0, bKeyAt=0;
+document.addEventListener('keydown',e=>{ if(e.target.closest && e.target.closest('#board')) bKeyAt=Date.now(); },true);
+document.addEventListener('input',e=>{ if(e.target.closest && e.target.closest('#board')) bKeyAt=Date.now(); },true);
 async function pollBoards(){
   if(bPollBusy || !BD || !S.init || !CFG.API_URL || $('view-line').hidden || document.visibilityState==='hidden') return;
   if(Object.keys(BPEND).length || bSaveBusy) return;   /* our own change is still on its way */
@@ -1912,7 +1915,7 @@ async function pollBoards(){
     for(const [d,x] of Object.entries(boards||{})){ if(!x || !x.rows) continue; const cur=S.boards[d];
       if(!cur || (x.updated||0)>(cur.updated||0)) S.boards[d]=x;
       if(BD.all[d] && (x.updated||0)>(BD.all[d].updated||0)) newer=true; }   /* compare with the table on screen (S.boards may already hold it from another refresh) */
-    const typing=document.activeElement && document.activeElement.closest && document.activeElement.closest('#board');
+    const typing=document.activeElement && document.activeElement.closest && document.activeElement.closest('#board') && Date.now()-bKeyAt<4000;   /* a cell only selected (no key for 4 s) doesn't hold updates back */
     if(newer && !typing && !Object.keys(BPEND).length){ const keepSel=SEL; openBoard(S.D); SEL=keepSel&&BD.blocks[keepSel.b]?keepSel:null; renderBoard(); toast('อัปเดตตารางแก้ไขจากเครื่องอื่นแล้ว'); }
     else if(newer) BD.remoteWaiting=true;
   }catch(e){ /* offline for a moment */ }
@@ -2029,17 +2032,36 @@ function boardSave(){
   }
   if(!changed.length) return;
   BD.updated=now; $('boardInfo').textContent = `บันทึก ${new Date(now).toTimeString().slice(0,5)}`;
-  const snap=JSON.parse(JSON.stringify(changed)); Object.assign(BPEND, Object.fromEntries(snap.map(b=>[b.date,b])));
-  clearTimeout(bSaveT); bSaveT=setTimeout(flushBoards,600);
+  const snap=JSON.parse(JSON.stringify(changed)); Object.assign(BPEND, Object.fromEntries(snap.map(b=>[b.date,b]))); bpendSave();
+  clearTimeout(bSaveT); bSaveT=setTimeout(flushBoards, document.visibilityState==='hidden'?0:600);
 }
 /* แก้ไข tables waiting to reach the sheet (kept outside BD, so reopening the board doesn't drop them); retried by itself when the sheet is busy */
 const BPEND={}; let bTry=0;
+/* the queue is also kept in this browser: a phone that closes the page before the save went out sends it on the next open (if under 30 min old) */
+const BPKEY=()=>'skp_bpend:'+(CFG.API_URL||'demo');
+function bpendSave(){ try{ const k=Object.keys(BPEND); if(k.length) localStorage.setItem(BPKEY(), JSON.stringify({at:Date.now(), b:BPEND})); else localStorage.removeItem(BPKEY()); }catch(e){} }
+function bpendLoad(){ try{ const x=JSON.parse(localStorage.getItem(BPKEY())||'null'); if(x && Date.now()-x.at<30*60000) for(const [d,blk] of Object.entries(x.b||{})) if(!BPEND[d]) BPEND[d]=blk; localStorage.removeItem(BPKEY()); }catch(e){}
+  if(Object.keys(BPEND).length) flushBoards(); }
+/* the sheet's time is the version: the script stamps each saved table (phone and PC clocks may differ by minutes — a phone a little behind
+   used to have its saves refused as "older", and a PC a little ahead ignored newer tables) */
+function bStamp(d, upd){ const live=BD && BD.all[d]; if(live && !BPEND[d]){ live.updated=upd; try{ localStorage.setItem(KB(d), JSON.stringify(live)); }catch(e){} }
+  S.boards=S.boards||{}; if(S.boards[d] && !BPEND[d]) S.boards[d].updated=upd; }
 async function flushBoards(){ if(bSaveBusy) return; clearTimeout(bSaveT); bSaveBusy=true; let fail=null;
-  try{ for(const [d,blk] of Object.entries(BPEND)){ try{ await api('saveBoard',{},{board:blk}); if(BPEND[d]===blk) delete BPEND[d]; bTry=0; }
+  try{ for(const [d,blk] of Object.entries(BPEND)){ try{
+        let r=await api('saveBoard',{},{board:blk});
+        if(r===false && (blk._re||0)<3){   /* older script: refused as older (clock behind) → go just past the sheet's version and send again */
+          let su=0; try{ const all=boardsApi?await api('boards'):(await api('init')).boards; su=+((all||{})[d]||{}).updated||0; }catch(e){}
+          blk._re=(blk._re||0)+1; blk.updated=Math.max(Date.now(), su+1); r=await api('saveBoard',{},{board:blk}); }
+        if(BPEND[d]===blk) delete BPEND[d]; bTry=0;
+        const upd=r && typeof r==='object' && +r.updated ? +r.updated : (r!==false ? +blk.updated : 0);
+        if(upd) bStamp(d, upd); }
       catch(err){ if(transientErr(err)){ fail=err; break; } if(BPEND[d]===blk) delete BPEND[d]; toast('บันทึกตารางแก้ไขขึ้นชีตไม่สำเร็จ: '+scriptOld(err)); } } }
-  finally{ bSaveBusy=false; }
+  finally{ bSaveBusy=false; bpendSave(); }
   if(fail){ bTry++; if(bTry===2) toast('ชีตไม่ว่างชั่วคราว — กำลังลองบันทึกตารางแก้ไขใหม่เอง'); bSaveT=setTimeout(flushBoards, Math.min(15000,1000*2**(bTry-1))); }
   else if(Object.keys(BPEND).length) bSaveT=setTimeout(flushBoards,0); }
+/* phone: leaving the app sends at once (no 0.6 s wait) */
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='hidden' && Object.keys(BPEND).length){ clearTimeout(bSaveT); flushBoards(); } });
+window.addEventListener('pagehide',()=>{ if(Object.keys(BPEND).length){ bpendSave(); clearTimeout(bSaveT); flushBoards(); } });
 /* once: separator rows the old 1-hour rule put on แก้ไข (ships less than 2 h apart) come out */
 const BGAPMIG=Date.UTC(2026,10,6,9,10);
 function boardGapMig(b){ if((b.updated||0)>=BGAPMIG || !b.date || b.date<addDays(todayYmd(),-1)) return;
