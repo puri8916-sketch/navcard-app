@@ -886,9 +886,9 @@ function pairSlot(ins, outs, berthOf){
 }
 const order = m => m.type==='IN' ? 1 : 0;   // same minute + same berth: sailing/shifting before entering
 function sortMv(a,b){ return a.datetime<b.datetime?-1:a.datetime>b.datetime?1:(berthRank(mvBerth(a))-berthRank(mvBerth(b)))||(order(a)-order(b)); }
-// แถวคั่น: ห่างกัน ≥ 2 ชม. (ห่าง 1 ชม. ไม่คั่น) ทั้งจัดตารางและแก้ไข · เรือตั้งแต่ 20:00 ถึงเที่ยงคืนไม่คั่นกันเอง (ก่อน 20:00 → 20:00 ขึ้นไป ยังคั่น)
+// แถวคั่น: ห่างกัน ≥ 1 ชม. 30 นาที (ห่าง 1 ชม. ไม่คั่น) ทั้งจัดตารางและแก้ไข · เรือตั้งแต่ 20:00 ถึงเที่ยงคืนไม่คั่นกันเอง (ก่อน 20:00 → 20:00 ขึ้นไป ยังคั่น)
 const NOGAP_FROM='20:00';
-const GAP_S=2, GAP_H=2;   /* separator row only when ships are 2 h or more apart (1 h apart: no separator) — จัดตาราง and แก้ไข */
+const GAP_S=1.5, GAP_H=1.5;   /* separator row when ships are 1 ½ h or more apart (06:30 → 08:00 separated; 1 h apart: not) — จัดตาราง and แก้ไข */
 function needGap(prev, dt, h=GAP_H){ if(!prev || !dt) return false; if((minutes(dt)-minutes(prev))/60 < h) return false;
   return !(prev.slice(0,10)===dt.slice(0,10) && prev.slice(11,16)>=NOGAP_FROM); }
 // จัดอัตโนมัติ (ครั้งแรก): เรียงเวลา → ท่า, จับคู่แถว, แถวคั่น
