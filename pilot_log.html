@@ -758,7 +758,16 @@ function fitTable(){const box=document.querySelector("#view-log .tablebox"),t=bo
   box.style.maxHeight=Math.max(260,Math.floor(window.innerHeight-box.getBoundingClientRect().top-10))+"px";
   t.style.zoom="";const w=t.scrollWidth,cw=box.clientWidth;if(w>cw+2)t.style.zoom=String(Math.max(.8,Math.floor(cw/w*1000)/1000))}
 window.addEventListener("resize",()=>{clearTimeout(fitTable._t);fitTable._t=setTimeout(fitTable,80)});
-function renderLog(){if(window.__ONLY__==="ay")setTimeout(renderAy,0);requestAnimationFrame(fitTable);
+/* re-drawing the table keeps the place you were at: a change arriving from the sheet (another device, or the sync of your own edit)
+   no longer takes away a cell being typed in or moves the list; it is drawn once that cell is done */
+let lastView="";
+function renderLog(){
+  if(editingCell&&document.body.contains(editingCell.inp)){renderLog._wait=true;return}
+  renderLog._wait=false;
+  const bx=document.querySelector("#view-log .tablebox"),view=[curDate,scope,closeF,cfMonV].join("|"),same=view===lastView,st=bx?bx.scrollTop:0,sl=bx?bx.scrollLeft:0,wy=window.scrollY;
+  renderLog0();lastView=view;
+  if(same){if(bx&&(bx.scrollTop!==st||bx.scrollLeft!==sl)){bx.scrollTop=st;bx.scrollLeft=sl}if(window.scrollY!==wy)window.scrollTo(window.scrollX,wy)}}
+function renderLog0(){if(window.__ONLY__==="ay")setTimeout(renderAy,0);requestAnimationFrame(fitTable);
   calls=allCalls.filter(c=>c.date===curDate);
   const body=$("logBody");body.replaceChildren();
   $("sCount").textContent=calls.length;
@@ -981,7 +990,7 @@ function startEdit(td){
   const inp=el("input",{class:"cin"+(["vessel","agent","remark"].includes(f)?"":" mono"),value:orig,autocomplete:"off","aria-label":"แก้ไข "+f,placeholder:f==="move"?"จาก > ไป":f==="loa"?"ฟุต/เมตร":""});
   let done=false;
   const finish=async(save,dir)=>{
-    if(done)return;done=true;pop.hidden=true;editingCell=null;
+    if(done)return;done=true;pop.hidden=true;editingCell=null;if(renderLog._wait&&save&&inp.value.trim()!==orig)renderLog._wait=false;   /* the save redraws */
     let v=inp.value.trim();if(F_UPPER.has(f))v=v.toUpperCase();
     pendingEdit=dir?cellTarget(tr,j,dir):null;
     if(!save||v===orig){renderLog();return}
@@ -1002,6 +1011,7 @@ function startEdit(td){
   editingCell={td,inp};td.classList.add("editing");td.replaceChildren(inp);inp.focus();inp.select();
 }
 async function commitCell(c,si,f,v){
+  c=allCalls.find(x=>x.id===c.id)||c;   /* the row as it is now (another device may have changed other cells while this one was typed) */
   const {id,...d}=c,doc=JSON.parse(JSON.stringify(d));
   if(si!=null){const s=(doc.shifts||[])[si];if(!s)return;
     if(f==="move"){const m=v.split(/\s*(?:→|>)\s*/);s.fromBerth=(m.length>1?m[0]:"").toUpperCase();s.berth=(m.length>1?m[1]:m[0]).toUpperCase()}else if(f==="pilot"){const p=capSplit(v);s.pilot=p.p;s.capTime=p.t}else s[f]=v}
