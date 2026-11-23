@@ -237,7 +237,11 @@ label.f input:focus,.srow input:focus{border-color:var(--accent);outline:none;bo
 .seg button[aria-pressed="true"].wait{background:var(--warn-bg);color:var(--warn-ink);border-color:transparent;font-weight:500}
 .seg button[aria-pressed="true"].none{background:var(--hover);font-weight:500}
 .srows{display:flex;flex-direction:column;gap:6px}
-.srow{display:grid;grid-template-columns:22px minmax(0,1.1fr) minmax(0,.8fr) minmax(0,1fr) 14px minmax(0,1fr) minmax(0,.8fr) minmax(0,1.3fr) minmax(0,1.4fr) 26px;gap:6px;align-items:center}
+.srow{display:grid;grid-template-columns:22px minmax(0,1.1fr) minmax(0,.8fr) minmax(0,1fr) 14px minmax(0,1fr) minmax(0,.8fr) minmax(0,1.3fr) minmax(0,1.4fr) 62px 26px;gap:6px;align-items:center}
+.srow .mv{display:inline-flex;gap:2px}.srow .mv button{width:30px;height:30px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink);cursor:pointer;font-size:13px;padding:0}
+.srow .mv button:disabled{opacity:.3;cursor:default}
+.sgrip{border:0;background:none;color:var(--muted);cursor:grab;touch-action:none;padding:0 2px;font-size:13px;line-height:1;opacity:.55}.sgrip:hover,.sgrip:focus-visible{opacity:1;color:var(--accent)}
+tr.shift.dragging{opacity:.45}
 .srow.head{font-size:11.5px;color:var(--muted)}
 .srow input{border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:5px 8px;color:var(--ink);font-size:14px;width:100%;min-width:0;height:32px}
 .srow .num{font-family:var(--f-mono);font-size:12px;color:var(--muted);text-align:center}
@@ -261,7 +265,7 @@ label.f input:focus,.srow input:focus{border-color:var(--accent);outline:none;bo
 @media (max-width:760px){
   .g6{grid-template-columns:repeat(2,minmax(0,1fr))}.g6>.s3,.g6>.s4{grid-column:1/-1}
   .two{grid-template-columns:1fr;gap:10px}.two>.blk+.blk{border-left:0;padding-left:0;border-top:1px solid var(--line);padding-top:10px}
-  .srow{grid-template-columns:repeat(6,minmax(0,1fr));padding-bottom:8px;border-bottom:1px dashed var(--line)}.srow.head,.srow .num,.srow .arw{display:none}.srow>input{grid-column:span 2}.srow>[id^="sf"],.srow>[id^="sb"]{grid-column:span 3;order:4}.srow>[id^="sb"]{order:5}.srow>[id^="sd"]{order:3}.srow>.ag{grid-column:span 5;order:6}.srow>.srm{grid-column:span 5;order:7}.srow .x{order:8}
+  .srow{grid-template-columns:repeat(6,minmax(0,1fr));padding-bottom:8px;border-bottom:1px dashed var(--line)}.srow.head,.srow .num,.srow .arw{display:none}.srow>input{grid-column:span 2}.srow>[id^="sf"],.srow>[id^="sb"]{grid-column:span 3;order:4}.srow>[id^="sb"]{order:5}.srow>[id^="sd"]{order:3}.srow>.ag{grid-column:span 4;order:6}.srow .mv{grid-column:span 2;order:6;justify-content:flex-end}.srow>.srm{grid-column:span 5;order:7}.srow .x{order:8}
 }
 /* vessels + settings */
 .panel{margin-top:16px;display:flex;flex-direction:column;gap:14px}
@@ -798,7 +802,9 @@ function renderLog(){if(window.__ONLY__==="ay")setTimeout(renderAy,0);requestAni
     body.append(tr);
     if(n&&!collapsed.has(c.id)){
       c.shifts.forEach((s,i)=>{
-        body.append(el("tr",{class:"shift"+alt+(i===c.shifts.length-1?" grp-end":""),"data-id":c.id,"data-si":i},el("td"),el("td",{class:"ship"},"↳ ย้ายท่า "+(i+1)),el("td"),
+        const sg=canWrite&&db&&c.shifts.length>1?el("button",{class:"sgrip",type:"button",title:"ลากเพื่อเลื่อนลำดับย้ายท่า (หรือกด ↑ ↓)","aria-label":"เลื่อนลำดับย้ายท่าครั้งที่ "+(i+1),
+          onkeydown:e=>{if(e.key==="ArrowUp"||e.key==="ArrowDown"){e.preventDefault();e.stopPropagation();moveShift(c,i,i+(e.key==="ArrowUp"?-1:1))}}},"⠿"):null;
+        body.append(el("tr",{class:"shift"+alt+(i===c.shifts.length-1?" grp-end":""),"data-id":c.id,"data-si":i},el("td",{},...(sg?[sg]:[])),el("td",{class:"ship"},"↳ ย้ายท่า "+(i+1)),el("td"),
           el("td",{class:"div"}),cell(s.order,"mono"),cell(capCell(s.pilot,s.capTime),"mono"),cell(moveEl(s)),cell(s.draught,"mono"),
           el("td",{class:"div"}),el("td"),cell(s.agent?hl(s.agent):""),el("td",{class:"div"}),el("td"),el("td"),el("td"),cell(s.remark?el("span",{class:"remark"},s.remark):"","div"),el("td")));
       });
@@ -807,6 +813,29 @@ function renderLog(){if(window.__ONLY__==="ay")setTimeout(renderAy,0);requestAni
   paintMarks(rows);tagCells();if(!editingCell)openPending();
   if(focusAfter){const id=focusAfter;focusAfter=null;focusRow(id)}
 }
+
+/* ---------- ย้ายท่า: change the order of a call's shifts (table: drag ⠿ or ↑ ↓; editor: ▲ ▼) ---------- */
+/* marks of shift cells are keyed by index ("s2:order", "fc|s2:…"): carry them to the shift's new place; order[i] = old index now at i (undefined = new) */
+function remapShiftMarks(marks,order){const back=new Map();order.forEach((o,i)=>{if(o!=null)back.set(o,i)});
+  return Object.fromEntries(Object.entries(marks||{}).flatMap(([k,v])=>{const m=k.match(/^((?:fc\|)?s)(\d+)(:.*)$/);if(!m)return [[k,v]];const n=back.get(+m[2]);return n==null?[]:[[m[1]+n+m[3],v]]}))}
+async function moveShift(c,from,to){const n=(c.shifts||[]).length;if(from===to||from<0||to<0||from>=n||to>=n)return;
+  const order=[...Array(n).keys()];order.splice(to,0,order.splice(from,1)[0]);
+  const {id,...d}=c,doc=JSON.parse(JSON.stringify(d));doc.shifts=order.map(o=>c.shifts[o]);doc.marks=remapShiftMarks(c.marks,order);doc.updated=Date.now();
+  try{await db.collection("calls").doc(id).set(doc);setTimeout(()=>$("logBody").querySelector(`tr.shift[data-id="${CSS.escape(id)}"][data-si="${to}"] .sgrip`)?.focus(),60)}
+  catch(e){toast("เลื่อนลำดับย้ายท่าไม่สำเร็จ ("+(e.code||"error")+")")}}
+$("logBody").addEventListener("pointerdown",e=>{
+  const g=e.target.closest(".sgrip");if(!g||e.button>0||!canWrite||!db)return;e.preventDefault();e.stopPropagation();
+  const body=$("logBody"),tr=g.closest("tr.shift"),id=tr.dataset.id,from=+tr.dataset.si,c=allCalls.find(x=>x.id===id);if(!c)return;
+  try{g.setPointerCapture(e.pointerId)}catch(_){}
+  const rows=()=>[...body.querySelectorAll(`tr.shift[data-id="${CSS.escape(id)}"]`)];
+  const clear=()=>body.querySelectorAll(".drop-a,.drop-b").forEach(x=>x.classList.remove("drop-a","drop-b"));
+  let to=from,moved=false;
+  const mv=ev=>{if(!moved){moved=true;tr.classList.add("dragging");document.body.classList.add("rowdrag")}
+    const rs=rows();to=from;for(const [k,r] of rs.entries()){const b=r.getBoundingClientRect();if(ev.clientY<b.top+b.height/2){to=k>from?k-1:k;break}to=rs.length-1}
+    clear();const r=rs[to];if(r&&to!==from)r.classList.add(to>from?"drop-a":"drop-b")};
+  const up=()=>{g.removeEventListener("pointermove",mv);g.removeEventListener("pointerup",up);g.removeEventListener("pointercancel",up);
+    clear();tr.classList.remove("dragging");document.body.classList.remove("rowdrag");if(moved&&to!==from)moveShift(c,from,to)};
+  g.addEventListener("pointermove",mv);g.addEventListener("pointerup",up);g.addEventListener("pointercancel",up)});
 
 /* ---------- table ink colour (per browser) ---------- */
 function setInk(v){document.body.classList.toggle("ink-black",v==="black");document.querySelectorAll("#inkSeg button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.v===v));try{localStorage.setItem("pl.ink2",v)}catch(e){}}
@@ -1494,7 +1523,7 @@ function setCellColor(td,kind,col,toggle){
 }
 $("logBody").addEventListener("click",e=>{
   if(!markMode)return;
-  if(e.target.closest(".edbtn,.shiftbtn,.grip"))return;
+  if(e.target.closest(".edbtn,.shiftbtn,.grip,.sgrip"))return;
   const td=e.target.closest("td[data-k]");if(!td)return;
   e.stopPropagation();e.preventDefault();
   setCellColor(td,markTool,markTool==="font"?curFont:curFill,true);
@@ -1630,7 +1659,7 @@ async function openEditor(c){
   $("fEta").value=timeOf(v.eta);$("fOrder").value=timeOf(v.order);$("etaSync").checked=timeOf(v.eta)===timeOf(v.order);$("invIn").checked=invIn(v);$("invOut").checked=invOut(v);$("fDraughtIn").value=v.draughtIn||"";
   $("fAtd").value=timeOf(v.atd);$("fDraughtOut").value=v.draughtOut||"";$("fAgentOut").value=v.agentOut||v.agent||"";$("fRemark").value=v.remark||"";
   $("fFrom").value=v.from||"";$("fBerth").value=v.berth||"";$("fPilotIn").value=v.pilotIn||"";$("fPilotOut").value=v.pilotOut||"";$("fCapIn").value=v.capIn||"";$("fCapOut").value=v.capOut||"";capToggle();pop.hidden=true;
-  $("fLoaM").value=v.loaM||"";shifts=(v.shifts||[]).map(s=>({...s}));renderShifts();setStatus(v.status==="ปิดการเงิน"?"ปิดการเงิน":"");$("fCloseNo").value=v.closeNo||"";checkShip();
+  $("fLoaM").value=v.loaM||"";shifts=(v.shifts||[]).map((s,i)=>({...s,_o:i}));renderShifts();setStatus(v.status==="ปิดการเงิน"?"ปิดการเงิน":"");$("fCloseNo").value=v.closeNo||"";checkShip();
   $("scrim").hidden=false;$("sheet").hidden=false;placeSheet();$("fShip").focus();
   if(!v.job&&db){const j=await nextJob(v.date||curDate);
     if(editing===(c||null)&&!$("fJob").value){$("fJob").value=j.v;if(j.caret!=null){$("fJob").focus();$("fJob").setSelectionRange(j.caret,j.caret)}}}
@@ -1681,7 +1710,7 @@ $("insOver").onclick=()=>{
 function renderShifts(){
   const box=$("shiftList");box.replaceChildren();
   if(!shifts.length){box.append(el("p",{class:"hint",style:"margin:0"},"ไม่มีการย้ายท่า (ถ้ามี กด “+ ย้ายท่า”)"));return}
-  box.append(el("div",{class:"srow head","aria-hidden":"true"},el("span"),el("span",{},"Order"),el("span",{},"Pilot No."),el("span",{},"จากท่า"),el("span"),el("span",{},"ไปท่า"),el("span",{},"Draught"),el("span",{},"Agent"),el("span",{},"Remark"),el("span")));
+  box.append(el("div",{class:"srow head","aria-hidden":"true"},el("span"),el("span",{},"Order"),el("span",{},"Pilot No."),el("span",{},"จากท่า"),el("span"),el("span",{},"ไปท่า"),el("span",{},"Draught"),el("span",{},"Agent"),el("span",{},"Remark"),el("span",{},"ลำดับ"),el("span")));
   shifts.forEach((s,i)=>{
     const or=el("input",{id:"so"+i,class:"mono","aria-label":"Order ครั้งที่ "+(i+1),placeholder:"__-__-____","data-tmask":"1",autocomplete:"off",value:s.order||""});or.oninput=()=>s.order=or.value.trim();
     const pi=el("input",{id:"sp"+i,class:"mono","aria-label":"Pilot No.",placeholder:"Pilot",title:"-CAP- ใส่เวลาต่อท้ายได้ เช่น -CAP- 14-10-0700",value:capRaw(s.pilot,s.capTime)});combo(pi,pilotOpts);pi.oninput=()=>{const p=capSplit(pi.value);s.pilot=p.p;s.capTime=p.t};
@@ -1690,7 +1719,10 @@ function renderShifts(){
     const dr=el("input",{id:"sd"+i,class:"mono","aria-label":"Draught",placeholder:"Draught",autocomplete:"off",value:s.draught||""});dr.oninput=()=>s.draught=dr.value.trim();
     const ag=el("input",{id:"sa"+i,class:"ag","aria-label":"Agent",placeholder:"Agent",autocomplete:"off",value:s.agent||""});ag.oninput=()=>s.agent=ag.value.trim();combo(ag,agentOpts);
     const rm=el("input",{id:"sr"+i,class:"srm","aria-label":"Remark ย้ายท่าครั้งที่ "+(i+1),placeholder:"Remark",autocomplete:"off",value:s.remark||""});rm.oninput=()=>s.remark=rm.value.trim();
-    box.append(el("div",{class:"srow"},el("span",{class:"num"},i+1),or,pi,fb,el("span",{class:"arw","aria-hidden":"true"},"→"),be,dr,ag,rm,
+    const sw=d=>{const j=i+d;if(j<0||j>=shifts.length)return;[shifts[i],shifts[j]]=[shifts[j],shifts[i]];renderShifts();$("so"+j)?.focus()};
+    const mv=el("span",{class:"mv"},el("button",{type:"button",title:"เลื่อนขึ้น","aria-label":"เลื่อนย้ายท่าครั้งที่ "+(i+1)+" ขึ้น",disabled:i===0||null,onclick:()=>sw(-1)},"▲"),
+      el("button",{type:"button",title:"เลื่อนลง","aria-label":"เลื่อนย้ายท่าครั้งที่ "+(i+1)+" ลง",disabled:i===shifts.length-1||null,onclick:()=>sw(1)},"▼"));
+    box.append(el("div",{class:"srow"},el("span",{class:"num"},i+1),or,pi,fb,el("span",{class:"arw","aria-hidden":"true"},"→"),be,dr,ag,rm,mv,
       el("button",{type:"button",class:"x","aria-label":"ลบการย้ายท่าครั้งที่ "+(i+1),title:"ลบ",onclick:()=>{shifts.splice(i,1);renderShifts()}},"✕")));
   });
 }
@@ -1702,10 +1734,11 @@ $("edSave").onclick=async()=>{
   if(!vessel){toast("กรอกชื่อเรือก่อนบันทึก");$("fShip").focus();return}
   const g=id=>$(id).value.trim();
   const pIn=capSplit(g("fPilotIn")),pOut=capSplit(g("fPilotOut"));
+  const keptS=shifts.filter(s=>s.order||s.pilot||s.fromBerth||s.berth||s.draught||s.agent||s.remark);
   const data={date:editing?.date||curDate,by:beYY(editing?.date||curDate),fy:fyYY(editing?.date||curDate),job:/^SGZ\s*\/\s*\d*$/i.test(g("fJob"))?"":g("fJob"),vessel,from:g("fFrom"),loa:g("fLoa"),loaM:g("fLoaM"),lbp:g("fLbp"),ng:editing?.ng||"",agent:g("fAgent"),
     eta:timeOf(g("fEta")),order:timeOf(g("fOrder")),invIn:$("invIn").checked||invSplit(g("fEta")).inv||invSplit(g("fOrder")).inv,pilotIn:pIn.p,capIn:pIn.p==="-CAP-"?(pIn.t||g("fCapIn")):"",berth:g("fBerth"),draughtIn:g("fDraughtIn"),
     atd:timeOf(g("fAtd")),invOut:$("invOut").checked||invSplit(g("fAtd")).inv,paknam:editing?.paknam||"",...(editing?.sms?{sms:editing.sms}:{}),pilotOut:pOut.p,capOut:pOut.p==="-CAP-"?(pOut.t||g("fCapOut")):"",draughtOut:g("fDraughtOut"),agentOut:g("fAgentOut")||g("fAgent"),remark:g("fRemark"),status,closeNo:g("fCloseNo"),cnAt:g("fCloseNo")!==(editing?.closeNo||"")?(g("fCloseNo")?Date.now():0):(editing?.cnAt||0),
-    shifts:shifts.filter(s=>s.order||s.pilot||s.fromBerth||s.berth||s.draught||s.agent||s.remark),t:editing?.t||Date.now(),updated:Date.now(),marks:Object.fromEntries(Object.entries(editing?.marks||{}).filter(([k])=>{const m=k.match(/^(?:fc\|)?s(\d+):/);return !m||+m[1]<shifts.filter(s=>s.order||s.pilot||s.fromBerth||s.berth||s.draught||s.agent||s.remark).length}))};
+    shifts:keptS.map(({_o,...x})=>x),t:editing?.t||Date.now(),updated:Date.now(),marks:remapShiftMarks(editing?.marks,keptS.map(s=>s._o))};
   $("edSave").disabled=true;
   try{
     if(editing)await db.collection("calls").doc(editing.id).set(data);
