@@ -2018,6 +2018,7 @@ function getDay(d){ const a=dayLocal(d), r=dayRemote(d); let x=a&&r?((a.updated|
 let bSaveBusy=false;
 function boardSave(){
   if(!BD) return;
+  try{ refreshSent(); }catch(e){}
   for(const b of BD.blocks) for(const r of b.rows) if(r.st){ for(const sd of Object.keys(r.st)){ const a=sd==='L'?0:9, z=sd==='L'?9:17; if(!r.c.slice(a,z).some(v=>String(v).trim())) delete r.st[sd]; } if(!Object.keys(r.st).length) delete r.st; }   /* ship taken off → its ขึ้นแล้ว mark goes too */ const now=Date.now(), changed=[]; setTimeout(undoSave,0);
   for(const d of Object.keys(BD.all)){ const vis=BD.blocks.find(x=>x.date===d); if(vis){ vis.hidden=false; BD.all[d]=vis; } else BD.all[d].hidden=true; }
   for(const blk of Object.values(BD.all)){
@@ -2575,23 +2576,27 @@ function boardHalves(blk){ const X=blk.date||BD.date, out={};
     let k=side+'|'+ship, n=2; while(out[k]) k=side+'|'+ship+'#'+(n++);   /* same ship twice on a side (shift + sail) keeps both rows */
     out[k]=h; }
   return out; }
-function logGone(){ if(!BD) return; const gone=[];
-  /* compare per side+ship over ALL shown tables: a row only counts as taken off when the ship has fewer rows on that side than at the last send.
-     a time/berth edit or a drag to the other day keeps the count → not logged; the rows left over after matching are the ones taken off */
-  const grp=o=>{ const g={}; for(const h of Object.values(o)) (g[h.side+'|'+h.ship]=g[h.side+'|'+h.ship]||[]).push(h); return g; };
-  const prevAll={}, curAll={};
-  BD.blocks.forEach((b,i)=>{ for(const [k,h] of Object.entries(b.sent||{})) prevAll[i+'@'+k]=h; for(const [k,h] of Object.entries(boardHalves(b))) curAll[i+'@'+k]=h; });
+/* rows at the last LINE send (blk.sent) ↔ rows now, per side+ship over ALL shown tables:
+   untouched rows pair first, then edited rows by closest time; prev rows left over = taken off the table */
+function sentMatch(){ const pairs=[], left=[];
+  const grp=o=>{ const g={}; for(const h of o) (g[h.side+'|'+h.ship]=g[h.side+'|'+h.ship]||[]).push(h); return g; };
+  const prevAll=[], curAll=[];
+  BD.blocks.forEach(b=>{ prevAll.push(...Object.values(b.sent||{})); curAll.push(...Object.values(boardHalves(b))); });
   const P=grp(prevAll), C=grp(curAll);
-  for(const k in P){ let left=[...P[k]]; const cur=[...(C[k]||[])];
-    if(left.length<=cur.length) continue;
+  for(const k in P){ const lf=[...P[k]], cur=[...(C[k]||[])];
     const same=(a,b)=>a.t===b.t && a.berth===b.berth && a.X===b.X;
-    for(const c of [...cur]){ const j=left.findIndex(h=>same(h,c)); if(j>=0){ left.splice(j,1); cur.splice(cur.indexOf(c),1); } }   /* untouched rows first */
-    for(const c of cur){ if(!left.length) break;   /* edited rows: closest time */
+    for(const c of [...cur]){ const j=lf.findIndex(h=>same(h,c)); if(j>=0){ pairs.push([lf[j],c]); lf.splice(j,1); cur.splice(cur.indexOf(c),1); } }
+    for(const c of cur){ if(!lf.length) break;
       const tc=parseTime(c.t,c.X)||''; let bi=0, bd=Infinity;
-      left.forEach((h,j)=>{ const th=parseTime(h.t,h.X)||''; const d=(th&&tc)?Math.abs(new Date(th)-new Date(tc)):1e15; if(d<bd){bd=d;bi=j;} });
-      left.splice(bi,1); }
-    for(const h of left){ if(h.drf==='งด' || !parseTime(h.t, h.X)) continue;   /* cancelled / no time: nothing happened */
-      gone.push(h); } }
+      lf.forEach((h,j)=>{ const th=parseTime(h.t,h.X)||''; const d=(th&&tc)?Math.abs(new Date(th)-new Date(tc)):1e15; if(d<bd){bd=d;bi=j;} });
+      pairs.push([lf[bi],c]); lf.splice(bi,1); }
+    left.push(...lf); }
+  return {pairs,left}; }
+/* Drf / time / berth … typed after the LINE send are remembered at once (no new send needed): a row taken off later goes to the log with what it showed last */
+function refreshSent(){ if(!BD) return; for(const [p,c] of sentMatch().pairs){ const t=p.t, X=p.X; Object.assign(p,c); if(!parseTime(c.t,c.X)){ p.t=t; p.X=X; } } }   /* a time being cleared/half-typed keeps the last good one */
+function logGone(){ if(!BD) return; const gone=[];
+  for(const h of sentMatch().left){ if(h.drf==='งด' || !parseTime(h.t, h.X)) continue;   /* cancelled / no time: nothing happened */
+    gone.push(h); }
   for(const blk of BD.blocks) blk.sent=boardHalves(blk);
   boardSave();
   if(gone.length) setTimeout(()=>askLog(gone),600); }
