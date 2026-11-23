@@ -265,6 +265,24 @@ def _sync_script():
             "<script>" + js + "</script>\n")
 
 
+_MAIL_COPY_HTML = """<style>
+body{margin:0;font-family:"Sarabun","Noto Sans Thai",system-ui,sans-serif;background:transparent}
+.r{display:flex;align-items:center;gap:10px;margin:0 0 8px}
+.k{width:84px;flex:0 0 auto;font-size:17px;color:#555}
+.v{flex:1;min-width:0;font-size:19px;font-weight:600;color:#111;padding:7px 12px;border:1px solid #d5dbe1;border-radius:8px;background:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+button{flex:0 0 auto;font-size:17px;font-weight:600;font-family:inherit;padding:8px 16px;border-radius:8px;border:1px solid #06C755;background:#06C755;color:#fff;cursor:pointer;min-width:96px}
+button.ok{background:#fff;color:#06A047}
+</style><div id="w"></div><script>
+const rows=__ROWS__, w=document.getElementById('w');
+async function copy(t){ try{ await navigator.clipboard.writeText(t); return true; }catch(e){}
+  const a=document.createElement('textarea'); a.value=t; document.body.appendChild(a); a.select(); let ok=false; try{ ok=document.execCommand('copy'); }catch(e){} a.remove(); return ok; }
+for(const [k,v] of rows){ const r=document.createElement('div'); r.className='r';
+  r.innerHTML='<span class="k"></span><span class="v"></span><button type="button">คัดลอก</button>';
+  r.querySelector('.k').textContent=k; r.querySelector('.v').textContent=v; r.querySelector('.v').title=v;
+  const b=r.querySelector('button'); b.onclick=async()=>{ const ok=await copy(v); b.textContent=ok?'✓ คัดลอกแล้ว':'คัดลอกไม่ได้'; b.classList.toggle('ok',ok); setTimeout(()=>{ b.textContent='คัดลอก'; b.classList.remove('ok'); },1600); };
+  w.appendChild(r); }
+</script>"""
+
 _P_LOG, _P_SCHED, _P_CLOSE = "สมุดบันทึกเรือ", "จัดตารางเรือ", "ปิดการ์ด"
 _P_NOTICE = "แจ้งเรือขาดย้ายท่า"
 _P_AY = "แจ้งเรืออย."
@@ -468,6 +486,15 @@ _ship_store = components.declare_component(
 with st.container():   # the ×3.2808 calculator moved to a button in สมุดบันทึกเรือ
     import report_page
     st.title("📑 ปิดการ์ดประจำวัน")
+
+    # ✉️ copy "to" + subject for the daily e-mail (each with its own copy button)
+    _MAIL_TO = "พี่ปลา การเงินนำร่อง"
+    with st.container(border=True):
+        _mc1, _mc2 = st.columns([1, 3])
+        _md = _mc1.date_input("✉️ วันที่ในชื่อเรื่องเมล์", value=nc.thai_now().date(), format="DD/MM/YYYY", key="mail_date")
+        _subj = f"รายงานการปิดการ์ดนำร่อง วันที่ {_md.day} {nc._TH_MONTHS_SHORT[_md.month - 1]} {_md.year + 543}"
+        with _mc2:
+            components.html(_MAIL_COPY_HTML.replace("__ROWS__", json.dumps([["ถึง", _MAIL_TO], ["ชื่อเรื่อง", _subj]], ensure_ascii=False)), height=118)
 
     _store = _ship_store(key="ship_store", default=None)
     # ship lengths come from the calculator store only (ships.csv defaults now live in the sheet of the original port)
