@@ -2025,8 +2025,19 @@ function getDay(d){ const p=BPEND[d], a=dayLocal(d), r=dayRemote(d);
   if(!p && r) x.base=+r.updated||0;   /* the sheet version this table starts from */
   return x; }
 let bSaveBusy=false;
+/* a day's table whose ships were all taken off (every cell empty) comes out by itself; ＋ เพิ่มตาราง brings it back.
+   only a table that had ships before — a new empty table (just added, or a day with no ships yet) stays */
+const blkEmpty=b=>!b.rows.some(r=>r.c.some(v=>String(v||'').trim()));
+function autoDropEmpty(){ const gone=[];
+  for(let i=BD.blocks.length-1;i>=0;i--){ const b=BD.blocks[i];
+    if(!blkEmpty(b)){ BD.had.add(b); continue; }
+    if(!BD.had.has(b)) continue;   /* per table object: a table added again (＋ เพิ่มตาราง) starts fresh */
+    BD.blocks.splice(i,1); gone.push(b.label||longDate(b.date));
+    if(SEL){ if(SEL.b===i) SEL=null; else if(SEL.b>i) SEL={...SEL,b:SEL.b-1}; } }
+  if(gone.length) setTimeout(()=>toast(`ตาราง ${gone.join(', ')} ไม่มีเรือแล้ว — เอาออกให้แล้ว · ↶ ย้อนกลับ หรือ ＋ เพิ่มตาราง ถ้าต้องการคืน`),50); }
 function boardSave(){
   if(!BD) return;
+  try{ autoDropEmpty(); }catch(e){}
   try{ refreshSent(); }catch(e){}
   for(const b of BD.blocks) for(const r of b.rows) if(r.st){ for(const sd of Object.keys(r.st)){ const a=sd==='L'?0:9, z=sd==='L'?9:17; if(!r.c.slice(a,z).some(v=>String(v).trim())) delete r.st[sd]; } if(!Object.keys(r.st).length) delete r.st; }   /* ship taken off → its ขึ้นแล้ว mark goes too */ const now=Date.now(), changed=[]; setTimeout(undoSave,0);
   for(const d of Object.keys(BD.all)){ const vis=BD.blocks.find(x=>x.date===d); if(vis){ vis.hidden=false; BD.all[d]=vis; } else BD.all[d].hidden=true; }
@@ -2127,14 +2138,14 @@ function boardGapMig(b){ if((b.updated||0)>=BGAPMIG || !b.date || b.date<addDays
   if(keep.length!==rows.length) b.rows=keep; }
 function openBoard(D){
   const P=addDays(D,-1); let fresh=null;
-  BD={date:D, all:{}, blocks:[], saved:{}, pending:{}, updated:0, baseB:(BD&&BD.baseB)||{}};
+  BD={date:D, all:{}, blocks:[], saved:{}, pending:{}, updated:0, baseB:(BD&&BD.baseB)||{}, had:new WeakSet()};
   for(const [d,i] of [[P,0],[D,1]]){
     let b=getDay(d);
     if(!b){ fresh=fresh||boardFromSchedule(D); b={...fresh.blocks[i], updated:0}; }
     else BD.saved[d]=dayKey(b);
     b.date=d; BD.all[d]=b; { const r=dayRemote(d); BD.baseB[d]=r && (+r.updated||0)===(+b.base||0) ? JSON.parse(JSON.stringify(r)) : (BD.baseB[d]||null); } if(!b.hidden) BD.blocks.push(b); BD.updated=Math.max(BD.updated,b.updated||0);
   }
-  for(const b of BD.blocks) boardGapMig(b);
+  for(const b of BD.blocks){ boardGapMig(b); if(!blkEmpty(b)) BD.had.add(b); }
   for(const b of Object.values(BD.all)) if(!b.sent) b.sent=boardHalves(b);   /* starting point for "taken off → สมุดบันทึกเรือ" (no first LINE send needed) */
   undoLoad(); SEL=null;
   boardSave(); renderBoard();
@@ -2652,7 +2663,7 @@ function boardHalves(blk){ const X=blk.date||BD.date, out={};
 function sentMatch(){ const pairs=[], left=[];
   const grp=o=>{ const g={}; for(const h of o) (g[h.side+'|'+h.ship]=g[h.side+'|'+h.ship]||[]).push(h); return g; };
   const prevAll=[], curAll=[];
-  BD.blocks.forEach(b=>{ prevAll.push(...Object.values(b.sent||{})); curAll.push(...Object.values(boardHalves(b))); });
+  Object.values(BD.all).forEach(b=>{ prevAll.push(...Object.values(b.sent||{})); curAll.push(...Object.values(boardHalves(b))); });   /* a table taken out counts too */
   const P=grp(prevAll), C=grp(curAll);
   for(const k in P){ const lf=[...P[k]], cur=[...(C[k]||[])];
     const same=(a,b)=>a.t===b.t && a.berth===b.berth && a.X===b.X;
@@ -2668,7 +2679,7 @@ function refreshSent(){ if(!BD) return; for(const [p,c] of sentMatch().pairs){ c
 function logGone(){ if(!BD) return; const gone=[];
   for(const h of sentMatch().left){ if(h.drf==='งด' || !parseTime(h.t, h.X)) continue;   /* cancelled / no time: nothing happened */
     gone.push(h); }
-  for(const blk of BD.blocks) blk.sent=boardHalves(blk);
+  for(const blk of Object.values(BD.all)) blk.sent=boardHalves(blk);
   boardSave();
   if(gone.length) setTimeout(()=>askLog(gone),600); }
 async function askLog(list){
