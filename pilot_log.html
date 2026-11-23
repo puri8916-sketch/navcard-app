@@ -859,6 +859,19 @@ function cnMonth(c){const t=wParse(c.atd||(c.pilotOut==="-CAP-"?c.capOut:""),c.d
 function matchC(c){if(!closeF)return true;const v=String(c.closeNo||"").trim();if(!v)return false;if(cfMonV&&cfMonV!=="*"&&cnMonth(c)!==cfMonV)return false;
   if(closeF.includes("/"))return v.replace(/\s+/g,"").toUpperCase().startsWith(closeF.replace(/\s+/g,"").toUpperCase());
   const pp=cnParts(v);return pp?pp.p.toUpperCase()===closeF.toUpperCase():v.toUpperCase()===closeF.toUpperCase()}
+/* card No. typed on the first ship of a closing sequence (e.g. 18/1 → SGZ354/70): the later ships of the same sequence and month
+   with no card No. yet get the following numbers by their own /n (18/2 → SGZ355/70 … 18/6 → SGZ359/70) */
+async function fillJobs(c){
+  const m=String(c.job||"").trim().match(/^(.*?)(\d+)\s*\/\s*(\d+)$/), cp=cnParts(c.closeNo);
+  if(!m||!cp||!db)return 0;
+  const mon=cnMonth(c), P=cp.p.toUpperCase(), todo=[];
+  for(const x of allCalls){ if(x.id===c.id)continue; const xp=cnParts(x.closeNo);
+    if(!xp||xp.p.toUpperCase()!==P||xp.n<=cp.n||cnMonth(x)!==mon)continue;
+    if(String(x.job||"").trim()&&!/^SGZ\s*\/\s*\d*$/i.test(x.job))continue;   /* a card No. already typed stays */
+    todo.push({x,job:m[1]+(+m[2]+xp.n-cp.n)+"/"+m[3]}); }
+  for(const {x,job} of todo){ const {id,...d}=x; try{await db.collection("calls").doc(id).set({...d,job,updated:Date.now()})}catch(e){} }
+  if(todo.length)toast(`ใส่เลขการ์ดต่อให้ ${todo.length} ลำ (${todo[0].job}${todo.length>1?" – "+todo[todo.length-1].job:""})`);
+  return todo.length; }
 function cnCompare(a,b){const x=cnParts(a.closeNo),y=cnParts(b.closeNo);if(x&&y)return x.p.localeCompare(y.p,undefined,{numeric:true})||x.n-y.n;return String(a.closeNo||"").localeCompare(String(b.closeNo||""),undefined,{numeric:true})}
 function cnSummary(rows){
   const pp=rows.map(c=>cnParts(c.closeNo)).filter(Boolean);if(!pp.length)return "";
@@ -977,7 +990,8 @@ async function commitCell(c,si,f,v){
     doc[f]=v;
   }
   doc.updated=Date.now();
-  try{await db.collection("calls").doc(id).set(doc)}catch(e){pendingEdit=null;toast("บันทึกไม่สำเร็จ ("+(e.code||"error")+")");renderLog()}
+  try{await db.collection("calls").doc(id).set(doc)}catch(e){pendingEdit=null;toast("บันทึกไม่สำเร็จ ("+(e.code||"error")+")");renderLog();return}
+  if(si==null&&f==="job"&&doc.job&&doc.job!==(c.job||""))await fillJobs({...doc,id});
 }
 $("logBody").addEventListener("click",e=>{
   if(markMode||e.target.closest("input,button"))return;
@@ -1696,7 +1710,9 @@ $("edSave").onclick=async()=>{
   try{
     if(editing)await db.collection("calls").doc(editing.id).set(data);
     else await db.collection("calls").add(data);
+    const jobNew=data.job&&data.job!==(editing?.job||"");
     closeEditor();toast("บันทึก "+vessel+" แล้ว");
+    if(jobNew)await fillJobs({...data,id:editing?.id});
   }catch(e){toast(e.code==="quota_exceeded"?"ฐานข้อมูลเต็ม ลบรายการเก่าก่อน":"บันทึกไม่สำเร็จ ("+e.code+") ลองอีกครั้ง")}
   finally{$("edSave").disabled=!canWrite}
 };
