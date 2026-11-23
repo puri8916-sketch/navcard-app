@@ -2661,22 +2661,32 @@ function boardHalves(blk){ const X=blk.date||BD.date, out={};
   return out; }
 /* rows at the last LINE send (blk.sent) ↔ rows now, per side+ship over ALL shown tables:
    untouched rows pair first, then edited rows by closest time; prev rows left over = taken off the table */
-function sentMatch(){ const pairs=[], left=[];
+function sentMatch(){ const pairs=[], left=[], fresh=[];
   const grp=o=>{ const g={}; for(const h of o) (g[h.side+'|'+h.ship]=g[h.side+'|'+h.ship]||[]).push(h); return g; };
-  const prevAll=[], curAll=[];
-  Object.values(BD.all).forEach(b=>{ prevAll.push(...Object.values(b.sent||{})); curAll.push(...Object.values(boardHalves(b))); });   /* a table taken out counts too */
-  const P=grp(prevAll), C=grp(curAll);
-  for(const k in P){ const lf=[...P[k]], cur=[...(C[k]||[])];
+  const prevAll=[], curAll=[], home=new Map();
+  Object.values(BD.all).forEach(b=>{ prevAll.push(...Object.values(b.sent||{})); for(const h of Object.values(boardHalves(b))){ curAll.push(h); home.set(h,b); } });   /* a table taken out counts too */
+  const P=grp(prevAll), C=grp(curAll), extra=[];
+  const keys=new Set([...Object.keys(P), ...Object.keys(C)]);
+  for(const k of keys){ const lf=[...(P[k]||[])], cur=[...(C[k]||[])];
     const same=(a,b)=>a.t===b.t && a.berth===b.berth && a.X===b.X;
     for(const c of [...cur]){ const j=lf.findIndex(h=>same(h,c)); if(j>=0){ pairs.push([lf[j],c]); lf.splice(j,1); cur.splice(cur.indexOf(c),1); } }
-    for(const c of cur){ if(!lf.length) break;
+    for(const c of [...cur]){ if(!lf.length) break;
       const tc=parseTime(c.t,c.X)||''; let bi=0, bd=Infinity;
       lf.forEach((h,j)=>{ const th=parseTime(h.t,h.X)||''; const d=(th&&tc)?Math.abs(new Date(th)-new Date(tc)):1e15; if(d<bd){bd=d;bi=j;} });
-      pairs.push([lf[bi],c]); lf.splice(bi,1); }
-    left.push(...lf); }
-  return {pairs,left}; }
-/* Drf / time / berth … typed after the LINE send are remembered at once (no new send needed): a row taken off later goes to the log with what it showed last */
-function refreshSent(){ if(!BD) return; for(const [p,c] of sentMatch().pairs){ const t=p.t, X=p.X; Object.assign(p,c); if(!parseTime(c.t,c.X)){ p.t=t; p.X=X; } } }   /* a time being cleared/half-typed keeps the last good one */
+      pairs.push([lf[bi],c]); lf.splice(bi,1); cur.splice(cur.indexOf(c),1); }
+    left.push(...lf); extra.push(...cur); }
+  /* a name typed again (typo fixed) = same side, same time: the same row, not one taken off + one new */
+  for(const c of [...extra]){ const j=left.findIndex(h=>h.side===c.side && h.t===c.t && h.X===c.X && h.t);
+    if(j>=0){ pairs.push([left[j],c]); left.splice(j,1); extra.splice(extra.indexOf(c),1); } }
+  for(const c of extra) fresh.push([c, home.get(c)]);
+  return {pairs,left,fresh}; }
+/* the rows the log follows are kept up to date as they are typed (no LINE send needed):
+   Drf / time / berth changed later → the log gets what the row showed last;
+   a ship added after the last send (เรือเพิ่ม) is followed from the moment it has a name and a time — taken off later, it goes to the log too */
+function refreshSent(){ if(!BD) return; const m=sentMatch();
+  for(const [p,c] of m.pairs){ const t=p.t, X=p.X; Object.assign(p,c); if(!parseTime(c.t,c.X)){ p.t=t; p.X=X; } }   /* a time being cleared/half-typed keeps the last good one */
+  for(const [c,b] of m.fresh){ if(!b || !c.ship || !parseTime(c.t,c.X)) continue; b.sent=b.sent||{};
+    let k=c.side+'|'+c.ship, n=2; while(b.sent[k]) k=c.side+'|'+c.ship+'#'+(n++); b.sent[k]={...c}; } }
 function logGone(){ if(!BD) return; const gone=[];
   for(const h of sentMatch().left){ if(h.drf==='งด' || !parseTime(h.t, h.X)) continue;   /* cancelled / no time: nothing happened */
     gone.push(h); }
