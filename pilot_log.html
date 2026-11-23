@@ -607,6 +607,7 @@ body.ay-mode #view-log,body.ay-mode #view-ves,body.ay-mode #view-cfg,body.ay-mod
         <label class="f">LOA (ft)<input id="fLoa" class="mono" autocomplete="off"></label>
         <label class="f">LOA (m)<input id="fLoaM" class="mono lm" inputmode="decimal" autocomplete="off"></label>
         <label class="f">เขตท่า<input id="fLbp" class="mono" placeholder="รหัส"></label>
+        <div id="calcHint" class="hint warn s2" hidden></div>
         <div id="newShipHint" class="hint warn s2" hidden>เรือนี้ยังไม่อยู่ในทะเบียน <button class="linkbtn" id="addShipFromForm" type="button">เพิ่มเข้าทะเบียนเรือ</button></div>
       </div>
     </section>
@@ -1012,7 +1013,9 @@ async function commitCell(c,si,f,v){
       v=pv.t}
     if(f==="atd"){const pv=invSplit(v);doc.invOut=pv.inv;v=pv.t}
     if(f==="pilotIn"||f==="pilotOut"){const p=capSplit(v);doc[f==="pilotIn"?"capIn":"capOut"]=p.t;v=p.p}
-    if(f==="vessel"){const r=vByName.get(norm(v));if(r){if(r.loa)doc.loa=r.loa;if(r.agent){if(!c.agentOut||c.agentOut===c.agent)doc.agentOut=r.agent;doc.agent=r.agent}}}
+    if(f==="vessel"){const r=vByName.get(norm(v));if(r){if(r.loa)doc.loa=r.loa;if(r.agent){if(!c.agentOut||c.agentOut===c.agent)doc.agentOut=r.agent;doc.agent=r.agent}}
+      const m=calcM(v);if(m===undefined)toast("⚠️ ไม่มีความยาวเรือ "+v+" ในเครื่องคิดเลข ×3.2808 — ตรวจเองว่ายาวเกิน 173 ม. หรือไม่");
+      else if(m>LONG_M){doc.loaM=String(+m.toFixed(2));if(autoRemark(c.remark))doc.remark=overTxt(m)}}
     if(f==="agent"&&(!c.agentOut||c.agentOut===c.agent))doc.agentOut=v;
     if(f==="from"&&(!c.lbp||c.lbp===c.from))doc.lbp=v;
     if(f==="agentOut"&&!v)v=doc.agent||"";
@@ -1659,7 +1662,7 @@ async function openEditor(c){
   $("fEta").value=timeOf(v.eta);$("fOrder").value=timeOf(v.order);$("etaSync").checked=timeOf(v.eta)===timeOf(v.order);$("invIn").checked=invIn(v);$("invOut").checked=invOut(v);$("fDraughtIn").value=v.draughtIn||"";
   $("fAtd").value=timeOf(v.atd);$("fDraughtOut").value=v.draughtOut||"";$("fAgentOut").value=v.agentOut||v.agent||"";$("fRemark").value=v.remark||"";
   $("fFrom").value=v.from||"";$("fBerth").value=v.berth||"";$("fPilotIn").value=v.pilotIn||"";$("fPilotOut").value=v.pilotOut||"";$("fCapIn").value=v.capIn||"";$("fCapOut").value=v.capOut||"";capToggle();pop.hidden=true;
-  $("fLoaM").value=v.loaM||"";shifts=(v.shifts||[]).map((s,i)=>({...s,_o:i}));renderShifts();setStatus(v.status==="ปิดการเงิน"?"ปิดการเงิน":"");$("fCloseNo").value=v.closeNo||"";checkShip();
+  $("fLoaM").value=v.loaM||"";shifts=(v.shifts||[]).map((s,i)=>({...s,_o:i}));renderShifts();setStatus(v.status==="ปิดการเงิน"?"ปิดการเงิน":"");$("fCloseNo").value=v.closeNo||"";checkShip();$("calcHint").hidden=true;lastAuto={};
   $("scrim").hidden=false;$("sheet").hidden=false;placeSheet();$("fShip").focus();
   if(!v.job&&db){const j=await nextJob(v.date||curDate);
     if(editing===(c||null)&&!$("fJob").value){$("fJob").value=j.v;if(j.caret!=null){$("fJob").focus();$("fJob").setSelectionRange(j.caret,j.caret)}}}
@@ -1691,12 +1694,27 @@ function checkShip(){const v=vByName.get(norm($("fShip").value));$("newShipHint"
 $("fShip").addEventListener("input",()=>{
   const v=vByName.get(norm($("fShip").value));
   if(v){$("fLoa").value=v.loa||"";const o=$("fAgent").value;$("fAgent").value=v.agent||"";if(!$("fAgentOut").value.trim()||$("fAgentOut").value.trim()===o.trim())$("fAgentOut").value=v.agent||""}
-  checkShip();
+  checkShip();longShip();
 });
 $("addShipFromForm").onclick=async()=>{
   const name=$("fShip").value.trim();if(!name)return;
   try{await db.collection("vessels").doc(slug(name)).set({name,loa:$("fLoa").value.trim(),agent:$("fAgent").value.trim()});toast("เพิ่ม "+name+" เข้าทะเบียนแล้ว")}catch(e){toast("เพิ่มเรือไม่สำเร็จ: "+e.code)}
 };
+/* เรือยาวเกินกำหนด (> 173 ม.): LOA (m) from the ×3.2808 calculator + Remark at once; ship not in the calculator → warning */
+const LONG_M=173,overTxt=m=>{const r2=x=>(Math.round(x*100)/100).toFixed(2),over=m-LONG_M;return `เรือยาวเกินกำหนด ${r2(over)} เมตร (${r2(over*3.2808)} ฟุต)`};
+const shipK=v=>norm(v).replace(/[^A-Z0-9\u0E00-\u0E7F]/g,"");
+function calcM(name){const k=shipK(name);if(!k)return undefined;for(const [n,v] of Object.entries(calcShips()))if(shipK(n)===k){const m=parseFloat(String(v.value??"").replace(/,/g,""));return isFinite(m)?m:undefined}return undefined}
+const autoRemark=r=>!String(r||"").trim()||/^เรือยาวเกินกำหนด/.test(String(r).trim());
+let lastAuto={};
+function longShip(){const name=$("fShip").value.trim(),H=$("calcHint");if(!name){H.hidden=true;return}
+  /* a value this filled for the previous name is taken back first */
+  if(lastAuto.m&&$("fLoaM").value===lastAuto.m)$("fLoaM").value="";if(lastAuto.r&&$("fRemark").value===lastAuto.r)$("fRemark").value="";lastAuto={};
+  const m=calcM(name);
+  if(m===undefined){H.textContent="⚠️ ไม่มีความยาวเรือนี้ในเครื่องคิดเลข ×3.2808 — ตรวจเองว่ายาวเกิน 173 ม. หรือไม่ (กรอก LOA (m) แล้วใส่ Remark ให้เอง)";H.hidden=false;return}
+  H.hidden=true;if(m<=LONG_M)return;
+  if(!$("fLoaM").value.trim()){$("fLoaM").value=String(+m.toFixed(2));lastAuto.m=$("fLoaM").value}
+  if(autoRemark($("fRemark").value)){$("fRemark").value=overTxt(parseFloat($("fLoaM").value)||m);lastAuto.r=$("fRemark").value}}
+$("fLoaM").addEventListener("input",()=>{const m=parseFloat($("fLoaM").value);if(isFinite(m)&&m>LONG_M&&autoRemark($("fRemark").value))$("fRemark").value=overTxt(m)});
 $("insOver").onclick=()=>{
   const LIMIT=173,ft=parseFloat($("fLoa").value),mIn=parseFloat($("fLoaM").value);
   const m=isFinite(mIn)?mIn:isFinite(ft)?ft*0.3048:NaN;
