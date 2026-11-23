@@ -1912,9 +1912,10 @@ async function pollBoards(){
     if(boardsApi){ try{ boards=await api('boards'); }catch(e){ if(/ไม่รู้จักคำสั่ง/.test(e.message)) boardsApi=false; else throw e; } }
     if(!boardsApi){ const i=await api('init'); boards=i.boards||{}; }
     S.boards=S.boards||{}; let newer=false;
-    for(const [d,x] of Object.entries(boards||{})){ if(!x || !x.rows) continue; const cur=S.boards[d];
-      if(!cur || (x.updated||0)>(cur.updated||0)) S.boards[d]=x;
-      if(BD.all[d] && (x.updated||0)>(BD.all[d].updated||0)) newer=true; }   /* compare with the table on screen (S.boards may already hold it from another refresh) */
+    for(const [d,x] of Object.entries(boards||{})){ if(!x || !x.rows) continue;
+      S.boards[d]=x;   /* the sheet's copy as it is now */
+      const cur=BD.all[d], have=cur ? (cur.base!=null ? +cur.base||0 : +cur.updated||0) : 0;   /* the sheet version on screen */
+      if(cur && (+x.updated||0)>have) newer=true; }   /* compare with the table on screen (S.boards may already hold it from another refresh) */
     const typing=document.activeElement && document.activeElement.closest && document.activeElement.closest('#board') && Date.now()-bKeyAt<4000;   /* a cell only selected (no key for 4 s) doesn't hold updates back */
     if(newer && !typing && !Object.keys(BPEND).length){ const keepSel=SEL; openBoard(S.D); SEL=keepSel&&BD.blocks[keepSel.b]?keepSel:null; renderBoard(); toast('อัปเดตตารางแก้ไขจากเครื่องอื่นแล้ว'); }
     else if(newer) BD.remoteWaiting=true;
@@ -2017,7 +2018,12 @@ function dayLegacy(d){
   }
   return null;
 }
-function getDay(d){ const a=dayLocal(d), r=dayRemote(d); let x=a&&r?((a.updated||0)>=(r.updated||0)?a:r):(a||r); if(!x) x=dayLegacy(d); return x?JSON.parse(JSON.stringify(x)):null; }
+/* which copy to show: an edit of this device still on its way > the sheet's table > this browser's copy (a copy kept here may be old —
+   comparing device clock times let a stale copy win and then overwrite the newer table of another device) */
+function getDay(d){ const p=BPEND[d], a=dayLocal(d), r=dayRemote(d);
+  let x=p||r||a; if(!x) x=dayLegacy(d); if(!x) return null; x=JSON.parse(JSON.stringify(x));
+  if(!p && r) x.base=+r.updated||0;   /* the sheet version this table starts from */
+  return x; }
 let bSaveBusy=false;
 function boardSave(){
   if(!BD) return;
@@ -2028,7 +2034,6 @@ function boardSave(){
     const k=dayKey(blk); if(BD.saved[blk.date]===k) continue;      // only days that really changed are written
     BD.saved[blk.date]=k; blk.updated=now; changed.push(blk);
     try{ localStorage.setItem(KB(blk.date), JSON.stringify(blk)); }catch(e){}
-    S.boards=S.boards||{}; S.boards[blk.date]=blk;
   }
   if(!changed.length) return;
   BD.updated=now; $('boardInfo').textContent = `บันทึก ${new Date(now).toTimeString().slice(0,5)}`;
@@ -2044,17 +2049,61 @@ function bpendLoad(){ try{ const x=JSON.parse(localStorage.getItem(BPKEY())||'nu
   if(Object.keys(BPEND).length) flushBoards(); }
 /* the sheet's time is the version: the script stamps each saved table (phone and PC clocks may differ by minutes — a phone a little behind
    used to have its saves refused as "older", and a PC a little ahead ignored newer tables) */
+/* 3-way merge, base = the sheet version this device started from (B), mine = this device (L), theirs = the sheet now (X):
+   each cell this device changed keeps this device's value, every other cell takes the sheet's — so neither device has to type again.
+   rows are matched by content when the other side added/removed rows */
+const ROWF=['c','r','h','g','w'];
+const rowEq=(a,b)=>JSON.stringify(a||null)===JSON.stringify(b||null);
+function cellMerge(b, mine, theirs){ const o=JSON.parse(JSON.stringify(theirs));
+  for(const f of ROWF){ const bm=(b&&b[f])||[], mm=(mine&&mine[f])||[]; if(!mine||!mine[f]) continue; o[f]=o[f]||Array(17).fill(f==='r'?false:'');
+    for(let k=0;k<17;k++) if(JSON.stringify(mm[k]??'')!==JSON.stringify(bm[k]??'')) o[f][k]=mm[k]; }
+  if(JSON.stringify(mine&&mine.st||null)!==JSON.stringify(b&&b.st||null)){ if(mine&&mine.st) o.st=JSON.parse(JSON.stringify(mine.st)); else delete o.st; }
+  return o; }
+function applyRows(target, base, changed){ const out=JSON.parse(JSON.stringify(target)), used=new Set(); let lost=0;
+  changed.forEach((row,i)=>{ const b=base[i]; if(rowEq(row,b)) return;
+    let j=-1; if(i<out.length && !used.has(i) && rowEq(out[i],b)) j=i;
+    if(j<0) j=out.findIndex((x,k)=>!used.has(k) && rowEq(x,b) && b && b.c.some(v=>String(v).trim()));
+    if(j<0 && i<out.length && !used.has(i)){ const nm=r=>r?[r.c[1],r.c[10]].map(v=>String(v||'').trim()).join('|'):''; if(nm(out[i])===nm(b)) j=i; }
+    if(j<0){ lost++; return; } used.add(j); out[j]=cellMerge(b,row,out[j]); });
+  return {rows:out, lost}; }
+function mergeBoard(B, L, X){
+  const M=JSON.parse(JSON.stringify(X)); let lost=0;
+  if(!B){ /* no base kept (page reopened): this device's table wins, as the last one acted on */ M.rows=JSON.parse(JSON.stringify(L.rows)); return {M, lost:0, whole:true}; }
+  const sameL=L.rows.length===B.rows.length, sameX=X.rows.length===B.rows.length;
+  if(sameL || !sameX){ const r=applyRows(X.rows, B.rows, sameL?L.rows:L.rows.slice(0,B.rows.length)); M.rows=r.rows; lost=r.lost;
+      if(!sameL && !sameX){ M.rows=JSON.parse(JSON.stringify(L.rows)); lost=0; } }   /* both changed the rows themselves: the device acting now wins */
+  else { const r=applyRows(L.rows, B.rows, X.rows); M.rows=r.rows; }   /* only this device added/removed rows: its rows + the other device's cell edits */
+  for(const k of ['label','hidden']) if(JSON.stringify(L[k])!==JSON.stringify(B[k])) M[k]=L[k];
+  if(JSON.stringify(L.sent||null)!==JSON.stringify(B.sent||null)) M.sent=L.sent;
+  if(JSON.stringify(L.ls||null)!==JSON.stringify(B.ls||null)) M.ls=L.ls;
+  return {M, lost}; }
+function bMerge(d, mine, theirs){
+  const L=BPEND[d] || mine;   /* newer edits typed while this save was on its way */
+  const {M, lost, whole}=mergeBoard(BD && BD.baseB[d], L, theirs);
+  M.date=d; M.base=+theirs.updated||0; M.updated=Date.now(); delete M._re;
+  if(BD){ BD.baseB[d]=JSON.parse(JSON.stringify(theirs)); }
+  S.boards=S.boards||{}; S.boards[d]=JSON.parse(JSON.stringify(theirs));
+  const live=BD && BD.all[d];
+  if(live){ for(const k of Object.keys(live)) delete live[k]; Object.assign(live, JSON.parse(JSON.stringify(M)));
+    try{ localStorage.setItem(KB(d), JSON.stringify(live)); }catch(e){}
+    if(BD.date && (d===BD.date || d===addDays(BD.date,-1))){ const keep=SEL; renderBoard(); SEL=keep; } }
+  BPEND[d]=JSON.parse(JSON.stringify(M)); if(BD) BD.saved[d]=dayKey(M); bpendSave();
+  toast(lost?'มีการแก้ตารางพร้อมกันจากเครื่องอื่น — รวมแล้ว แต่ '+lost+' แถวของเครื่องนี้ไม่พบในตารางล่าสุด โปรดตรวจ':whole?'ตารางนี้ถูกแก้จากเครื่องอื่นด้วย — ใช้ของเครื่องนี้ (ล่าสุด)':'รวมการแก้ไขกับเครื่องอื่นแล้ว'); }
 function bStamp(d, upd){ const live=BD && BD.all[d]; if(live && !BPEND[d]){ live.updated=upd; try{ localStorage.setItem(KB(d), JSON.stringify(live)); }catch(e){} }
-  S.boards=S.boards||{}; if(S.boards[d] && !BPEND[d]) S.boards[d].updated=upd; }
+}
 async function flushBoards(){ if(bSaveBusy) return; clearTimeout(bSaveT); bSaveBusy=true; let fail=null;
   try{ for(const [d,blk] of Object.entries(BPEND)){ try{
         let r=await api('saveBoard',{},{board:blk});
+        if(r && typeof r==='object' && r.conflict && r.board){   /* another device saved first: put this device's changes on top of its table */
+          if(BPEND[d]===blk) delete BPEND[d]; bMerge(d, blk, r.board); continue; }
         if(r===false && (blk._re||0)<3){   /* older script: refused as older (clock behind) → go just past the sheet's version and send again */
           let su=0; try{ const all=boardsApi?await api('boards'):(await api('init')).boards; su=+((all||{})[d]||{}).updated||0; }catch(e){}
           blk._re=(blk._re||0)+1; blk.updated=Math.max(Date.now(), su+1); r=await api('saveBoard',{},{board:blk}); }
         if(BPEND[d]===blk) delete BPEND[d]; bTry=0;
         const upd=r && typeof r==='object' && +r.updated ? +r.updated : (r!==false ? +blk.updated : 0);
-        if(upd) bStamp(d, upd); }
+        if(upd){ bStamp(d, upd); const sent=JSON.parse(JSON.stringify(blk)); sent.updated=upd; delete sent._re; delete sent.base;   /* what the sheet holds now */
+          S.boards=S.boards||{}; S.boards[d]=sent;
+          if(r && typeof r==='object' && +r.updated){ if(BD) BD.baseB[d]=sent; for(const x of [BD && BD.all[d], BPEND[d]]) if(x) x.base=upd; } } }
       catch(err){ if(transientErr(err)){ fail=err; break; } if(BPEND[d]===blk) delete BPEND[d]; toast('บันทึกตารางแก้ไขขึ้นชีตไม่สำเร็จ: '+scriptOld(err)); } } }
   finally{ bSaveBusy=false; bpendSave(); }
   if(fail){ bTry++; if(bTry===2) toast('ชีตไม่ว่างชั่วคราว — กำลังลองบันทึกตารางแก้ไขใหม่เอง'); bSaveT=setTimeout(flushBoards, Math.min(15000,1000*2**(bTry-1))); }
@@ -2078,12 +2127,12 @@ function boardGapMig(b){ if((b.updated||0)>=BGAPMIG || !b.date || b.date<addDays
   if(keep.length!==rows.length) b.rows=keep; }
 function openBoard(D){
   const P=addDays(D,-1); let fresh=null;
-  BD={date:D, all:{}, blocks:[], saved:{}, pending:{}, updated:0};
+  BD={date:D, all:{}, blocks:[], saved:{}, pending:{}, updated:0, baseB:(BD&&BD.baseB)||{}};
   for(const [d,i] of [[P,0],[D,1]]){
     let b=getDay(d);
     if(!b){ fresh=fresh||boardFromSchedule(D); b={...fresh.blocks[i], updated:0}; }
     else BD.saved[d]=dayKey(b);
-    b.date=d; BD.all[d]=b; if(!b.hidden) BD.blocks.push(b); BD.updated=Math.max(BD.updated,b.updated||0);
+    b.date=d; BD.all[d]=b; { const r=dayRemote(d); BD.baseB[d]=r && (+r.updated||0)===(+b.base||0) ? JSON.parse(JSON.stringify(r)) : (BD.baseB[d]||null); } if(!b.hidden) BD.blocks.push(b); BD.updated=Math.max(BD.updated,b.updated||0);
   }
   for(const b of BD.blocks) boardGapMig(b);
   for(const b of Object.values(BD.all)) if(!b.sent) b.sent=boardHalves(b);   /* starting point for "taken off → สมุดบันทึกเรือ" (no first LINE send needed) */

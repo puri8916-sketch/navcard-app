@@ -338,7 +338,13 @@ function saveBoard_(board) {
   if (json.length > 49000) throw new Error('ตารางรูป LINE ยาวเกินไป');
   const r = findRow_(s, 'date', board.date);
   const old = r > 0 ? Number(s.getRange(r, 2).getValue()) || 0 : 0;
-  // the sheet's clock is the version (device clocks differ): the last save to arrive wins, stamped after the one before it
+  // another device saved since this device loaded the table (base = the version it started from): send the sheet's table back,
+  // the page puts its own changes on top of it and saves again — a device with an old table never overwrites a newer one
+  if (r > 0 && old && board.base != null && Number(board.base) !== old) {
+    let cur = null; try { cur = JSON.parse(s.getRange(r, 3).getValue() || 'null'); } catch (e) {}
+    if (cur) { cur.updated = old; return { conflict: true, board: cur }; }
+  }
+  // the sheet's clock is the version (device clocks differ), stamped after the one before it
   board.updated = Math.max(Date.now(), old + 1);
   s.getRange(r > 0 ? r : s.getLastRow() + 1, 1, 1, 3).setNumberFormat('@').setValues([[board.date, String(board.updated), JSON.stringify(board)]]);
   return { updated: board.updated };
