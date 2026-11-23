@@ -523,7 +523,7 @@ with st.container():   # the ×3.2808 calculator moved to a button in สมุ�
     card_dir = os.path.join(workdir, "card_zip")
     extracted_dir = os.path.join(workdir, "extracted")
 
-    uploads = st.file_uploader("ไฟล์ zip ของชุดการ์ด หรือ ReportCardIsClosedDaily.xlsx", type=["zip", "xlsx"],
+    uploads = st.file_uploader("ไฟล์ zip ของชุดการ์ด, ReportCardIsClosedDaily.xlsx หรือไฟล์การ์ด PDF แยกใบ (เพิ่มการ์ดที่ตกหล่น)", type=["zip", "xlsx", "pdf"],
                                accept_multiple_files=True, key=f"up_{st.session_state.get('up_n', 0)}")
     # unpack once per new set of files: PDFs -> card_dir, xlsx/csv -> extracted_dir (zip by zip, so names can repeat)
     _sig = tuple((u.name, u.size) for u in uploads)
@@ -540,6 +540,19 @@ with st.container():   # the ×3.2808 calculator moved to a button in สมุ�
             if _u.name.lower().endswith(".xlsx"):
                 with open(os.path.join(_sub, _u.name), "wb") as _f:
                     _f.write(_u.getvalue())
+                continue
+            if _u.name.lower().endswith(".pdf"):   # a single card PDF added on its own (one left out of the zip)
+                _dst = os.path.join(card_dir, f"{_i:02d}_{os.path.basename(_u.name)}")
+                with open(_dst, "wb") as _f:
+                    _f.write(_u.getvalue())
+                try:
+                    from pypdf import PdfReader as _PR
+                    _np = len(_PR(_dst).pages)
+                except Exception:
+                    _np = 0
+                if _np != 1:   # the merged file (2 cards a page) or a broken file is not a card
+                    os.remove(_dst)
+                    st.error(f"{_u.name}: ไม่ใช่การ์ดแยกใบ ({_np} หน้า) — ใส่เฉพาะไฟล์การ์ด NavigationCard ทีละใบ")
                 continue
             try:
                 with zipfile.ZipFile(_u) as z:
