@@ -2736,7 +2736,7 @@ async function mailCopyNow(){ let list=mailGet(); if(!list.length) list=await ma
   mailPull(); }
 async function mailEditor(){ const cur=await mailPull();
   const M=document.createElement('div'); M.className='crop-m';
-  M.innerHTML=`<div class="crop-box lg-box" role="dialog" aria-label="รายชื่ออีเมล"><h3>อีเมลสำหรับปุ่ม ✉️ คัดลอกEmail</h3>
+  M.innerHTML=`<div class="crop-box lg-box" role="dialog" aria-label="รายชื่ออีเมล"><h3>อีเมลสำหรับปุ่ม คัดลอกEmail</h3>
     <div class="crop-hint">ใส่บรรทัดละ 1 อีเมล (หรือคั่นด้วย , ;) — กดปุ่มคัดลอกแล้วไปวางในช่อง "ถึง" ได้ทั้งหมดในครั้งเดียว · ใช้ร่วมกันทุกเครื่อง</div>
     <textarea class="mail-ta" rows="7" spellcheck="false" placeholder="name@example.com"></textarea><div class="mail-bad" hidden></div>
     <div class="crop-row end"><button type="button" class="btn" data-a="no">ยกเลิก</button><button type="button" class="btn primary" data-a="ok">บันทึก</button></div></div>`;
