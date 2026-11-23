@@ -487,15 +487,6 @@ with st.container():   # the ×3.2808 calculator moved to a button in สมุ�
     import report_page
     st.title("📑 ปิดการ์ดประจำวัน")
 
-    # ✉️ copy "to" + subject for the daily e-mail (each with its own copy button)
-    _MAIL_TO = "พี่ปลา การเงินนำร่อง"
-    with st.container(border=True):
-        _mc1, _mc2 = st.columns([1, 3])
-        _md = _mc1.date_input("✉️ วันที่ในชื่อเรื่องเมล์", value=nc.thai_now().date(), format="DD/MM/YYYY", key="mail_date")
-        _subj = f"รายงานการปิดการ์ดนำร่อง วันที่ {_md.day} {nc._TH_MONTHS_SHORT[_md.month - 1]} {_md.year + 543}"
-        with _mc2:
-            components.html(_MAIL_COPY_HTML.replace("__ROWS__", json.dumps([["ถึง", _MAIL_TO], ["ชื่อเรื่อง", _subj]], ensure_ascii=False)), height=118)
-
     _store = _ship_store(key="ship_store", default=None)
     # ship lengths come from the calculator store only (ships.csv defaults now live in the sheet of the original port)
     _ship_memory = dict(nc.ship_memory_from_store(_store))
@@ -682,6 +673,9 @@ with st.container():   # the ×3.2808 calculator moved to a button in สมุ�
             problems = True
             st.error(f"⚠️ พบการ์ดเลขซ้ำ: {report['duplicates']}")
 
+        if report.get("unreadable_pdfs"):
+            st.warning("⚠️ อ่านเลขการ์ดไม่ได้ (ข้ามไฟล์นี้): " + ", ".join(f.split("_", 1)[-1] for f in report["unreadable_pdfs"]))
+
         if report["missing_card_pdf"]:
             problems = True
             st.error(f"⚠️ ขาดไฟล์การ์ดเปล่าสำหรับ: {', '.join(report['missing_card_pdf'])}")
@@ -811,6 +805,12 @@ with st.container():   # the ×3.2808 calculator moved to a button in สมุ�
                     mime="application/pdf",
                 )
             st.success("สร้างไฟล์เสร็จแล้ว!")
+            # ✉️ copy "to" + subject for the e-mail — shown only with the download (same day as the PDF's file name)
+            _md = st.session_state.get("upload_dt") or nc.thai_now()
+            _subj = f"รายงานการปิดการ์ดนำร่อง วันที่ {_md.day} {nc._TH_MONTHS_SHORT[_md.month - 1]} {_md.year + 543}"
+            with st.container(border=True):
+                st.caption("✉️ คัดลอกส่งเมล์")
+                components.html(_MAIL_COPY_HTML.replace("__ROWS__", json.dumps([["ถึง", "พี่ปลา การเงินนำร่อง"], ["ชื่อเรื่อง", _subj]], ensure_ascii=False)), height=118)
 
     # ---------------------------------------------------------------- monthly workbook + signer (less often)
     st.divider()

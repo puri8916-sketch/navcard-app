@@ -386,8 +386,12 @@ def analyze_batch(card_dir, xlsx_path, csv_paths, ship_memory=None):
     all_files = [f for f in os.listdir(card_dir) if f.lower().endswith('.pdf')]
     card_map = {}
     duplicates = []
+    unreadable = []
     for fn in all_files:
         cn = extract_card_no(os.path.join(card_dir, fn))
+        if not cn:   # no card number found in this PDF: report it instead of crashing the whole check
+            unreadable.append(fn)
+            continue
         if cn in card_map:
             duplicates.append((fn, cn))
         else:
@@ -503,6 +507,7 @@ def analyze_batch(card_dir, xlsx_path, csv_paths, ship_memory=None):
         'loa_map': loa_map,
         'loa_source': loa_source,
         'duplicates': duplicates,
+        'unreadable_pdfs': unreadable,
         'missing_card_pdf': missing_card_pdf,
         'extra_cards_no_report_row': extra_cards,
         'unmatched_loa_ships': unmatched_ships,
