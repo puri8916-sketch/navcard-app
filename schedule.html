@@ -273,6 +273,7 @@ table.lsheet.board{width:100%;font-size:17px}
 .lsheet.board td{padding:0;height:34px}
 /* ผก. ขึ้นลำนี้ (ticked = a pilot goes on this ship, not ticked = no pilot): a tap gutter outside the sheet (not in the LINE picture), the ship's half of the row turns light yellow */
 .lsheet.board td.stg{border:0!important;background:transparent!important;text-align:center;vertical-align:middle}
+.lsheet.board .pinb,#grid .pinb{border:0;background:none;padding:0 1px;font-size:13px;line-height:1;cursor:pointer;opacity:.85;vertical-align:middle}.lsheet.board .pinb:hover,#grid .pinb:hover{opacity:1}
 .lsheet.board .stb{width:24px;height:24px;border-radius:50%;border:2px solid #B9C2CB;background:#fff;cursor:pointer;padding:0;font-size:13px;line-height:20px;color:#fff}
 .lsheet.board .stb:hover{border-color:#3C9D62}.lsheet.board .stb.on{background:#3C9D62;border-color:#2F8552}
 .lsheet.board td.pob{background:#DAF0E1}   /* soft mint: easy on the eyes, still stands out from white */
@@ -911,17 +912,27 @@ function autoRows(list, gh=GAP_S){
 // หลังผู้ใช้ย้ายแถวเอง: ใช้ลำดับที่บันทึกไว้ · เรือใหม่ที่ยังไม่เคยจัดจะถูกแทรกตามเวลา/ท่าอัตโนมัติ (ครั้งแรกครั้งเดียว)
 function applyLayout(list, lrows){
   const byId=new Map(list.map(m=>[m.id,m])), seen=new Set(), rows=[];
-  for(const [l,r] of lrows){
+  for(const [l,r,p] of lrows){   /* p: 'L'/'R' = that side was put there by hand (📌) */
     let L=byId.get(l), R=byId.get(r);
     if(L && (L.type!=='IN' || seen.has(L.id))) L=null; if(R && (R.type==='IN' || seen.has(R.id))) R=null;
     if(L) seen.add(L.id); if(R) seen.add(R.id);
-    if(!l && !r) rows.push({blank:true}); else if(L||R) rows.push({L,R});
+    if(!l && !r) rows.push({blank:true}); else if(L||R) rows.push({L,R,p:String(p||'').replace(L?'':'L','').replace(R?'':'R','')});
   }
-  for(const m of list) if(!seen.has(m.id)) insertNew(rows,m);
+  for(const m of list) if(!seen.has(m.id)){ insertNew(rows,m); const k=rows.findIndex(r=>r.L===m||r.R===m); sGapAt(rows,k); sGapAt(rows,rows.findIndex(r=>r.L===m||r.R===m)+1); }   /* a new ship gets separators by the 1 ½ h rule */
   const out=[]; for(const r of rows){ if(r.blank && (!out.length || out[out.length-1].blank)) continue; out.push(r); }
   while(out.length && out[out.length-1].blank) out.pop();
   return out;
 }
+const toLay=r=>r.blank?['','']:(r.p?[r.L?r.L.id:'', r.R?r.R.id:'', r.p]:[r.L?r.L.id:'', r.R?r.R.id:'']);
+/* separators at the boundary before row k (rows of {L,R} / {blank}): one when the ships meeting there are 1 ½ h or more apart, none when closer */
+function sGapAt(rows, k){ if(k<0) return;
+  const ts=r=>[r.L,r.R].filter(Boolean).map(m=>m.datetime).sort();
+  let p=Math.min(k,rows.length)-1; while(p>=0 && rows[p].blank) p--;
+  let n=Math.max(k,p+1); while(n<rows.length && rows[n].blank) n++;
+  if(p<0 || n>=rows.length) return;
+  const e=n-p-1, a=ts(rows[p]), b=ts(rows[n]); if(!a.length || !b.length) return;
+  const want=needGap(a[a.length-1], b[0]);
+  if(want && !e) rows.splice(p+1,0,{blank:true}); else if(want && e>1) rows.splice(p+2,e-1); else if(!want && e) rows.splice(p+1,e); }
 function insertNew(rows, m){   /* เรือเพิ่ม: แค่เรียงเวลาฝั่งเดียวกัน · ลงช่องว่างฝั่งนั้นแถวแรกที่ถึง (แถวเดียวกับอีกฝั่งได้) · ไม่สร้างแถวคั่น */
   const side=m.type==='IN'?'L':'R';
   let lastLE=-1; rows.forEach((r,k)=>{ if(!r.blank && r[side] && sortMv(r[side],m)<=0) lastLE=k; });
@@ -932,10 +943,10 @@ function insertNew(rows, m){   /* เรือเพิ่ม: แค่เร�
 }
 /* a day shown by the automatic arrangement keeps that arrangement once ships are added to it */
 function freezeDay(D){ if(!D || layoutOf(D)) return; const list=S.mv.filter(m=>inWin(m,D) && !+m.late).sort(sortMv); if(!list.length) return;
-  setLayout(D, autoRows(list).map(r=>r.blank?['','']:[r.L?r.L.id:'', r.R?r.R.id:''])); }
+  setLayout(D, autoRows(list).map(toLay)); }
 /* …and the place a new ship got is kept, so it doesn't move when more ships are added */
 function fixDay(D){ if(!D || !layoutOf(D)) return; const list=S.mv.filter(m=>inWin(m,D) && !+m.late);
-  setLayout(D, arrangeRows(list, D).map(r=>r.blank?['','']:[r.L?r.L.id:'', r.R?r.R.id:''])); }
+  setLayout(D, arrangeRows(list, D).map(toLay)); }
 function arrangeRows(items, D, gh){ const list=items.slice().sort(sortMv); let lay=D && layoutOf(D); if(lay) lay=gapMig(D, lay, list); return lay ? applyLayout(list, lay.rows) : autoRows(list, gh); }
 /* once: separator rows the old 1-hour rule put into a saved จัดตาราง layout (ships 1–2 h apart) come out; separators added by hand later stay */
 const GAPMIG=Date.UTC(2026,10,6,8,0), gapDone=new Set();
@@ -1050,7 +1061,7 @@ function halfHTML(side, m, o){
   if(m){
     const typ = m.type==='SHIFT' ? `<span class="kind c-shift">ย้าย</span>` : '';
     for(const f of F){
-      if(f==='no'){ const lt=+m.late; h+=`<td class="no${lt?' lt':''}${mid}">${lt?'พ':(o.no??'')}</td>`; continue; }   /* number only — clicking it no longer makes the ship พ */
+      if(f==='no'){ const lt=+m.late; h+=`<td class="no${lt?' lt':''}${mid}">${lt?'พ':(o.no??'')}${o.pin?`<button type="button" class="pinb" data-gpin="${m.id}" title="จัดวางเอง — ไม่ย้ายตามเวลา (กดเพื่อให้จัดอัตโนมัติ)" aria-label="ปลดหมุด">📌</button>`:''}</td>`; continue; }   /* number only — clicking it no longer makes the ship พ */
       const need = f==='pilot' && !m.pilot ? ' need' : '';
       const fc = fcOf(m,f), fv=fieldVal(m,f,side), rr = f==='berth' ? frRanges(m,'berth',String(fv||'')) : [];
       const st=fStyle(m,f);
@@ -1088,8 +1099,9 @@ function renderGrid(){
     // separator rows between time groups look empty like the print, but you can type a ship there like any other row
     if(r.blank){ h+=`<tr class="sep" data-li="${i}">${halfHTML('L',null,{draft:'s'+i+'L',base:D})}${halfHTML('R',null,{draft:'s'+i+'R',base:D})}${rd()}</tr>`; return; }
     const dt = (r.L||r.R).datetime;
-    h += `<tr data-li="${i}">${r.L? halfHTML('L',r.L,{no:main.no.get(r.L.id),base:D}) : halfHTML('L',null,{draft:'e'+i+'L',base:D,def:dt})}`+
-         `${r.R? halfHTML('R',r.R,{no:main.no.get(r.R.id),base:D}) : halfHTML('R',null,{draft:'e'+i+'R',base:D,def:dt})}${rd()}</tr>`;
+    const pn=String(r.p||'');
+    h += `<tr data-li="${i}">${r.L? halfHTML('L',r.L,{no:main.no.get(r.L.id),base:D,pin:pn.includes('L')}) : halfHTML('L',null,{draft:'e'+i+'L',base:D,def:dt})}`+
+         `${r.R? halfHTML('R',r.R,{no:main.no.get(r.R.id),base:D,pin:pn.includes('R')}) : halfHTML('R',null,{draft:'e'+i+'R',base:D,def:dt})}${rd()}</tr>`;
   });
   h += `<tr class="newrow">${halfHTML('L',null,{draft:'newL',base:D,isNew:true})}${halfHTML('R',null,{draft:'newR',base:D,isNew:true})}${rd()}</tr>`;
   h += `<tr class="lateh"><td colspan="17">เรือที่แจ้งเข้า - ออกและเลื่อน เพิ่มเติม หลังจากจัดจ่ายงาน วันที่ ${longDate(P)}</td>${rd()}</tr>`;
@@ -1200,10 +1212,12 @@ function onCellChange(inp){
   if(f==='ship'){ if(!v){ return delMv(m.id); }   // ลบชื่อเรือ = ลบเรือลำนั้น (Ctrl+Z คืนได้)
     m.ship=norm(v); const s=S.shipIdx.get(m.ship); if(s){ if(s.loa) m.loa=s.loa; if(s.agent) m.agent=s.agent; } ensureShip(m); }
   else if(f==='t'){ const dt=parseTime(v,base); if(!dt){ inp.classList.add('bad'); return toast('อ่านเวลาไม่ได้ พิมพ์ 0630 หรือ 27-0630'); }
+    if(dt!==m.datetime) SPQ.add(m.id);   /* goes to its place by time when you leave the row */
     if(m.type==='IN' && (!m.pob || m.pob===m.datetime)) m.pob=dt; m.datetime=dt;
     const sd=schedOf(dt); if(sd!==base) toast(`เวลา ${fmtT(dt)} อยู่รอบ ${shortDate(sd)} — ย้ายไปตารางนั้นแล้ว`); }
   else if(f==='pob'){ if(!v){ m.pob=m.datetime; } else { const dt=parseTime(v,base); if(!dt){ inp.classList.add('bad'); return toast('อ่านเวลา POB ไม่ได้'); } m.pob=dt; } }
-  else if(f==='berth'){ if(side==='L') m.to=norm(v); else { const b=parseBerthR(v); m.type=b.type; m.from=b.from; m.to=b.to; } }
+  else if(f==='berth'){ if(side==='L') m.to=norm(v); else { const b=parseBerthR(v); m.type=b.type; m.from=b.from; m.to=b.to; }
+    if(S.mv.some(x=>x.id!==m.id && x.datetime===m.datetime && (x.type==='IN')===(m.type==='IN'))) SPQ.add(m.id); }   /* same time as other ships: order by berth */
   else if(f==='agent') m.agent=norm(v);
   else if(f==='pilot') m.pilot=v.replace(/^P\.?/i,'').trim();
   else m[f]=v;
@@ -1517,18 +1531,59 @@ document.addEventListener('keydown',e=>{
 /* ---------- ย้ายแถวเอง (หลังจัดอัตโนมัติครั้งแรก) ---------- */
 let GSEP=null;   // a separator row chosen with right-click
 function curLayRows(){   /* the rows as shown (data-li indexes them): a saved layout is normalised first — leading/double separators, ships gone, ships added */
-  return arrangeRows(S.mv.filter(m=>inWin(m,S.D) && !+m.late), S.D).map(r=>r.blank?['','']:[r.L?r.L.id:'', r.R?r.R.id:'']); }
+  return arrangeRows(S.mv.filter(m=>inWin(m,S.D) && !+m.late), S.D).map(toLay); }
 function gPos(){ if(GSEP!==null) return {li:GSEP, side:null, c:null};
   if(!GSEL) return null; const i=gcell(GSEL.r1,GSEL.c1) || G.querySelector(`td[data-gr="${GSEL.r1}"][data-gc="${GSEL.c1}"]`); const tr=i && i.closest('tr[data-li]');
   return tr ? {li:+tr.dataset.li, side:GSEL.c1<9?0:1, c:GSEL.c1} : null; }
 function layChange(rows, focus){
+  { /* 📌 belongs to the ship, not to the row: carry it by id (+ the ship just moved by hand) */
+    const pins=new Set(PIN_NEXT||[]); for(const r of ((layoutOf(S.D)||{}).rows||[])) for(const sd of [0,1]) if(r[sd] && String(r[2]||'').includes(sd?'R':'L')) pins.add(r[sd]);
+    for(const r of rows){ const f=(r[0]&&pins.has(r[0])?'L':'')+(r[1]&&pins.has(r[1])?'R':''); if(f) r[2]=f; else r.length=Math.min(r.length,2); } }
   const before=layoutOf(S.D)?cl(layoutOf(S.D).rows):null;
   gRecordLay(S.D, before, rows); setLayout(S.D, rows); renderAll();
   if(focus){ const el=G.querySelector(`tr[data-li="${focus.li}"] input[data-gc="${focus.c}"]`) || G.querySelector(`tr[data-li="${focus.li}"] input`);
     if(el){ gSet(+el.dataset.gr,+el.dataset.gc,false); el.focus(); } }
 }
 const isBlankR=r=>!r[0] && !r[1];
-function gMove(dir, whole){
+/* ---------- ลงเรือ/แก้เวลา → จัดให้เฉพาะลำนั้น (จัดตาราง) — same rules as แก้ไข: placed by time → berth once you leave its row,
+   other rows stay, separators by the 1 ½ h rule around the old and new place; a ship moved by hand (📌) stays ---------- */
+const SPQ=new Set();
+function sInOrder(rows, k, sd){ const m=rows[k][sd]; if(!m) return true;
+  for(let j=k-1;j>=0;j--) if(!rows[j].blank && rows[j][sd]){ if(sortMv(rows[j][sd],m)>0) return false; break; }
+  for(let j=k+1;j<rows.length;j++) if(!rows[j].blank && rows[j][sd]){ if(sortMv(m,rows[j][sd])>0) return false; break; }
+  return true; }
+function sFlush(focusK){
+  if(!SPQ.size) return false; const ids=[...SPQ]; SPQ.clear();
+  const lay=layoutOf(S.D); if(!lay) return false;   /* no saved arrangement: the day is arranged by time anyway */
+  const list=S.mv.filter(m=>inWin(m,S.D) && !+m.late), before=cl(lay.rows);
+  let rows=arrangeRows(list, S.D), changed=false;
+  for(const id of ids){ const k=rows.findIndex(r=>!r.blank && ((r.L&&r.L.id===id)||(r.R&&r.R.id===id))); if(k<0) continue;
+    const sd=rows[k].L&&rows[k].L.id===id?'L':'R'; if(String(rows[k].p||'').includes(sd)) continue;   /* 📌 */
+    if(sInOrder(rows,k,sd)){ const n0=rows.length; sGapAt(rows,k); const k2=rows.findIndex(r=>r[sd]&&r[sd].id===id); sGapAt(rows,k2+1); if(rows.length!==n0) changed=true; continue; }
+    const m=rows[k][sd]; rows[k][sd]=null;
+    if(!rows[k].L && !rows[k].R){ rows.splice(k,1); sGapAt(rows,k); }
+    insertNew(rows,m); const k2=rows.findIndex(r=>r[sd]===m); sGapAt(rows,k2); sGapAt(rows,rows.findIndex(r=>r[sd]===m)+1); changed=true; }
+  if(!changed) return false;
+  const lr=rows.map(toLay); gRecordLay(S.D, before, lr); setLayout(S.D, lr); renderAll();
+  if(focusK){ const el=G.querySelector(`input[data-k="${CSS.escape(focusK)}"]`); if(el){ gSet(+el.dataset.gr,+el.dataset.gc,false); el.focus(); } }
+  return true; }
+function sLeft(i){ if(!SPQ.size || !i) return false; const tr=i.closest('tr');
+  const here=new Set([...(tr?tr.querySelectorAll('input[data-k]'):[])].map(x=>x.dataset.k.split(':')[0]));
+  return ![...SPQ].every(id=>here.has(id)); }
+/* keyboard: at once; mouse: right after the click (rows moving under the pointer mid-click would pick another cell) */
+G.addEventListener('focusin',e=>{ if(bPtr) return; const i=e.target.closest && e.target.closest('input'); if(sLeft(i)) sFlush(i.dataset.k); });
+document.addEventListener('click',()=>{ const i=document.activeElement && document.activeElement.closest && document.activeElement.closest('#grid input'); if(sLeft(i)) sFlush(i.dataset.k); });
+document.addEventListener('pointerdown',e=>{ if(SPQ.size && !(e.target.closest && e.target.closest('#grid input,#gmenu'))) setTimeout(()=>sFlush(null),0); },true);
+document.addEventListener('mousedown',e=>{ if(e.target.closest && e.target.closest('#grid [data-gpin]')) e.preventDefault(); });
+document.addEventListener('click',e=>{ const t=e.target.closest && e.target.closest('#grid [data-gpin]'); if(!t) return; const id=t.dataset.gpin;
+  const lay=layoutOf(S.D); if(!lay) return; const before=cl(lay.rows), rows=cl(lay.rows);
+  for(const r of rows) for(const sd of [0,1]) if(r[sd]===id){ r[2]=String(r[2]||'').replace(sd?'R':'L',''); if(!r[2]) r.length=2; }
+  gRecordLay(S.D, before, rows); setLayout(S.D, rows); SPQ.add(id); if(!sFlush(null)) renderAll(); toast('ปลดหมุดแล้ว — ลำนี้จัดตามเวลาอัตโนมัติ'); });
+/* what is moved by hand is pinned 📌: it keeps this place when its time changes */
+let PIN_NEXT=null;
+function gMove(dir, whole){ const p=gPos(); if(p){ const r=curLayRows()[p.li]; if(r) PIN_NEXT=(whole||p.side===null?[r[0],r[1]]:[r[p.side]]).filter(Boolean); }
+  try{ return gMove0(dir, whole); } finally{ PIN_NEXT=null; } }
+function gMove0(dir, whole){
   const p=gPos(); if(!p) return toast('เลือกช่องในแถวเรือก่อน'); const rows=curLayRows(); const i=p.li, j=i+dir;
   if(!rows[i] || j<0) return;
   if(whole || p.side===null){ if(j>=rows.length) return; [rows[i],rows[j]]=[rows[j],rows[i]]; return layChange(rows,{li:j,c:p.c}); }
@@ -2075,7 +2130,7 @@ const rowEq=(a,b)=>JSON.stringify(a||null)===JSON.stringify(b||null);
 function cellMerge(b, mine, theirs){ const o=JSON.parse(JSON.stringify(theirs));
   for(const f of ROWF){ const bm=(b&&b[f])||[], mm=(mine&&mine[f])||[]; if(!mine||!mine[f]) continue; o[f]=o[f]||Array(17).fill(f==='r'?false:'');
     for(let k=0;k<17;k++) if(JSON.stringify(mm[k]??'')!==JSON.stringify(bm[k]??'')) o[f][k]=mm[k]; }
-  if(JSON.stringify(mine&&mine.st||null)!==JSON.stringify(b&&b.st||null)){ if(mine&&mine.st) o.st=JSON.parse(JSON.stringify(mine.st)); else delete o.st; }
+  for(const k of ['st','pin']) if(JSON.stringify(mine&&mine[k]||null)!==JSON.stringify(b&&b[k]||null)){ if(mine&&mine[k]) o[k]=JSON.parse(JSON.stringify(mine[k])); else delete o[k]; }
   return o; }
 function applyRows(target, base, changed){ const out=JSON.parse(JSON.stringify(target)), used=new Set(); let lost=0;
   changed.forEach((row,i)=>{ const b=base[i]; if(rowEq(row,b)) return;
@@ -2177,7 +2232,7 @@ function boardTable(b,bi){
   h+=`<tr><td class="stg"></td><td class="h-in" colspan="9">ENTERING</td><td class="h-out" colspan="8">SAILING &amp; SHIFTING</td><td class="stg"></td></tr>`;
   h+=`<tr><td class="stg"></td>${LHEAD.map(t=>`<td class="hd">${t}</td>`).join('')}<td class="stg"></td></tr>`;
   const gut=(row,ri,side)=>{ const a=side==='L'?0:9, z=side==='L'?9:17; if(!row.c.slice(a,z).some(v=>String(v).trim())) return '<td class="stg"></td>';
-    const on=!!(row.st&&row.st[side]); return `<td class="stg"><button type="button" class="stb${on?' on':''}" data-stb="${bi}|${ri}|${side}" title="${on?'ผก. ขึ้นลำนี้ (กดเพื่อยกเลิก)':'ติ๊กถ้า ผก. ขึ้นลำนี้'}" aria-pressed="${on}">${on?'✓':''}</button></td>`; };
+    const on=!!(row.st&&row.st[side]), pin=!!(row.pin&&row.pin[side]); return `<td class="stg"><button type="button" class="stb${on?' on':''}" data-stb="${bi}|${ri}|${side}" title="${on?'ผก. ขึ้นลำนี้ (กดเพื่อยกเลิก)':'ติ๊กถ้า ผก. ขึ้นลำนี้'}" aria-pressed="${on}">${on?'✓':''}</button>${pin?`<button type="button" class="pinb" data-bpin="${bi}|${ri}|${side}" title="จัดวางเอง — ไม่ย้ายตามเวลา (กดเพื่อให้จัดอัตโนมัติ)" aria-label="ปลดหมุด">📌</button>`:''}</td>`; };
   b.rows.forEach((row,ri)=>{
     h+=`<tr data-b="${bi}" data-r="${ri}">${gut(row,ri,'L')}`;
     for(let c=0;c<17;c++){
@@ -2188,7 +2243,9 @@ function boardTable(b,bi){
   });
   return h+'</table>';
 }
-document.addEventListener('mousedown',e=>{ if(e.target.closest && e.target.closest('#board [data-stb]')) e.preventDefault(); });
+document.addEventListener('mousedown',e=>{ if(e.target.closest && e.target.closest('#board [data-stb],#board [data-bpin]')) e.preventDefault(); });
+document.addEventListener('click',e=>{ const t=e.target.closest && e.target.closest('#board [data-bpin]'); if(!t||!BD) return; const [bi,ri,side]=t.dataset.bpin.split('|'); const row=BD.blocks[+bi]&&BD.blocks[+bi].rows[+ri]; if(!row) return;
+  pushUndo(); setPin(row,side,false); bQueue(row,side); if(!bFlush(null,true)){ boardSave(); renderBoard(); } toast('ปลดหมุดแล้ว — ลำนี้จัดตามเวลาอัตโนมัติ'); });
 document.addEventListener('click',e=>{ const t=e.target.closest && e.target.closest('#board [data-stb]'); if(!t||!BD) return; const [bi,ri,side]=t.dataset.stb.split('|'); const row=BD.blocks[+bi]&&BD.blocks[+bi].rows[+ri]; if(!row) return;
   pushUndo(); row.st=row.st||{}; if(row.st[side]) delete row.st[side]; else row.st[side]=1; if(!Object.keys(row.st).length) delete row.st; boardSave(); renderBoard(); });
 // a day's table that was taken out can be added back (empty) for a sudden extra ship
@@ -2353,31 +2410,97 @@ BOARD.addEventListener('change',e=>{ const i=e.target.closest('.ce'); if(!i||!BD
     if(dt){ const raw=String(i.value).trim(), t=timeText(raw,dt), o2=c===4?5:c===5?4:-1;
       if(typingKey===null) pushUndo(); row.c[c]=t; keepRich(row,c,raw,t); i.value=t;
       const filled = o2>=0; if(filled) mirrorTime(row,c,o2,dt);   /* text around the time stays in its own cell */   /* ETA and POB always move together, colour too */
-      if(c===5){ const pos=filled&&!hadTime(i,base)?placeHalf(b,r,4):null; boardSave(); if(pos){ SEL={b,r1:pos.r,c1:c,r2:pos.r,c2:c}; } renderBoard(); return; } } }
+      if(c===5){ if(filled) bQueue(row,'L',!hadTime(i,base)); boardSave(); renderBoard(); return; } } }
   if((c===4||c===13) && i.value.trim()){
     const blk=BD.blocks[b]; const base=blk.date||BD.date;
-    if(parseTime(i.value,base)){ const pos=hadTime(i,base)?null:placeHalf(b,r,c); boardSave(); if(pos){ SEL={b,r1:pos.r,c1:c,r2:pos.r,c2:c}; } renderBoard(); return; }   /* a ship's first time puts it in order once; changing a time later leaves the row where it is (จัดอัตโนมัติ by hand) */
+    if(parseTime(i.value,base)){ bQueue(row, c<9?'L':'R', !hadTime(i,base)); boardSave(); renderBoard(); return; }   /* placed by time when you leave the row (a pinned 📌 ship stays) */
   }
+  if((c===6||c===14) && i.value.trim()){ const sd=c<9?'L':'R', base=BD.blocks[b].date||BD.date, t=parseTime(row.c[HALF[sd].tc],base);   /* berth changed: re-order only among ships of the same time */
+    if(t && BD.blocks[b].rows.some(x=>x!==row && bHas(x,sd) && parseTime(x.c[HALF[sd].tc],base)===t)) bQueue(row,sd); }
   boardSave(); syncLate(); });
 
 const hadTime=(i,base)=>{ const o=String(i._old??'').trim(); return !!o && !DAYPFX.test(o) && !!parseTime(o,base); };   /* the cell held a real time before this edit */
 /* a ship's first time on แก้ไข: only that ship moves to its place by time (like จัดตาราง's เรือเพิ่ม) — the rows arranged by hand stay put.
    Its side goes into the first free cell after the last earlier ship of the same side (same row as a ship on the other side is fine), no new gap rows. */
+/* ---------- ลงเรือ/แก้เวลา → จัดให้เฉพาะลำนั้น (ลำที่ย้ายเองปักหมุด 📌 ไว้) ----------
+   a ship whose time was typed (or whose berth changed while sharing its time with others) goes to its place by time → berth
+   once you leave its row; the rows around it stay as they are. Separator rows around its old and new place follow the 1 ½ h rule.
+   A ship moved by hand (Alt+↑↓ / ย้ายแถว) is pinned and stays where it was put; tap 📌 to let it follow the time again. */
+const isPinned=(row,side)=>!!(row && row.pin && row.pin[side]);
+function setPin(row,side,on){ if(on){ row.pin=row.pin||{}; row.pin[side]=1; } else if(row.pin){ delete row.pin[side]; if(!Object.keys(row.pin).length) delete row.pin; } }
+const HALF={L:{a:0,z:9,tc:4,bc:6}, R:{a:9,z:17,tc:13,bc:14}};
+const bHas=(row,sd)=>row.c.slice(HALF[sd].a,HALF[sd].z).some(v=>String(v).trim());
+const bBerthKey=(row,sd)=>berthRank(row.c[HALF[sd].bc]);   /* the berth the pilot goes to (shift/out: where it leaves from) — as จัดตาราง */
+function bRowTimes(row,base){ const t=[]; for(const sd of ['L','R']) if(bHas(row,sd)){ const d=parseTime(row.c[HALF[sd].tc],base); if(d) t.push(d); } return t.sort(); }
+/* separators between the ships just above and below a boundary (rows k-1 | k): add one when 1 ½ h or more apart, drop them when closer */
+function bGapAt(rows, k, base){
+  let p=Math.min(k,rows.length)-1; while(p>=1 && rowEmpty(rows[p])) p--;
+  let n=Math.max(k,p+1); while(n<rows.length && rowEmpty(rows[n])) n++;
+  if(p<1 || n>=rows.length) return;
+  const empties=n-p-1, tp=bRowTimes(rows[p],base), tn=bRowTimes(rows[n],base); if(!tp.length || !tn.length) return;
+  const want=needGap(tp[tp.length-1], tn[0]);
+  if(want && !empties) rows.splice(p+1,0,blankRow());
+  else if(want && empties>1) rows.splice(p+2,empties-1);   /* one separator is enough */
+  else if(!want && empties) rows.splice(p+1,empties);
+}
 function placeHalf(bi, r0, c0){
   const blk=BD.blocks[bi], base=blk.date||BD.date, rows=blk.rows, src=rows[r0]; if(!src) return null;
-  const a=c0<9?0:9, z=c0<9?9:17, tc=c0<9?4:13, dt=parseTime(src.c[tc],base); if(!dt) return null;
+  const sd=c0<9?'L':'R', {a,z,tc}=HALF[sd], dt=parseTime(src.c[tc],base); if(!dt) return null;
   const hf=[]; for(let k=a;k<z;k++){ hf.push({c:src.c[k], r:src.r[k], h:hOf(src,k), g:bgOf(src,k), w:(src.w&&src.w[k])||''}); src.c[k]=''; src.r[k]=''; setH(src,k,''); if(src.g) src.g[k]=''; if(src.w) src.w[k]=''; }
-  const sd=c0<9?'L':'R', st=!!(src.st&&src.st[sd]); if(src.st){ delete src.st[sd]; if(!Object.keys(src.st).length) delete src.st; }
-  if(rowEmpty(src) && r0>0) rows.splice(r0,1);
-  const has=row=>row.c.slice(a,z).some(v=>String(v).trim()), tOf=row=>parseTime(row.c[tc],base)||'';
-  let lastLE=-1; rows.forEach((row,k)=>{ if(has(row) && tOf(row) && tOf(row)<=dt) lastLE=k; });
-  let nextGT=rows.length; for(let k=lastLE+1;k<rows.length;k++) if(has(rows[k])){ nextGT=k; break; }
-  let at=-1; for(let k=lastLE+1;k<nextGT;k++) if(!has(rows[k]) && !rowEmpty(rows[k])){ at=k; break; }
+  const st=!!(src.st&&src.st[sd]); if(src.st){ delete src.st[sd]; if(!Object.keys(src.st).length) delete src.st; } setPin(src,sd,false);
+  const myB=berthRank(hf[HALF[sd].bc-a].c);
+  let gapAt=r0; if(rowEmpty(src) && r0>0) rows.splice(r0,1); else gapAt=-1;
+  if(gapAt>0) bGapAt(rows, Math.min(gapAt, rows.length), base);   /* old place: the ships above and below now meet */
+  const tOf=row=>parseTime(row.c[tc],base)||'';
+  const before=row=>{ const t=tOf(row); return t && (t<dt || (t===dt && bBerthKey(row,sd)<=myB)); };   /* time, then berth order */
+  let lastLE=-1; rows.forEach((row,k)=>{ if(bHas(row,sd) && before(row)) lastLE=k; });
+  let nextGT=rows.length; for(let k=lastLE+1;k<rows.length;k++) if(bHas(rows[k],sd)){ nextGT=k; break; }
+  let at=-1; for(let k=lastLE+1;k<nextGT;k++) if(!bHas(rows[k],sd) && !rowEmpty(rows[k])){   /* the other side's ship in that row is close in time */
+    const o=bRowTimes(rows[k],base); if(!o.length || !needGap(o[0]<dt?o[0]:dt, o[0]<dt?dt:o[0])){ at=k; break; } }
   if(at<0){ at=Math.min(nextGT, rows.length); while(at>lastLE+1 && rows[at-1] && rowEmpty(rows[at-1])) at--; if(at===0 && rows[0] && rowEmpty(rows[0])) at=1; rows.splice(at,0,blankRow()); }
   const row=rows[at]; hf.forEach((x,i)=>{ row.c[a+i]=x.c; row.r[a+i]=x.r; setH(row,a+i,x.h); if(x.g){ if(!row.g) row.g=Array(17).fill(''); row.g[a+i]=x.g; } if(x.w){ if(!row.w) row.w=Array(17).fill(''); row.w[a+i]=x.w; } });
   if(st){ row.st=row.st||{}; row.st[sd]=1; }
+  bGapAt(rows, rows.indexOf(row), base); bGapAt(rows, rows.indexOf(row)+1, base);   /* new place */
   blk.rows=oneTrailing(rows); return {r:blk.rows.indexOf(row)};
 }
+/* already in order with the same-side ships above and below? then it stays */
+function bInOrder(bi, ri, sd){ const blk=BD.blocks[bi], base=blk.date||BD.date, rows=blk.rows, row=rows[ri], {tc}=HALF[sd];
+  const dt=parseTime(row.c[tc],base); if(!dt) return true; const kb=bBerthKey(row,sd);
+  const key=r=>[parseTime(r.c[tc],base)||'', bBerthKey(r,sd)];
+  const le=(x,y)=>x[0]<y[0] || (x[0]===y[0] && x[1]<=y[1]);
+  for(let k=ri-1;k>=0;k--) if(bHas(rows[k],sd)){ const x=key(rows[k]); if(x[0] && !le(x,[dt,kb])) return false; break; }
+  for(let k=ri+1;k<rows.length;k++) if(bHas(rows[k],sd)){ const x=key(rows[k]); if(x[0] && !le([dt,kb],x)) return false; break; }
+  return true; }
+let BPQ=[];   /* rows waiting to be placed: {row, sd} */
+function bQueue(row, sd, fresh){ const q=BPQ.find(q=>q.row===row && q.sd===sd); if(q){ q.fresh=q.fresh||!!fresh; return; } BPQ.push({row, sd, fresh:!!fresh}); }   /* fresh: first time typed → always placed (joins a row of the other side when close in time) */
+function bFlush(goto, noUndo){
+  if(goto && goto.row && rowEmpty(goto.row)){ const b0=BD && BD.blocks.find(b=>b.rows.includes(goto.row)); if(b0){ goto.tail=b0.rows.length-1-b0.rows.indexOf(goto.row); goto.bd=b0.date; } }   /* an empty row at the end may be re-made: remember its place from the end */   /* goto: {row, c} — the cell you went to, focused again after the move */
+  if(!BD || !BPQ.length) return false; const q=BPQ; BPQ=[]; let moved=false, undone=!!noUndo;
+  for(const {row, sd, fresh} of q){ const bi=BD.blocks.findIndex(b=>b.rows.includes(row)); if(bi<0) continue; const ri=BD.blocks[bi].rows.indexOf(row);
+    if(!bHas(row,sd) || isPinned(row,sd) || !parseTime(row.c[HALF[sd].tc], BD.blocks[bi].date||BD.date)) continue;
+    if(!fresh && bInOrder(bi,ri,sd)){ const blk=BD.blocks[bi], base=blk.date||BD.date; const n0=blk.rows.length; bGapAt(blk.rows,ri,base); bGapAt(blk.rows,blk.rows.indexOf(row)+1,base); if(blk.rows.length!==n0) moved=true; continue; }
+    if(!undone){ pushUndo(); undone=true; }
+    placeHalf(bi, ri, HALF[sd].a); moved=true; }
+  if(!moved) return false;
+  boardSave(); renderBoard();
+  if(goto && goto.row){ let bi=BD.blocks.findIndex(b=>b.rows.includes(goto.row));
+    if(bi<0 && goto.tail!=null) bi=BD.blocks.findIndex(b=>b.date===goto.bd);
+    if(bi>=0){ const rows=BD.blocks[bi].rows; let ri=rows.indexOf(goto.row); if(ri<0) ri=rows.length-1;   /* the empty rows at the end became one: that one */
+    const el=BOARD.querySelector(`.ce[data-b="${bi}"][data-r="${ri}"][data-c="${goto.c}"]`); if(el){ SEL={b:bi,r1:ri,c1:goto.c,r2:ri,c2:goto.c}; el.focus(); } } }
+  return true; }
+/* leaving the row (another row's cell, or outside the table) places what was typed */
+/* keyboard (Tab / Enter / arrows): at once, before any key reaches a cell whose row number just changed.
+   mouse: after the click is over (rows moving under the pointer mid-click would select another row) */
+let bPtr=false;
+const bGoto=t=>{ const row=BD && BD.blocks[+t.dataset.b] && BD.blocks[+t.dataset.b].rows[+t.dataset.r]; return row?{row, c:+t.dataset.c}:null; };
+BOARD.addEventListener('focusin',e=>{ if(!BPQ.length || bPtr) return; const t=e.target.closest && e.target.closest('.ce[data-r]'); if(!t) return;
+  const g=bGoto(t); if(!g || BPQ.every(q=>q.row===g.row)) return; bFlush(g); });
+document.addEventListener('pointerdown',e=>{ bPtr=true; if(BPQ.length && !(e.target.closest && e.target.closest('#board .ce[data-r],#cmenu'))) setTimeout(()=>bFlush(null),0); },true);
+function bAfterClick(){ bPtr=false; if(!BPQ.length) return;
+  const t=document.activeElement && document.activeElement.closest && document.activeElement.closest('#board .ce[data-r]'); if(!t) return;
+  const g=bGoto(t); if(!g || BPQ.every(q=>q.row===g.row)) return; bFlush(g); }
+document.addEventListener('click', bAfterClick);   /* right after the click, in the same turn — before any key */
+document.addEventListener('pointerup',()=>setTimeout(()=>{ if(bPtr) bAfterClick(); },60),true);   /* a drag that ends without a click */
 /* time changed → put that ship back in time order (NO. and colours travel with it) */
 function relayout(bi, r0, c0){
   const blk=BD.blocks[bi], base=blk.date||BD.date, rows=blk.rows;
@@ -2444,12 +2567,21 @@ function delRows(){ if(!needSel()) return; const R=rect(); pushUndo(); const row
   SEL={b:R.b,r1:Math.min(R.r0,rows.length-1),c1:SEL.c1,r2:Math.min(R.r0,rows.length-1),c2:SEL.c1}; boardSave(); renderBoard(); }
 function moveSel(d, whole){ if(!needSel()) return; const R=rect(); const rows=BD.blocks[R.b].rows;
   if(R.r0+d<0 || R.r1+d>=rows.length) return; pushUndo();
+  if(whole){   /* whole rows: the row objects move (ticks, bold, 📌 go with them) — a ship moved by hand is pinned */
+    const seg=rows.splice(R.r0, R.r1-R.r0+1); rows.splice(R.r0+d, 0, ...seg);
+    seg.forEach(row=>{ for(const sd of ['L','R']) if(bHas(row,sd)) setPin(row,sd,true); });
+    SEL={b:R.b, r1:SEL.r1+d, c1:SEL.c1, r2:SEL.r2+d, c2:SEL.c2}; boardSave(); renderBoard(); return; }
   const c0=whole?0:R.c0, c1=whole?16:R.c1;
   const take=r=>({c:rows[r].c.slice(c0,c1+1), r:rows[r].r.slice(c0,c1+1), h:Array.from({length:c1-c0+1},(x,k)=>hOf(rows[r],c0+k)), g:Array.from({length:c1-c0+1},(x,k)=>bgOf(rows[r],c0+k))});
   const put=(r,v)=>{ for(let k=0;k<=c1-c0;k++){ rows[r].c[c0+k]=v.c[k]; rows[r].r[c0+k]=v.r[k]; setH(rows[r],c0+k,v.h[k]); if(v.g[k]||rows[r].g){ if(!rows[r].g) rows[r].g=Array(17).fill(''); rows[r].g[c0+k]=v.g[k]; } } };
-  const block=[]; for(let r=R.r0;r<=R.r1;r++) block.push(take(r));
-  const other = take(d<0? R.r0-1 : R.r1+1);
-  if(d<0){ block.forEach((v,k)=>put(R.r0-1+k,v)); put(R.r1,other); } else { block.forEach((v,k)=>put(R.r0+1+k,v)); put(R.r0,other); }
+  const sides=['L','R'].filter(sd=>c0<=HALF[sd].a && c1>=HALF[sd].z-1);   /* sides moved whole: tick, bold and 📌 go with them */
+  const take2=r=>({v:take(r), w:Array.from({length:c1-c0+1},(x,k)=>(rows[r].w&&rows[r].w[c0+k])||''), st:sides.map(sd=>!!(rows[r].st&&rows[r].st[sd])), pin:sides.map(sd=>isPinned(rows[r],sd))});
+  const put2=(r,x,pinIt)=>{ put(r,x.v); x.w.forEach((w,k)=>{ if(w||rows[r].w){ rows[r].w=rows[r].w||Array(17).fill(''); rows[r].w[c0+k]=w; } });
+    sides.forEach((sd,k)=>{ if(x.st[k]){ rows[r].st=rows[r].st||{}; rows[r].st[sd]=1; } else if(rows[r].st){ delete rows[r].st[sd]; if(!Object.keys(rows[r].st).length) delete rows[r].st; }
+      setPin(rows[r],sd, pinIt ? bHas(rows[r],sd) : x.pin[k]); }); };
+  const block=[]; for(let r=R.r0;r<=R.r1;r++) block.push(take2(r));
+  const other = take2(d<0? R.r0-1 : R.r1+1);
+  if(d<0){ block.forEach((v,k)=>put2(R.r0-1+k,v,true)); put2(R.r1,other,false); } else { block.forEach((v,k)=>put2(R.r0+1+k,v,true)); put2(R.r0,other,false); }
   SEL={b:R.b, r1:SEL.r1+d, c1:SEL.c1, r2:SEL.r2+d, c2:SEL.c2}; boardSave(); renderBoard(); }
 
 /* clipboard: Ctrl+C / X / V like Excel (tab-separated, keeps red when pasted here) */
@@ -2644,7 +2776,7 @@ async function lineCanvas(){
 }
 function lineName(){ const [y,m,d]=S.D.split('-').map(Number); const t=new Date(); return `SCHEDULE ${d}-${m}-${String((y+543)%100).padStart(2,'0')} ${pad(t.getHours())}${pad(t.getMinutes())}.png`; }
 $('lineCopy').addEventListener('click',async()=>{
-  const b=$('lineCopy'); b.disabled=true; try{ syncLate(); }catch(e){} cutLate(); logGone();   /* ships taken off since the last send = done → สมุดบันทึกเรือ */   /* พ ships marked งด in Drf leave จัดตาราง */
+  const b=$('lineCopy'); b.disabled=true; try{ bFlush(null); }catch(e){} try{ syncLate(); }catch(e){} cutLate(); logGone();   /* ships taken off since the last send = done → สมุดบันทึกเรือ */   /* พ ships marked งด in Drf leave จัดตาราง */
   try{
     const canvas=await lineCanvas();
     const blob=await new Promise(r=>canvas.toBlob(r,'image/png'));
