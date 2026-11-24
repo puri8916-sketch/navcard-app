@@ -3,19 +3,17 @@ const {chromium}=require('playwright');const {setup}=require('./mock.js');
 const R=process.argv[2], OUT=process.argv[3], FULL=process.argv[4]==='full'; let fail=0; const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m); if(!c) fail++;};
 (async()=>{
  const b=await chromium.launch();
- for(const w of [390,1280]){
-  const p=await b.newPage({viewport:{width:w,height:w<500?844:800},hasTouch:w<500,isMobile:w<500});
+ for(const w of [390,700,768,820,1024,1280]){
+  const p=await b.newPage({viewport:{width:w,height:w<500?844:800},hasTouch:w<900,isMobile:w<900});
   const errs=[];p.on('pageerror',e=>errs.push(e.message));
   const {log,st}=await setup(p);
   await p.goto('file://'+R+'/schedule.html');await p.waitForTimeout(1800);
   await p.evaluate(()=>document.getElementById('tab-pilots').click());await p.waitForTimeout(600);
-  // give pilot 3 a nickname so the name box has text
-  await p.evaluate(()=>{});
   await p.screenshot({path:`${OUT}_${w}.png`});
   const clip=await p.$$eval('#pilotBody input',a=>a.filter(i=>i.value && i.scrollWidth>i.clientWidth+1).map(i=>i.value));
   ok(clip.length===0, `${w}: phone numbers not cut ${JSON.stringify(clip)}`);
   const ph=await p.$$eval('#pilotBody input[data-pphone]',a=>a.map(i=>i.getBoundingClientRect().width));
-  ok(ph.every(x=>x>=110), `${w}: phone boxes wide enough ${ph.map(Math.round)}`);
+  ok(ph.every(x=>x>=130), `${w}: phone boxes wide enough ${ph.map(Math.round)}`);
   const docW=await p.evaluate(()=>document.documentElement.scrollWidth);
   ok(docW<=w, `${w}: no page side-scroll (${docW})`);
   if(FULL){

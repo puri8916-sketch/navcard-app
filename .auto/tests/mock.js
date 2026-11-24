@@ -9,7 +9,7 @@ function mk(){
   {id:'a4',datetime:N+' 06:30',ship:'STAR DELTA',loa:'140',drf:'6.5',pilot:'5',agent:'QQ',late:0,note:'',type:'OUT',from:'HARIN1',to:'',pob:''},
   {id:'a5',datetime:N+' 08:00',ship:'MOON EPS',loa:'99',drf:'5.5',pilot:'9',agent:'QQ',late:1,note:'',type:'IN',to:'MPP',from:'',pob:''},
  ];
- const init={ships:[{name:'MAERSK ALPHA EXPRESS NAVIGATOR',loa:'180',agent:'ABC SHIPPING',berth:'PRATEEP',note:'เรือประจำ'},{name:'OCEAN BETA',loa:'150',agent:'XYZ'},{name:'SEA GAMMA',loa:'120',agent:'ABC'},{name:'STAR DELTA',loa:'140',agent:'QQ'},{name:'MOON EPS',loa:'99',agent:'QQ'}],
+ const init={ships:[{name:'MAERSK ALPHA EXPRESS NAVIGATOR',loa:'199.99',agent:'ABC SHIPPING',berth:'PRATEEP',note:'เรือประจำ'},{name:'OCEAN BETA',loa:'150',agent:'XYZ'},{name:'SEA GAMMA',loa:'120',agent:'ABC'},{name:'STAR DELTA',loa:'140',agent:'QQ'},{name:'MOON EPS',loa:'99',agent:'QQ'}],
   berths:['PRATEEP','SAWAT','SOUTHERN','HARIN1','MPP'],agents:['ABC','XYZ','QQ'],pilots:{'3':'0811111111','5':'0822222222','7':'0833333333','9':'0844444444','12':'0855555555'},duty:{},fixed:[],settings:{},snapshots:{},boards:{},layouts:{}};
  return {D,mv,init};
 }
