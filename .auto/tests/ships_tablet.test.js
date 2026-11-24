@@ -33,6 +33,16 @@ const R=process.argv[2], OUT=process.argv[3], BEFORE=process.argv[4]==='before';
   ok(c1.length===0, `${w}: long rename/agent fits (or shows full text on hover) ${JSON.stringify(c1)}`);
   const lo=await p.$$eval('#shipBody input[data-sf]',a=>Math.min(...a.filter(i=>i.value).map(i=>parseFloat(getComputedStyle(i).fontSize))));
   ok(lo>=(w<=640?16:12), `${w}: smallest font ${lo}`);
+  // slow sheet (2.5 s): the saved, upper-cased long name still fits (or has its tooltip) once the answer arrives
+  if(w===768||w===1024){
+   await p.route('https://mock.test/**',async r=>{ let a=null; try{ a=JSON.parse(r.request().postData()||'{}').action }catch(e){}
+     if(a==='updateShip'){ await new Promise(z=>setTimeout(z,2500)); return r.fulfill({status:200,contentType:'application/json',headers:{'access-control-allow-origin':'*'},body:JSON.stringify({ok:true,data:true})}); } return r.fallback(); });
+   const n3=p.locator('#shipBody input[data-sf="name"]').nth(3);
+   await n3.click();await n3.fill('wwww wwww wwww wwww wwww wwww');await n3.press('Tab');await p.waitForTimeout(3500);
+   const st=await n3.evaluate(i=>({v:i.value,cut:i.scrollWidth>i.clientWidth+1,t:i.title}));
+   ok(st.v==='WWWW WWWW WWWW WWWW WWWW WWWW' && (!st.cut||st.t===st.v), `${w}: slow save → fits or tooltip ${JSON.stringify(st)}`);
+   await p.unroute('https://mock.test/**');
+  }
   // search → re-render still fits
   await p.fill('#shipQ','MAERSK');await p.waitForTimeout(300);
   const c2=await p.$$eval('#shipBody input',a=>a.filter(i=>i.value && i.scrollWidth>i.clientWidth+1 && !i.title).length);
