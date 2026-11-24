@@ -627,6 +627,31 @@ html.ios .hbar{position:absolute;bottom:100%!important}
   #view-ships .st button.del{min-height:40px;padding:6px 14px}
   #view-ships .st tbody td.empty{grid-area:auto;grid-column:1/-1;text-align:center;padding:24px}
 }
+/* แก้ไข › อ่านตัวใหญ่ (phones / tablets): the board as a big-letter list per day — เข้า / ออก-ย้าย, one card per ship; read only, tap a ship to edit it on the board */
+#rdBtn{display:none}
+@media (max-width:900px){#rdBtn{display:inline-flex}}
+#rdBtn[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.rdview{display:flex;flex-direction:column;gap:12px;padding-bottom:90px}
+.rdview[hidden]{display:none}
+body.rdmode #view-line .scrollx{display:none}
+.rd-day{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:10px}
+.rd-date{font-size:22px;font-weight:700;color:var(--ink);text-align:center;letter-spacing:.02em}
+.rd-h{font-size:17px;font-weight:700;padding:6px 10px;border-radius:8px;display:flex;justify-content:space-between;align-items:center}
+.rd-h.in{background:#CCFFFF;color:#063c4a}.rd-h.out{background:#FFCC99;color:#4a2706}
+.rd-h small{font-weight:600;font-size:15px}
+.rd-ship{border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:6px;cursor:pointer;background:var(--bg)}
+.rd-ship:active{background:var(--line)}
+.rd-ship:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.rd-top{display:flex;align-items:baseline;gap:10px}
+.rd-no{font-size:17px;font-weight:600;color:var(--muted);min-width:22px;font-variant-numeric:tabular-nums}
+.rd-name{font-size:22px;font-weight:700;color:var(--ink);line-height:1.25;overflow-wrap:anywhere;flex:1;min-width:0}
+.rd-time{font-size:22px;font-weight:700;color:var(--ink);white-space:nowrap;font-variant-numeric:tabular-nums}
+.rd-kv{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:18px;color:var(--ink)}
+.rd-kv span{overflow-wrap:anywhere}.rd-kv small{font-size:13px;color:var(--muted);margin-right:4px}
+.rd-kv .pl{color:#d01818;font-weight:700}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .rd-kv .pl{color:#ff7a7a}}:root[data-theme="dark"] .rd-kv .pl{color:#ff7a7a}
+.rd-none{font-size:16px;color:var(--muted);padding:4px 10px}
+.rd-empty{font-size:18px;color:var(--muted);text-align:center;padding:40px 12px}
 </style>
 <style>:root{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}body{margin:0}[hidden]{display:none!important}</style>
 </head>
@@ -3558,6 +3583,49 @@ setTimeout(()=>fitBoardWidth(false),600);
 /* keep the pinned sideways scrollbar just above the bottom day strip */
 (function(){ const dn=$('dateNav'); const put=()=>{ if(document.getElementById('iosFoot')) return; const h=dn.hidden?0:dn.offsetHeight; document.documentElement.style.setProperty('--dnH',h+'px'); document.body.style.paddingBottom=(h+18)+'px'; };
   try{ new ResizeObserver(put).observe(dn); }catch(e){} new MutationObserver(put).observe(dn,{attributes:true,attributeFilter:['hidden']}); window.addEventListener('resize',put); put(); })();
+
+/* แก้ไข › อ่านตัวใหญ่: read-only big-letter list built from the board itself (follows every edit / sync); tap a ship → back to the board at that ship */
+(function(){
+  const tool=document.querySelector('#view-line .ltool'), B=$('board'), W=B&&B.closest('.scrollx'); if(!tool||!B||!W) return;
+  const g=document.createElement('div'); g.className='grp';
+  g.innerHTML='<button class="btn tb" id="rdBtn" type="button" aria-pressed="false" title="แสดงตารางเป็นรายการตัวใหญ่ (อ่านอย่างเดียว)">🔍 อ่านตัวใหญ่</button>';
+  tool.appendChild(g); const btn=$('rdBtn');
+  const V=document.createElement('div'); V.className='rdview'; V.id='rdView'; V.hidden=true; V.setAttribute('aria-label','ตารางเรือ (อ่านตัวใหญ่)'); W.after(V);
+  let on=false, t=null;
+  const txt=(tr,c)=>{ const d=tr.querySelector('.ce[data-c="'+c+'"]'); return d?(d.innerText||d.textContent||'').replace(/\s+/g,' ').trim():''; };
+  const mk=(tag,cls,text)=>{ const e=document.createElement(tag); if(cls) e.className=cls; if(text!=null) e.textContent=text; return e; };
+  const kv=(box,label,v,cls)=>{ if(!v) return; const s=mk('span',cls||''); s.append(mk('small','',label),document.createTextNode(v)); box.appendChild(s); };
+  function card(tr,side){ const o=side==='L'?0:9, no=txt(tr,o), ship=txt(tr,o+1); if(!ship) return null;
+    const c=mk('div','rd-ship'); c.tabIndex=0; c.setAttribute('role','button'); c.dataset.b=tr.dataset.b; c.dataset.r=tr.dataset.r; c.dataset.c=String(o+1);
+    c.setAttribute('aria-label','แก้ไข '+ship+' บนตาราง');
+    const top=mk('div','rd-top'); top.append(mk('span','rd-no',no),mk('span','rd-name',ship),mk('span','rd-time',txt(tr,side==='L'?4:13)));
+    const k=mk('div','rd-kv');
+    if(side==='L'){ kv(k,'POB',txt(tr,5)); kv(k,'ท่า',txt(tr,6)); kv(k,'ผก.',txt(tr,7),'pl'); kv(k,'LOA',txt(tr,2)); kv(k,'Drf',txt(tr,3)); kv(k,'Agent',txt(tr,8)); }
+    else { kv(k,'ท่า',txt(tr,14)); kv(k,'ผก.',txt(tr,15),'pl'); kv(k,'LOA',txt(tr,11)); kv(k,'Drf',txt(tr,12)); kv(k,'Agent',txt(tr,16)); }
+    c.append(top); if(k.childNodes.length) c.append(k); return c; }
+  function build(){ if(!on) return; const keep=window.scrollY; V.replaceChildren();
+    const tabs=[...B.querySelectorAll('table.lsheet')];
+    tabs.forEach(tb=>{ const rows=[...tb.querySelectorAll('tr[data-r]')], ins=rows.map(r=>card(r,'L')).filter(Boolean), outs=rows.map(r=>card(r,'R')).filter(Boolean);
+      const dt=tb.querySelector('td.date'), d=mk('section','rd-day'); d.append(mk('div','rd-date',dt?(dt.innerText||dt.textContent||'').trim():''));
+      const sec=(cls,title,list)=>{ const h=mk('div','rd-h '+cls); h.append(mk('span','',title),mk('small','',list.length+' ลำ')); d.append(h); if(list.length) d.append(...list); else d.append(mk('div','rd-none','—')); };
+      sec('in','เข้า · ENTERING',ins); sec('out','ออก / ย้าย · SAILING & SHIFTING',outs); V.appendChild(d); });
+    if(!tabs.length) V.append(mk('div','rd-empty','ยังไม่มีตารางในวันนี้'));
+    window.scrollTo(window.scrollX,keep); }
+  const later=()=>{ if(!on) return; clearTimeout(t); t=setTimeout(build,250); };
+  function set(v,save){ on=!!v; btn.setAttribute('aria-pressed',String(on)); document.body.classList.toggle('rdmode',on); V.hidden=!on; if(on) build(); else { V.replaceChildren(); if(typeof fitBoardWidth==='function'&&!window.__boardPinched){ B.style.zoom=''; fitBoardWidth(false); } }   /* the board was hidden: fit it to the width again */
+    if(save!==false){ try{ localStorage.setItem('sched_read',on?'1':''); }catch(e){} } }
+  btn.addEventListener('click',()=>set(!on));
+  function open(c){ const sel='.ce[data-b="'+c.dataset.b+'"][data-r="'+c.dataset.r+'"][data-c="'+c.dataset.c+'"]'; set(false);
+    requestAnimationFrame(()=>{ const ce=B.querySelector(sel); if(!ce) return; const td=ce.closest('td');
+      const wr=W.getBoundingClientRect(), r=td.getBoundingClientRect(); W.scrollLeft+=r.left-wr.left-8; td.scrollIntoView({block:'center'}); }); }
+  V.addEventListener('click',e=>{ const c=e.target.closest('.rd-ship'); if(c) open(c); });
+  V.addEventListener('keydown',e=>{ const c=e.target.closest('.rd-ship'); if(c&&(e.key==='Enter'||e.key===' ')){ e.preventDefault(); open(c); } });
+  try{ new MutationObserver(later).observe(B,{childList:true,subtree:true,characterData:true}); }catch(e){}
+  const wide=()=>window.matchMedia('(min-width:901px)').matches;
+  window.addEventListener('resize',()=>{ if(on&&wide()) set(false,false); });
+  let saved=''; try{ saved=localStorage.getItem('sched_read')||''; }catch(e){}
+  if(saved&&!wide()) set(true,false);
+})();
 </script>
 
 </body>
