@@ -10,7 +10,7 @@ Songkhla pilot web app "SKP·Port Premium" (Streamlit Cloud, deploys from `main`
 - Never put secrets (sheet KEYS, passwords) in the repo. `apps_script/Navcard.gs` keeps placeholder KEYS; the owner's copy has real ones.
 - No paid AI/OCR services (owner declined image recognition that costs money).
 
-## Autonomous runs (scheduled task, 5×/day 01:44 05:44 09:44 13:44 17:44 Asia/Bangkok)
+## Autonomous runs (scheduled task, 2×/day 01:44 13:44 Asia/Bangkok; owner tunes frequency from usage screenshots)
 - Owner wants the weekly usage quota used fully: each run does up to 3 tasks (one PR each); bigger multi-file features/UX redesigns are welcome if split into reviewable PRs.
 - Roles per task: Designer (pick the task) → Developer (build + Playwright test) → Reviewer (a separate subagent that did not see the build; can veto).
 - Autonomous work NEVER touches `main`: branch `auto/<yyyymmdd>-<slug>`, open a PR with label `auto-patch`. Owner merges = approve, closes = reject, PR comment = change request. (Work the owner asks for in chat still goes straight to `main`.)
