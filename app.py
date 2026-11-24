@@ -294,6 +294,8 @@ if st.session_state.get("page_choice") not in _PAGES:
 
 
 def _go(p):
+    if p != st.session_state.get("page_choice"):
+        st.session_state.pop("built_pdf", None)   # the finished merged PDF + e-mail box stay until another menu is opened
     st.session_state["page_choice"] = p
 
 
@@ -828,21 +830,25 @@ with st.container():   # the ×3.2808 calculator moved to a button in สมุ�
                 row_count_overrides=st.session_state.row_overrides,
                 output_path=out_path,
             )
-            with open(out_path, "rb") as f:
-                st.download_button(
-                    "⬇️ ดาวน์โหลดไฟล์ PDF รวม",
-                    f.read(),
-                    file_name=nc.thai_card_filename(st.session_state.get("upload_dt"), span=_close_span()),
-                    mime="application/pdf",
-                )
-            st.success("สร้างไฟล์เสร็จแล้ว!")
-            # ✉️ copy "to" + subject for the e-mail — shown only with the download (same day as the PDF's file name)
+            # keep the result: the download and the e-mail box stay on screen while other buttons of this page are used
             _sp = _close_span()
             _md = st.session_state.get("upload_dt") or nc.thai_now()
-            _subj = "รายงานการปิดการ์ดนำร่อง วันที่ " + (nc.thai_day_range(_sp[0], _sp[1], full_year=True) if _sp else nc.thai_day_range(_md, full_year=True))
+            with open(out_path, "rb") as f:
+                st.session_state["built_pdf"] = {
+                    "data": f.read(),
+                    "name": nc.thai_card_filename(st.session_state.get("upload_dt"), span=_sp),
+                    "subj": "รายงานการปิดการ์ดนำร่อง วันที่ " + (nc.thai_day_range(_sp[0], _sp[1], full_year=True) if _sp else nc.thai_day_range(_md, full_year=True)),
+                    "sig": st.session_state.get("up_sig"),
+                }
+
+        _bp = st.session_state.get("built_pdf")
+        if _bp and _bp.get("sig") == st.session_state.get("up_sig"):
+            st.download_button("⬇️ ดาวน์โหลดไฟล์ PDF รวม", _bp["data"], file_name=_bp["name"], mime="application/pdf", key="dl_built_pdf")
+            st.success("สร้างไฟล์เสร็จแล้ว!")
+            # ✉️ copy "to" + subject for the e-mail — shown with the download (same days as the PDF's file name)
             with st.container(border=True):
                 st.caption("✉️ คัดลอกส่งเมล์")
-                components.html(_MAIL_COPY_HTML.replace("__ROWS__", json.dumps([["ถึง", "พี่ปลา การเงินนำร่อง"], ["ชื่อเรื่อง", _subj]], ensure_ascii=False)), height=118)
+                components.html(_MAIL_COPY_HTML.replace("__ROWS__", json.dumps([["ถึง", "พี่ปลา การเงินนำร่อง"], ["ชื่อเรื่อง", _bp["subj"]]], ensure_ascii=False)), height=118)
 
     # ---------------------------------------------------------------- monthly workbook + signer (less often)
     st.divider()
