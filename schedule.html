@@ -627,6 +627,37 @@ html.ios .hbar{position:absolute;bottom:100%!important}
   #view-ships .st button.del{min-height:40px;padding:6px 14px}
   #view-ships .st tbody td.empty{grid-area:auto;grid-column:1/-1;text-align:center;padding:24px}
 }
+/* แก้ไข › อ่านตัวใหญ่ (phones / tablets ≤ 900px): the board as big cards, one per ship — read-only; tap a card to edit it in the table */
+#brGrp{display:none}
+#boardRead{display:none}
+@media (max-width:900px){
+  #brGrp{display:inline-flex}
+  #brBtn{font-size:17px;min-height:44px;font-weight:700}
+  #brBtn[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+  #view-line.reading #boardRead{display:block}
+  #view-line.reading .scrollx,#view-line.reading .hbar{display:none!important}
+  #view-line.reading .ltool .grp.edonly{display:none}
+}
+.br-day{margin:0 0 18px}
+.br-dh{position:sticky;top:0;z-index:2;background:var(--bg);font:800 22px/1.4 var(--f-read);color:var(--ink);text-align:center;padding:8px 4px}
+.br-cols{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
+@media (min-width:700px){.br-cols{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
+.br-sh{font:700 18px/1.4 var(--f-read);padding:6px 12px;border-radius:8px;margin:0 0 8px;text-align:center}
+.br-sh.in{background:var(--in);color:var(--in-ink)}.br-sh.out{background:var(--out);color:var(--out-ink)}
+.br-card{display:grid;grid-template-columns:auto minmax(0,1fr);gap:2px 12px;align-items:baseline;width:100%;box-sizing:border-box;text-align:left;font:inherit;color:var(--ink);
+  background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:0 0 8px;cursor:pointer}
+.br-card:active{background:var(--accent-soft)}
+.br-t{font:700 26px/1.2 var(--f-num);color:var(--ink);min-width:3.2ch}
+.br-n{font:800 22px/1.3 var(--f-read);overflow-wrap:anywhere}
+.br-d{grid-column:2;font:500 18px/1.5 var(--f-read);color:var(--muted);overflow-wrap:anywhere}
+.br-d b{color:var(--ink);font-weight:700}
+.br-d .pl{color:var(--pilot);font-weight:800}
+.br-b{display:inline-block;font:700 15px/1.3 var(--f-read);padding:2px 8px;border-radius:6px;margin-left:6px;vertical-align:2px}
+.br-b.late{background:var(--late);color:var(--late-ink)}.br-b.shift{background:var(--shift);color:var(--shift-ink)}
+.br-b.off{background:var(--warn);color:var(--warn-ink)}.br-b.ok{background:var(--ok);color:var(--ok-ink)}
+.br-card.cut .br-n,.br-card.cut .br-t{text-decoration:line-through;opacity:.7}
+.br-none{font:500 18px/1.5 var(--f-read);color:var(--muted);text-align:center;padding:14px}
+.br-hint{font:500 16px/1.5 var(--f-read);color:var(--muted);text-align:center;margin:0 0 10px}
 </style>
 <style>:root{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}body{margin:0}[hidden]{display:none!important}</style>
 </head>
@@ -655,11 +686,13 @@ html.ios .hbar{position:absolute;bottom:100%!important}
   <section id="view-line">
     <div class="ltool">
       <div class="grp"><button class="btn primary" id="lineCopy">คัดลอกส่งLINE</button></div>
-      <div class="grp"><button class="btn tb" data-bact="undo" title="Ctrl+Z">↶ ย้อนกลับ</button><button class="btn tb" data-bact="redo" title="Ctrl+Y">↷ ทำซ้ำ</button></div>
-      <div class="grp"><button class="btn tb boldbtn" data-bact="bold" title="ตัวหนา (Ctrl+B)" aria-label="ตัวหนา"><b>B</b></button></div><div class="grp fcolor"><button class="btn tb fc-main" data-bact="color" title="สีตัวอักษร"><span class="fcA">A</span><span class="fcBar" id="fcBar"></span></button><button class="btn tb fc-drop" id="fcDrop" title="เลือกสี" aria-label="เลือกสีตัวอักษร">▾</button><div class="fc-pal" id="fcPal" hidden></div></div><div class="grp"><button class="btn tb fillbtn" data-bact="togglefill" title="พื้นหลังเทาอ่อน (กดซ้ำเพื่อล้าง)"><span class="fillsw"></span>พื้นหลัง</button></div>
-      <div class="grp" id="addBlk"></div>
+      <div class="grp" id="brGrp"><button class="btn tb" id="brBtn" type="button" aria-pressed="false" title="ดูตารางเป็นการ์ดตัวใหญ่ (อ่านอย่างเดียว · แตะการ์ดเพื่อแก้)">🔍 อ่านตัวใหญ่</button></div>
+      <div class="grp edonly"><button class="btn tb" data-bact="undo" title="Ctrl+Z">↶ ย้อนกลับ</button><button class="btn tb" data-bact="redo" title="Ctrl+Y">↷ ทำซ้ำ</button></div>
+      <div class="grp edonly"><button class="btn tb boldbtn" data-bact="bold" title="ตัวหนา (Ctrl+B)" aria-label="ตัวหนา"><b>B</b></button></div><div class="grp fcolor edonly"><button class="btn tb fc-main" data-bact="color" title="สีตัวอักษร"><span class="fcA">A</span><span class="fcBar" id="fcBar"></span></button><button class="btn tb fc-drop" id="fcDrop" title="เลือกสี" aria-label="เลือกสีตัวอักษร">▾</button><div class="fc-pal" id="fcPal" hidden></div></div><div class="grp edonly"><button class="btn tb fillbtn" data-bact="togglefill" title="พื้นหลังเทาอ่อน (กดซ้ำเพื่อล้าง)"><span class="fillsw"></span>พื้นหลัง</button></div>
+      <div class="grp edonly" id="addBlk"></div>
       <div class="grp"><label class="since" for="lineSince">วันที่</label><input id="lineSince" class="since num" autocomplete="off" inputmode="numeric" maxlength="2" placeholder="วว" aria-label="ดึงเรือตั้งแต่วันที่"><button class="btn" id="linePull">⟳ ดึงจากจัดตารางใหม่</button><span class="note" id="boardInfo" hidden></span></div>
     </div>
+    <div id="boardRead" aria-live="polite"></div>
     <div class="scrollx vfit"><div class="paper linepaper" id="board"></div></div>
   </section>
   <section id="view-work" hidden>
@@ -2371,6 +2404,7 @@ function renderBoard(){ setTimeout(syncLate,0);
   fitBoard();
   if(keep && BD.blocks[keep.b]){ const n=BD.blocks[keep.b].rows.length-1;
     SEL={b:keep.b, r1:Math.min(keep.r1,n), c1:keep.c1, r2:Math.min(keep.r2,n), c2:keep.c2}; paintSel(); focusCell(SEL.b,SEL.r1,SEL.c1,true); }
+  if(typeof renderBoardRead==='function') renderBoardRead();
 }
 // column titles (NO., LOA, Drf …) shrink to fit their cell instead of being cut — phones use a wider fallback font
 function fitHeads(root){ if(!root||root.offsetParent===null) return;
@@ -2385,6 +2419,32 @@ function fitBoard(){
   const m=list.map(i=>[i.scrollWidth,i.clientWidth,parseFloat(getComputedStyle(i).fontSize)]);
   list.forEach((i,k)=>{ const [sw,cw,fs]=m[k]; if(sw>cw+1) i.style.fontSize=Math.max(9,fs*(cw-2)/sw).toFixed(1)+'px'; });
 }
+
+/* แก้ไข › อ่านตัวใหญ่: the same board drawn as big cards (phones / tablets). Read-only — nothing here writes to BD; a tap on a card goes back to the table at that ship */
+const BR_KEY='sched.boardRead';
+function brOn(){ return $('view-line').classList.contains('reading'); }
+function renderBoardRead(){ const R=$('boardRead'); if(!R || !brOn()) return; if(!BD){ R.innerHTML='<div class="br-none">กำลังโหลดตาราง…</div>'; return; }
+  const g=(row,k)=>String(row.c[k]??'').trim();
+  const card=(row,bi,ri,side)=>{ const a=side==='L'?0:9, n=g(row,a+1); if(!n) return '';
+    const t=g(row,a+4), loa=g(row,a+2), drf=g(row,a+3), late=g(row,a)==='พ', cut=/งด/.test(drf);
+    const pilot=g(row,side==='L'?7:15), agent=g(row,side==='L'?8:16), braw=g(row,side==='L'?6:14), pob=side==='L'?g(row,5):'';
+    const sh=side==='R' && /(<>|<->|->|>|→)/.test(braw), berth=sh?braw.replace(/\s*(<>|<->|->|>|→)\s*/,' → '):braw;
+    const bits=[]; if(berth) bits.push(`ท่า <b>${esc(berth)}</b>`); if(loa) bits.push(`LOA <b>${esc(loa)}</b>`); if(drf) bits.push(`Drf <b>${esc(drf)}</b>`);
+    const bits2=[]; if(pilot) bits2.push(`ผก. <span class="pl">${esc(pilot)}</span>`); if(agent) bits2.push(esc(agent)); if(pob) bits2.push(`POB <b>${esc(pob)}</b>`);
+    const badges=(late?'<span class="br-b late">พ</span>':'')+(sh?'<span class="br-b shift">ย้าย</span>':'')+(cut?'<span class="br-b off">งด</span>':'')+(row.st&&row.st[side]?'<span class="br-b ok">✓ ผก.ขึ้น</span>':'');
+    return `<button type="button" class="br-card${cut?' cut':''}" data-brgo="${bi}|${ri}|${a+1}"><span class="br-t">${esc(t)||'–'}</span><span class="br-n">${esc(n)}${badges}</span>`+
+      (bits.length?`<span class="br-d">${bits.join(' · ')}</span>`:'')+(bits2.length?`<span class="br-d">${bits2.join(' · ')}</span>`:'')+`</button>`; };
+  const col=(b,bi,side)=>{ const cards=b.rows.map((row,ri)=>card(row,bi,ri,side)).join(''), cnt=(cards.match(/class="br-card/g)||[]).length;
+    return `<div><div class="br-sh ${side==='L'?'in':'out'}">${side==='L'?'เข้า · ENTERING':'ออก / ย้าย · SAILING &amp; SHIFTING'} (${cnt})</div>${cards||'<div class="br-none">ไม่มีเรือ</div>'}</div>`; };
+  R.innerHTML='<div class="br-hint">อ่านอย่างเดียว · แตะการ์ดเพื่อไปแก้ในตาราง</div>'+(BD.blocks.length?BD.blocks.map((b,bi)=>`<section class="br-day"><div class="br-dh">${esc(b.label||(b.date?longDate(b.date):''))}</div><div class="br-cols">${col(b,bi,'L')}${col(b,bi,'R')}</div></section>`).join(''):'<div class="br-none">ยังไม่มีตาราง</div>'); }
+function setBoardRead(on,save){ $('view-line').classList.toggle('reading',!!on); $('brBtn').setAttribute('aria-pressed',on?'true':'false'); $('brBtn').textContent=on?'✎ กลับไปแก้ตาราง':'🔍 อ่านตัวใหญ่';
+  if(save) try{ localStorage.setItem(BR_KEY,on?'1':'0'); }catch(e){}
+  if(on){ if(typeof hidePop==='function') try{ hidePop(); }catch(e){} try{ if(document.activeElement && document.activeElement.closest && document.activeElement.closest('#board')) document.activeElement.blur(); }catch(e){} renderBoardRead(); }
+  else setTimeout(()=>{ try{ fitBoard(); }catch(e){} },30); }
+$('brBtn').addEventListener('click',()=>setBoardRead(!brOn(),true));
+$('boardRead').addEventListener('click',e=>{ const c=e.target.closest('[data-brgo]'); if(!c) return; const [b,r,k]=c.dataset.brgo.split('|').map(Number);
+  setBoardRead(false,true); setTimeout(()=>{ const i=inp(b,r,k); if(!i) return; SEL={b,r1:r,c1:k,r2:r,c2:k}; paintSel(); try{ i.scrollIntoView({block:'center',inline:'center'}); }catch(x){} },80); });
+try{ if(localStorage.getItem(BR_KEY)==='1') setBoardRead(true,false); }catch(e){}
 
 /* selection (Excel-style: click, drag, Shift+click, Shift+arrows) */
 const BOARD=$('board');
