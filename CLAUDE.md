@@ -31,8 +31,8 @@ Songkhla pilot web app "SKP·Port Premium" (Streamlit Cloud, deploys from `main`
 - สมุด: SGZ card No. typed on the first ship of a closing sequence (18/1) fills the later ones by their /n; LOA > 173 m → LOA (m) from the ×3.2808 calculator + Remark "เรือยาวเกินกำหนด …" (warn if not in calculator); shifts can be re-ordered (⠿ / ▲▼).
 - จัดตาราง toolbar: ปริ้น (dark green), ดาวน์โหลด PDF + นำเข้าตารางPSB (dark red, white text), Email (light blue) copies the e-mail list (⚙ edits it, stored in sync `prefs/mailTo`).
 
-## Pending (owner action)
-- Paste the latest `apps_script/Navcard.gs` into the sheet's Apps Script (keep the owner's own `KEYS` / `OLD_LOG_SHEET_ID` lines) → Deploy › Manage deployments › ✏️ › New version. Needed for server-stamped versions, board conflict merge and the fast `boards` poll. The page falls back gracefully with the old script.
+## Server script
+- The owner's sheet runs the latest `apps_script/Navcard.gs` (deployed; writes are server-stamped `updated == seq`). After changing `Navcard.gs`, send the owner the full file with their own `KEYS` / `OLD_LOG_SHEET_ID` lines (never commit those) and ask for Deploy › Manage deployments › ✏️ › New version.
 
 ## Testing (Playwright, Chromium preinstalled)
 - `schedule.html`: `addInitScript(()=>{window.__SCHED__={url:'https://mock.test/x',key:'t'}})`, route `https://mock.test/**` answering `action=init` (`{ships,berths,agents,pilots,duty,fixed,settings,snapshots,boards,layouts}`), `movements`, `saveBoard` (`{updated}` or `{conflict,board}`), `load` (sync docs), POST `ops`.
