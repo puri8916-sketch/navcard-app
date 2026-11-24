@@ -393,6 +393,22 @@ body.ay-mode #view-log,body.ay-mode #view-ves,body.ay-mode #view-cfg,body.ay-mod
   #view-ves .reg td.act .linkbtn.del{border-color:color-mix(in srgb,var(--danger) 45%,var(--line))}
   #view-ves .reg tbody td.empty{grid-area:auto;grid-column:1/-1;font-size:15px;font-weight:400;padding:32px 12px;text-align:center}
 }
+/* แจ้งเรืออย. on phones: each leg is a 2-line card (ship name big on line 1, time + berth on line 2) — the 5-column row pushed the page sideways
+   and broke ship names into 4 lines; big tick boxes and full-width buttons for the thumb */
+@media (max-width:640px){
+  .ay-row{grid-template-columns:30px 50px auto minmax(0,1fr);grid-template-areas:"cb k ship ship" "cb k tm br";gap:2px 10px;padding:12px 6px;min-height:56px}
+  .ay-row input{grid-area:cb;width:26px;height:26px}
+  .ay-row .k{grid-area:k;font-size:18px}
+  .ay-row>span:nth-of-type(2){grid-area:ship;font-size:18px;font-weight:700;overflow-wrap:anywhere;line-height:1.25}
+  .ay-row .t{grid-area:tm;font-size:16px;font-weight:600}
+  .ay-row>span:nth-of-type(4){grid-area:br;font-size:16px;color:var(--muted);overflow-wrap:anywhere;min-width:0}
+  .ay-tools{gap:8px;margin-bottom:8px}.ay-tools .btn{flex:1;min-height:46px;font-size:16px}
+  .ay-bubble{font-size:17px}
+  #ayCopy{width:100%;min-height:52px;font-size:18px;font-weight:700}
+  .ay-empty{text-align:center;font-size:16px;padding:24px 8px}
+  body.ay-mode .bar .datebox{margin-left:0;max-width:100%;min-width:0}
+  body.ay-mode #calBtn{font-size:19px;padding:6px 10px;min-width:0}
+}
 </style>
 </head>
 <body>
@@ -755,7 +771,7 @@ function renderAy(){
   const box=$("ayRows"); box.replaceChildren();
   if(!legs.length)box.append(el("div",{class:"ay-empty"},"ไม่มีขาเรือในวันที่เลือก"));
   for(const x of legs){const cb=el("input",{type:"checkbox"});cb.checked=on.has(x.id);
-    const row=el("label",{class:"ay-row"+(cb.checked?" on":"")},cb,el("span",{class:"k "+x.k},x.kt),el("span",{},x.ship),el("span",{class:"t"},x.t.txt),el("span",{},x.berth));
+    const row=el("label",{class:"ay-row"+(cb.checked?" on":"")},cb,el("span",{class:"k "+x.k},x.kt),el("span",{},x.ship),el("span",{class:"t"},x.t.txt),el("span",{},...String(x.berth).split("<>").flatMap((b,i)=>i?["<>",el("wbr",{}),b]:[b])));
     cb.addEventListener("change",()=>{const s=ayGet(day);cb.checked?s.add(x.id):s.delete(x.id);aySet(day,s);renderAy()});box.append(row)}
   const pick=legs.filter(x=>on.has(x.id));
   $("ayText").textContent=pick.map(ayLine).join("\n\n"); $("ayCnt").textContent=pick.length?`(${pick.length} รายการ)`:"";
