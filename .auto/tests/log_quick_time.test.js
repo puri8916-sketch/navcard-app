@@ -3,8 +3,8 @@ const {chromium}=require('playwright');
 const R=process.argv[2], OUT=process.argv[3], BEFORE=process.argv[4]==='before'; let fail=0; const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m); if(!c) fail++;};
 (async()=>{
  const b=await chromium.launch();
- for(const w of [390,768,1280]){
-  const ctx=await b.newContext({viewport:{width:w,height:w<500?844:(w<1000?1024:800)},hasTouch:w<1000,isMobile:w<500});
+ for(const w of [390,768,860,1280]){
+  const ctx=await b.newContext({viewport:{width:w,height:w<500?844:(w<1000?1024:800)},hasTouch:w<800,isMobile:w<800});
   const p=await ctx.newPage(); const errs=[];p.on('pageerror',e=>errs.push(e.message));
   await p.addInitScript({path:R+'/sync_client.js'});
   await p.goto('file://'+R+'/pilot_log.html');await p.waitForTimeout(800);
@@ -15,7 +15,7 @@ const R=process.argv[2], OUT=process.argv[3], BEFORE=process.argv[4]==='before';
   await p.click('#fEta');await p.waitForTimeout(200);
   if(BEFORE){ await p.screenshot({path:`${OUT}_${w}.png`}); await ctx.close(); continue; }
   const vis=await p.locator('#tq').isVisible();
-  if(w>900){ ok(!vis, `${w}: no chips on desktop`); await p.keyboard.type('20111530'); ok(await p.inputValue('#fEta')==='20-11-1530', `${w}: typing unchanged`); ok(errs.length===0,`${w}: no errors ${errs}`); await ctx.close(); continue; }
+  if(w>800){ ok(!vis, `${w}: no chips with a mouse (desktop, also a narrow window)`); await p.keyboard.type('20111530'); ok(await p.inputValue('#fEta')==='20-11-1530', `${w}: typing unchanged`); ok(errs.length===0,`${w}: no errors ${errs}`); await ctx.close(); continue; }
   ok(vis, `${w}: chips shown under empty ETA`);
   await p.screenshot({path:`${OUT}_${w}.png`});
   const txt=await p.$$eval('#tq button',a=>a.map(x=>x.dataset.v));
@@ -31,6 +31,9 @@ const R=process.argv[2], OUT=process.argv[3], BEFORE=process.argv[4]==='before';
   ok(!(await p.locator('#tq').isVisible()), `${w}: chips hide once the box has text`);
   await p.keyboard.type('1530');
   ok(await p.inputValue('#fEta')==='20-11-1530' && await p.inputValue('#fOrder')==='20-11-1530', `${w}: then typing 1530 → 20-11-1530`);
+  // day chip then leave without a time → box left empty (not "20-11-")
+  await p.click('#fDraughtIn');await p.click('#fAtd');await p.waitForTimeout(150);await p.locator('#tq button').first().click();await p.click('#fRemark');await p.waitForTimeout(250);
+  ok(await p.inputValue('#fAtd')==='', `${w}: half-filled 20-11- cleared on leaving`);
   // ATD: next day chip
   await p.click('#fAtd');await p.waitForTimeout(200);
   await p.locator('#tq button').nth(1).click();await p.keyboard.type('0700');
