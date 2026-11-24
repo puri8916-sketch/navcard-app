@@ -73,10 +73,10 @@ input[type=date]{border:1px solid var(--line);background:var(--surface);border-r
    table text with the default black ink, the form's field titles, แจ้งเรืออย. titles and rows */
 :root[data-theme="dark"] body.ink-black{--pen:var(--ink)}:root[data-theme="dark"] body.ink-black table.log .jobno{color:var(--ink)}
 :root[data-theme="dark"] #sheet label.f,:root[data-theme="dark"] #sheet .srow.head,:root[data-theme="dark"] .stbox{color:var(--muted)}:root[data-theme="dark"] .tools-tgl{color:var(--muted)}
-:root[data-theme="dark"] .ay-h,:root[data-theme="dark"] .ay-row{color:var(--ink)}:root[data-theme="dark"] .ay-row.on{background:#1f3a24}
+:root[data-theme="dark"] .ay-h,:root[data-theme="dark"] .ay-row{color:var(--ink)}:root[data-theme="dark"] .ay-row.on{background:#1f3a24}:root[data-theme="dark"] .ay-row .k.IN{color:#6fd08c}:root[data-theme="dark"] .ay-row .k.SH{color:#f0a860}:root[data-theme="dark"] .ay-row .k.OUT{color:#8eb2ff}:root[data-theme="dark"] .log td.mkfill{--pen:#000;--pen-blue:#1c3fa6}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) body.ink-black{--pen:var(--ink)}:root:not([data-theme="light"]) body.ink-black table.log .jobno{color:var(--ink)}
 :root:not([data-theme="light"]) #sheet label.f,:root:not([data-theme="light"]) #sheet .srow.head,:root:not([data-theme="light"]) .stbox{color:var(--muted)}:root:not([data-theme="light"]) .tools-tgl{color:var(--muted)}
-:root:not([data-theme="light"]) .ay-h,:root:not([data-theme="light"]) .ay-row{color:var(--ink)}:root:not([data-theme="light"]) .ay-row.on{background:#1f3a24}}
+:root:not([data-theme="light"]) .ay-h,:root:not([data-theme="light"]) .ay-row{color:var(--ink)}:root:not([data-theme="light"]) .ay-row.on{background:#1f3a24}:root:not([data-theme="light"]) .ay-row .k.IN{color:#6fd08c}:root:not([data-theme="light"]) .ay-row .k.SH{color:#f0a860}:root:not([data-theme="light"]) .ay-row .k.OUT{color:#8eb2ff}:root:not([data-theme="light"]) .log td.mkfill{--pen:#000;--pen-blue:#1c3fa6}}
 .btn:hover{background:var(--hover)}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:500}
 .btn.primary:hover{filter:brightness(1.08)}
@@ -1543,6 +1543,7 @@ function paintMarks(rows){
     const c=byId.get(tr.dataset.id);if(!c)return;const pre=tr.dataset.si!=null?"s"+tr.dataset.si+":":"";
     [...tr.children].forEach((td,j)=>{const k=pre+CELL_KEYS[j];td.dataset.k=k;const m=c.marks?.[k],fc=c.marks?.["fc|"+k];
       delete td.dataset.hl;td.style.background="";
+      td.classList.toggle("mkfill",!!m&&m[0]==="#");   /* bright Excel-style fill: text stays black in dark mode */
       if(m){if(m[0]==="#")td.style.background=m;else td.dataset.hl=m}
       if(fc){td.classList.add("mkfc");td.style.setProperty("--mkfc",fc)}else{td.classList.remove("mkfc");td.style.removeProperty("--mkfc")}});
   });
