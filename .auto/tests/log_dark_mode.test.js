@@ -1,7 +1,7 @@
 // test: pilot_log.html dark mode — table text (default black ink), form field titles, แจ้งเรืออย. titles/rows readable; light mode unchanged — usage: node log_dark_mode.test.js <root> <outprefix>
 const {chromium}=require('playwright');const R=process.argv[2],OUT=process.argv[3];
 let fail=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fail++;};
-const seed=()=>{SyncStore.put('calls','c1',{date:curDate,t:1,vessel:'MAERSK ALPHA',job:'SGZ1/70',eta:'0130',pilotIn:'12',berth:'PRATEEP',agent:'ABC',atd:'1430',pilotOut:'7',marks:{vessel:'#FFFF00',berth:'#00B0F0',agent:'y'},shifts:[{order:'0900',pilot:'5',fromBerth:'PRATEEP',berth:'SAWAT'}]})};
+const seed=()=>{SyncStore.put('calls','c2',{date:curDate,t:2,vessel:'OCEAN BETA',job:'SGZ2/70',eta:'0600',agent:'XYZ'});SyncStore.put('calls','c1',{date:curDate,t:1,vessel:'MAERSK ALPHA',job:'SGZ1/70',eta:'0130',pilotIn:'12',berth:'PRATEEP',agent:'ABC',atd:'1430',pilotOut:'7',marks:{vessel:'#FFFF00',berth:'#00B0F0',agent:'y',job:'#FFFF00','s0:order':'#FFFF00'},shifts:[{order:'0900',pilot:'5',fromBerth:'PRATEEP',berth:'SAWAT'}]})};
 const lum=c=>{const m=c.match(/[\d.]+/g).map(Number);return (m[0]*299+m[1]*587+m[2]*114)/1000};
 (async()=>{const b=await chromium.launch();
  for(const scheme of ['dark','light']){const dark=scheme==='dark';
@@ -12,8 +12,11 @@ const lum=c=>{const m=c.match(/[\d.]+/g).map(Number);return (m[0]*299+m[1]*587+m
    const cells=await p.$$eval('#logBody tr.main td',a=>a.filter(td=>td.textContent.trim()&&!td.querySelector('.dash')&&!td.classList.contains('mkfill')).map(td=>getComputedStyle(td).color));
    ok(cells.length>5&&cells.every(c=>dark?lum(c)>150:lum(c)<60), `${scheme} ${w}: table text ${dark?'light':'black (unchanged)'} ${[...new Set(cells)]}`);
    const fl=await p.$$eval('#logBody tr.main td.mkfill',a=>a.map(td=>[getComputedStyle(td).color,getComputedStyle(td).backgroundColor]));
-   ok(fl.length===2&&fl.every(([c])=>lum(c)<60), `${scheme} ${w}: text on bright fill marks stays black ${JSON.stringify(fl)}`);
-   const job=await p.$eval('#logBody .jobno',x=>getComputedStyle(x).color);ok(dark?lum(job)>150:lum(job)<60, `${scheme} ${w}: card No. ${job}`);
+   ok(fl.length===3&&fl.every(([c])=>lum(c)<60), `${scheme} ${w}: text on bright fill marks stays black ${JSON.stringify(fl)}`);
+   const fj=await p.$eval('#logBody td.mkfill .jobno',x=>getComputedStyle(x).color);ok(lum(fj)<60, `${scheme} ${w}: card No. on a fill stays black ${fj}`);
+   const fs=await p.$eval('#logBody tr.shift td.mkfill',x=>getComputedStyle(x).color);ok(lum(fs)<130, `${scheme} ${w}: red shift text on a fill stays dark red ${fs}`);
+   if(dark){await p.evaluate(()=>setInk('blue'));await p.waitForTimeout(150);const bl=await p.$eval('#logBody tr.main td.mkfill.ship, #logBody tr.main td.mkfill',x=>getComputedStyle(x).color);ok(bl==='rgb(28, 63, 166)', `${scheme} ${w}: blue ink on a fill = dark blue ${bl}`);await p.evaluate(()=>setInk('black'));await p.waitForTimeout(150)}
+   const job=await p.$eval('#logBody td:not(.mkfill) .jobno',x=>getComputedStyle(x).color);ok(dark?lum(job)>150:lum(job)<60, `${scheme} ${w}: card No. ${job}`);
    const tg=await p.$eval('#toolsTgl',x=>getComputedStyle(x).color);ok(dark?lum(tg)>110:lum(tg)<90, `${scheme} ${w}: ซ่อน button text ${tg}`);
    await p.evaluate(()=>openEditor(allCalls[0]));await p.waitForTimeout(300);
    const labs=await p.$$eval('#sheet label.f,#sheet .stbox',a=>a.filter(x=>x.offsetParent).map(x=>getComputedStyle(x).color));
