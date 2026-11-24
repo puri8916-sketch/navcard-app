@@ -2,7 +2,7 @@
 const {chromium}=require('playwright');
 const R=process.argv[2], OUT=process.argv[3]; let fail=0; const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m); if(!c) fail++;};
 const seed=()=>{const D=curDate;
- SyncStore.put('calls','c1',{date:D,t:1,vessel:'MAERSK ALPHA EXPRESS',job:'SGZ354/70',from:'A',eta:'0130',order:'0200',pilotIn:'12',berth:'PRATEEP',draughtIn:'9.5',loa:'590',agent:'ABC SHIPPING',atd:'1430',pilotOut:'7',draughtOut:'8.0',remark:'เรือยาวเกินกำหนด',closeNo:'18/1',status:'ปิดการเงิน',shifts:[{order:'0900',pilot:'5',fromBerth:'PRATEEP',berth:'SAWAT',draught:'9.0',agent:'ABC'}]});
+ SyncStore.put('calls','c1',{date:D,t:1,vessel:'MAERSK ALPHA EXPRESS',job:'SGZ354/70',from:'A',eta:'0130',order:'0200',pilotIn:'12',berth:'PRATEEP',draughtIn:'9.5',loa:'590',agent:'ABC SHIPPING',atd:'1430',pilotOut:'7',draughtOut:'8.0',remark:'เรือยาวเกินกำหนด',closeNo:'18/1',status:'ปิดการเงิน',marks:{vessel:'#ffff00','fc|eta':'#c00000',agent:'g'},shifts:[{order:'0900',pilot:'5',fromBerth:'PRATEEP',berth:'SAWAT',draught:'9.0',agent:'ABC',remark:'SHIFT NOTE'}]});
  SyncStore.put('calls','c2',{date:D,t:2,vessel:'OCEAN BETA',from:'B',eta:'0600',order:'0630',pilotIn:'3',berth:'SAWAT',draughtIn:'8.0',loa:'492',agent:'XYZ'});
  SyncStore.put('calls','c3',{date:D,t:3,vessel:'SEA GAMMA <img src=x onerror=alert(1)>',eta:'1100 แยกใบแจ้งหนี้',pilotIn:'-CAP-',capIn:'1115',berth:'MPP',loa:'394',agent:'QQ'});
  SyncStore.put('calls','c4',{date:'2026-01-05',t:4,vessel:'OLD SHIP',eta:'0800',agent:'ZZ'});};
@@ -25,6 +25,10 @@ const seed=()=>{const D=curDate;
    const cards=p.locator('#logCards .lcard');ok(await cards.count()===3, `${w}: 3 cards for the day`);
    const t1=await cards.nth(0).textContent();
    ok(['SGZ354/70','MAERSK ALPHA EXPRESS','590','ABC SHIPPING','0130','0200','PRATEEP','9.5','ย้ายท่า 1','SAWAT','1430','8.0','เรือยาวเกินกำหนด','18/1','✓ ปิดการเงิน'].every(x=>t1.includes(x)), `${w}: card 1 shows No./name/LOA/agent/in/shift/out/remark/closeNo/status`);
+   ok(t1.includes('SHIFT NOTE'), `${w}: shift remark shown`);
+   const mk=await cards.nth(0).evaluate(c=>{const n=c.querySelector('.lc-name .lc-m'),e=[...c.querySelectorAll('.lc-kv>div')].find(d=>d.textContent.startsWith('ETA'))?.querySelector('.lc-m'),a=c.querySelector('.lc-sub .lc-m[data-hl]');return [getComputedStyle(n).backgroundColor,e&&getComputedStyle(e).color,!!a]});
+   ok(mk[0]==='rgb(255, 255, 0)'&&mk[1]==='rgb(192, 0, 0)'&&mk[2], `${w}: painted colours (fill/font/preset) show on the card ${mk}`);
+   ok(await p.locator('#fillMain').isHidden(), `${w}: colour tools hidden in card view (paint in ตาราง)`);
    ok((await cards.nth(1).textContent()).includes('ยังไม่ออก'), `${w}: not-sailed ship says ยังไม่ออก`);
    const t3=await cards.nth(2).textContent();ok(t3.includes('แยกใบแจ้งหนี้')&&t3.includes('-CAP-')&&t3.includes('1115'), `${w}: invoice tag + CAP time shown`);
    ok(await p.locator('#logCards img').count()===0&&dlg===0, `${w}: ship name rendered as text (no HTML injection)`);
@@ -60,8 +64,14 @@ const seed=()=>{const D=curDate;
    // switch to table, persists over reload
    await p.click('#lvSeg button[data-v="table"]');await p.waitForTimeout(300);
    ok(await p.locator('#view-log .tablebox').isVisible()&&await p.locator('#logCards').isHidden(), `${w}: ตาราง shows the table again`);
+   ok(await p.locator('#fillMain').isVisible(), `${w}: colour tools back in ตาราง`);
+   await p.click('#fillMain');await p.waitForTimeout(200);
+   await p.click('#lvSeg button[data-v="cards"]');await p.waitForTimeout(300);
+   ok(await p.evaluate(()=>markMode)===false&&await p.locator('#hlHint').isHidden(), `${w}: switching to การ์ด turns paint mode off`);
+   await p.locator('#logCards .lcard').nth(0).click();await p.waitForTimeout(300);ok(await p.locator('#sheet').isVisible(), `${w}: card opens the form after paint mode`);await p.click('#edClose');
+   await p.click('#lvSeg button[data-v="table"]');await p.waitForTimeout(200);
    await p.reload();await p.waitForTimeout(800);
-   ok(await p.locator('#view-log .tablebox').isVisible()&&await p.locator('#lvSeg button[data-v="table"]').getAttribute('aria-pressed')==='true', `${w}: choice remembered after reload`);
+   ok(await p.$eval('#view-log .tablebox',x=>getComputedStyle(x).display!=='none')&&await p.$eval('#logCards',x=>getComputedStyle(x).display==='none')&&await p.locator('#lvSeg button[data-v="table"]').getAttribute('aria-pressed')==='true', `${w}: choice remembered after reload`);
    await p.click('#lvSeg button[data-v="cards"]');await p.waitForTimeout(300);ok(await p.locator('#logCards').isVisible(), `${w}: back to การ์ด`);
   } else {
    ok(await p.locator('#logCards').isHidden(), `${w}: no cards on wide screens`);
@@ -75,6 +85,13 @@ const seed=()=>{const D=curDate;
   ok(errs.length===0, `${w}: no page errors ${errs}`);
   await p.close();
  }
+ // dark mode: card texts readable (not black on dark)
+ {const p=await b.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true,colorScheme:'dark'});
+  await p.addInitScript({path:R+'/sync_client.js'});await p.goto('file://'+R+'/pilot_log.html');await p.waitForTimeout(800);await p.evaluate(seed);await p.waitForTimeout(500);
+  const cols=await p.$$eval('#logCards .lcard:first-child :is(.lc-no,.lc-name,.lc-h,.lc-h.out,.lc-kv .v,.lc-sh,.lc-rm)',a=>a.map(x=>getComputedStyle(x).color));
+  const lum=c=>{const [r,g,b2]=c.match(/\d+/g).map(Number);return (r*299+g*587+b2*114)/1000};
+  ok(cols.length>5&&cols.every(c=>lum(c)>110), `dark: card texts light enough ${cols.map(c=>Math.round(lum(c)))}`);
+  await p.screenshot({path:`${OUT}_390_dark.png`});await p.close()}
  // แจ้งเรืออย. mode unaffected
  const p=await b.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});const errs=[];p.on('pageerror',e=>errs.push(e.message));
  await p.addInitScript({path:R+'/sync_client.js'});await p.addInitScript(()=>{window.__ONLY__='ay'});
