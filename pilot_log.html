@@ -2133,9 +2133,10 @@ document.addEventListener("input",e=>{const t=e.target;if(!t||!t.dataset||!t.dat
     bar.innerHTML=`<button type="button" data-v="${dm(base)}">${dm(base)}<small>${dow(base)} วันของรายการ</small></button><button type="button" data-v="${dm(nx)}">${dm(nx)}<small>${dow(nx)} วันถัดไป</small></button><button type="button" class="now" data-v="${now}">ตอนนี้<small>${now}</small></button>`;
     bar.hidden=false;place()}
   document.addEventListener("focusin",e=>{const t=e.target;if(t&&t.dataset&&t.dataset.tmask&&t.matches("input"))show(t);else if(!bar.contains(t))hide()});
-  document.addEventListener("focusout",e=>{const t=e.target;if(t&&t.dataset&&t.dataset.tmask&&t.closest&&t.closest("#sheet")&&/^\d{1,2}-\d{1,2}-$/.test(t.value.trim())){t.value="";t.dispatchEvent(new Event("input",{bubbles:true}))}   /* day chip tapped but no time typed → leave it empty, not "20-11-" */
+  document.addEventListener("focusout",e=>{const t=e.target;if(MQ.matches&&t&&t.dataset&&t.dataset.tmask&&t.closest&&t.closest("#sheet")&&/^\d{1,2}-\d{1,2}-$/.test(t.value.trim())){t.value="";t.dispatchEvent(new Event("input",{bubbles:true}))}   /* day chip tapped but no time typed → leave it empty, not "20-11-" */
     if(t===tgt)setTimeout(()=>{if(document.activeElement!==tgt)hide()},150)});
   document.addEventListener("input",e=>{if(e.target===tgt&&tgt.value.trim())hide()});
+  document.addEventListener("click",e=>{const t=e.target;if(bar.hidden&&t===document.activeElement&&t.dataset&&t.dataset.tmask&&t.matches("input"))show(t)});   /* tap the box again → chips back */
   bar.addEventListener("pointerdown",e=>{if(e.target.closest("button"))e.preventDefault();else hide()});bar.addEventListener("mousedown",e=>{if(e.target.closest("button"))e.preventDefault()});   /* a tap between the chips just closes them */
   bar.addEventListener("click",e=>{const b=e.target.closest("button[data-v]");if(!b||!tgt)return;const t=tgt;t.value=b.dataset.v;
     t.dispatchEvent(new Event("input",{bubbles:true}));if(b.classList.contains("now"))t.dispatchEvent(new Event("change",{bubbles:true}));
