@@ -69,6 +69,14 @@ input[type=date]{border:1px solid var(--line);background:var(--surface);border-r
 :root{--gA-bg:#e8f0fd;--gA-bd:#9db8ea;--gA-ink:#1c3fa6;--gB-bg:#e9f6ec;--gB-bd:#92c9a0;--gB-ink:#16612a}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--gA-bg:#1c2a45;--gA-bd:#3c5a94;--gA-ink:#b9cdf5;--gB-bg:#17321f;--gB-bd:#3b7a4c;--gB-ink:#a9e0b8}}
 :root[data-theme="dark"]{--gA-bg:#1c2a45;--gA-bd:#3c5a94;--gA-ink:#b9cdf5;--gB-bg:#17321f;--gB-bd:#3b7a4c;--gB-ink:#a9e0b8}
+/* dark mode (phone / computer set to dark): text that was hard-coded black or dark grey becomes light —
+   table text with the default black ink, the form's field titles, แจ้งเรืออย. titles and rows */
+:root[data-theme="dark"] body.ink-black{--pen:var(--ink)}:root[data-theme="dark"] body.ink-black table.log .jobno{color:var(--ink)}
+:root[data-theme="dark"] #sheet label.f,:root[data-theme="dark"] #sheet .srow.head,:root[data-theme="dark"] .stbox{color:var(--muted)}:root[data-theme="dark"] .tools-tgl{color:var(--muted)}
+:root[data-theme="dark"] .ay-h,:root[data-theme="dark"] .ay-row{color:var(--ink)}:root[data-theme="dark"] .ay-row.on{background:#1f3a24}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) body.ink-black{--pen:var(--ink)}:root:not([data-theme="light"]) body.ink-black table.log .jobno{color:var(--ink)}
+:root:not([data-theme="light"]) #sheet label.f,:root:not([data-theme="light"]) #sheet .srow.head,:root:not([data-theme="light"]) .stbox{color:var(--muted)}:root:not([data-theme="light"]) .tools-tgl{color:var(--muted)}
+:root:not([data-theme="light"]) .ay-h,:root:not([data-theme="light"]) .ay-row{color:var(--ink)}:root:not([data-theme="light"]) .ay-row.on{background:#1f3a24}}
 .btn:hover{background:var(--hover)}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:500}
 .btn.primary:hover{filter:brightness(1.08)}
