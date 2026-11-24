@@ -651,6 +651,7 @@ html.ios .hbar{position:absolute;bottom:100%!important}
 .br-n{font:800 22px/1.3 var(--f-read);overflow-wrap:anywhere}
 .br-d{grid-column:2;font:500 18px/1.5 var(--f-read);color:var(--muted);overflow-wrap:anywhere}
 .br-d b{color:var(--ink);font-weight:700}
+.br-d i{font-style:normal;white-space:nowrap}
 .br-d .pl{color:var(--pilot);font-weight:800}
 .br-b{display:inline-block;font:700 15px/1.3 var(--f-read);padding:2px 8px;border-radius:6px;margin-left:6px;vertical-align:2px}
 .br-b.late{background:var(--late);color:var(--late-ink)}.br-b.shift{background:var(--shift);color:var(--shift-ink)}
@@ -2429,14 +2430,14 @@ function renderBoardRead(){ const R=$('boardRead'); if(!R || !brOn()) return; if
     const t=g(row,a+4), loa=g(row,a+2), drf=g(row,a+3), late=g(row,a)==='พ', cut=/งด/.test(drf);
     const pilot=g(row,side==='L'?7:15), agent=g(row,side==='L'?8:16), braw=g(row,side==='L'?6:14), pob=side==='L'?g(row,5):'';
     const sh=side==='R' && /(<>|<->|->|>|→)/.test(braw), berth=sh?braw.replace(/\s*(<>|<->|->|>|→)\s*/,' → '):braw;
-    const bits=[]; if(berth) bits.push(`ท่า <b>${esc(berth)}</b>`); if(loa) bits.push(`LOA <b>${esc(loa)}</b>`); if(drf) bits.push(`Drf <b>${esc(drf)}</b>`);
-    const bits2=[]; if(pilot) bits2.push(`ผก. <span class="pl">${esc(pilot)}</span>`); if(agent) bits2.push(esc(agent)); if(pob) bits2.push(`POB <b>${esc(pob)}</b>`);
+    const bits=[]; if(berth) bits.push(`<i>ท่า <b>${esc(berth)}</b></i>`); if(loa) bits.push(`<i>LOA <b>${esc(loa)}</b></i>`); if(drf) bits.push(`<i>Drf <b>${esc(drf)}</b></i>`);
+    const bits2=[]; if(pilot) bits2.push(`<i>ผก. <span class="pl">${esc(pilot)}</span></i>`); if(agent) bits2.push(esc(agent)); if(pob) bits2.push(`<i>POB <b>${esc(pob)}</b></i>`);
     const badges=(late?'<span class="br-b late">พ</span>':'')+(sh?'<span class="br-b shift">ย้าย</span>':'')+(cut?'<span class="br-b off">งด</span>':'')+(row.st&&row.st[side]?'<span class="br-b ok">✓ ผก.ขึ้น</span>':'');
     return `<button type="button" class="br-card${cut?' cut':''}" data-brgo="${bi}|${ri}|${a+1}"><span class="br-t">${esc(t)||'–'}</span><span class="br-n">${esc(n)}${badges}</span>`+
       (bits.length?`<span class="br-d">${bits.join(' · ')}</span>`:'')+(bits2.length?`<span class="br-d">${bits2.join(' · ')}</span>`:'')+`</button>`; };
   const col=(b,bi,side)=>{ const cards=b.rows.map((row,ri)=>card(row,bi,ri,side)).join(''), cnt=(cards.match(/class="br-card/g)||[]).length;
     return `<div><div class="br-sh ${side==='L'?'in':'out'}">${side==='L'?'เข้า · ENTERING':'ออก / ย้าย · SAILING &amp; SHIFTING'} (${cnt})</div>${cards||'<div class="br-none">ไม่มีเรือ</div>'}</div>`; };
-  R.innerHTML='<div class="br-hint">อ่านอย่างเดียว · แตะการ์ดเพื่อไปแก้ในตาราง</div>'+(BD.blocks.length?BD.blocks.map((b,bi)=>`<section class="br-day"><div class="br-dh">${esc(b.label||(b.date?longDate(b.date):''))}</div><div class="br-cols">${col(b,bi,'L')}${col(b,bi,'R')}</div></section>`).join(''):'<div class="br-none">ยังไม่มีตาราง</div>'); }
+  R.innerHTML='<div class="br-hint">อ่านอย่างเดียว · แตะการ์ดเพื่อไปแก้ในตาราง</div>'+(BD.blocks.length?BD.blocks.map((b,bi)=>`<section class="br-day"><div class="br-dh">${esc(b.label||(b.date?longDate(b.date):''))}</div>${b.rows.some(r=>g(r,1)||g(r,10))?`<div class="br-cols">${col(b,bi,'L')}${col(b,bi,'R')}</div>`:'<div class="br-none">ไม่มีเรือ</div>'}</section>`).join(''):'<div class="br-none">ยังไม่มีตาราง</div>'); }
 function setBoardRead(on,save){ $('view-line').classList.toggle('reading',!!on); $('brBtn').setAttribute('aria-pressed',on?'true':'false'); $('brBtn').textContent=on?'✎ กลับไปแก้ตาราง':'🔍 อ่านตัวใหญ่';
   if(save) try{ localStorage.setItem(BR_KEY,on?'1':'0'); }catch(e){}
   if(on){ if(typeof hidePop==='function') try{ hidePop(); }catch(e){} try{ if(document.activeElement && document.activeElement.closest && document.activeElement.closest('#board')) document.activeElement.blur(); }catch(e){} renderBoardRead(); }
