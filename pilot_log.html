@@ -374,6 +374,25 @@ body.ay-mode #todayBtn{font-size:17px;font-weight:700;background:#fff;border:1.5
 body.ay-mode #sheetTab{display:none}
 body.ay-mode #view-log,body.ay-mode #view-ves,body.ay-mode #view-cfg,body.ay-mode .bar nav.tabs,body.ay-mode #calcPanel{display:none!important}
 .thdbtn{font-size:15px;white-space:nowrap}
+/* ทะเบียนเรือ on phones: one card per ship — big full name, LOA + Agent with labels, large แก้ไข / ลบ buttons (the table needed side-scrolling and cut Agent and the buttons off) */
+@media (max-width:640px){
+  #view-ves .tablebox{overflow:visible;max-height:none;min-height:0;background:transparent;border:0;box-shadow:none}
+  #view-ves table.reg{min-width:0;display:block}
+  #view-ves .reg thead{display:none}
+  #view-ves .reg tbody{display:block}
+  #view-ves .reg tbody tr{display:grid;grid-template-columns:minmax(0,96px) minmax(0,1fr);grid-template-areas:"nm nm" "loa ag" "act act";gap:6px 12px;padding:12px 14px;margin-bottom:8px;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+  #view-ves .reg tbody td{border:0;padding:0;background:transparent!important;font-size:16px;min-width:0;overflow-wrap:anywhere}
+  #view-ves .reg tbody td:nth-child(1){grid-area:nm;font-size:19px;font-weight:700}
+  #view-ves .reg tbody td:nth-child(2){grid-area:loa}
+  #view-ves .reg tbody td:nth-child(3){grid-area:ag}
+  #view-ves .reg tbody td:nth-child(4){grid-area:act;display:flex;justify-content:flex-end;gap:10px}
+  #view-ves .reg tbody td:nth-child(2)::before,#view-ves .reg tbody td:nth-child(3)::before{display:block;font:500 12px var(--f-body);color:var(--muted)}
+  #view-ves .reg tbody td:nth-child(2)::before{content:"LOA (ft)"}
+  #view-ves .reg tbody td:nth-child(3)::before{content:"Agent"}
+  #view-ves .reg td.act .linkbtn{font-size:16px;text-decoration:none;border:1px solid var(--line);border-radius:8px;padding:8px 18px;min-height:40px;background:var(--bg)}
+  #view-ves .reg td.act .linkbtn.del{border-color:color-mix(in srgb,var(--danger) 45%,var(--line))}
+  #view-ves .reg tbody td.empty{grid-area:auto;grid-column:1/-1;font-size:15px;font-weight:400;padding:32px 12px;text-align:center}
+}
 </style>
 </head>
 <body>
