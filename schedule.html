@@ -581,6 +581,24 @@ html.ios .hbar{position:absolute;bottom:100%!important}
 .lsheet.board td.wn .ce,.lsheet td.wn{font-weight:400}
 .btn.tb.boldbtn{min-width:40px;padding-inline:10px;display:inline-flex;align-items:center;justify-content:center}
 .boldbtn b{font:900 21px/1 Georgia,"Times New Roman",serif;color:#111}
+/* ผก. & เวร when the pilots panel is narrow (phones, and tablets where it sits beside other panels): each pilot is a card — photo, number + nickname on top, the phone number full width below (the 5-column table cut names and numbers) */
+.panel.pilots{container:pilots/inline-size}
+@container pilots (max-width:620px){
+  .panel.pilots>table.st,.panel.pilots>table.st>tbody{display:block;width:100%}
+  .panel.pilots>table.st>colgroup,.panel.pilots>table.st>thead{display:none}
+  #pilotBody tr{display:grid;grid-template-columns:56px 52px minmax(0,1fr) auto;grid-template-areas:"av no nm d" "av ph ph ph";align-items:center;
+    gap:6px;padding:8px;margin-bottom:8px;background:var(--surface);border:1px solid var(--line);border-radius:12px}
+  #pilotBody tr td{border:0;background:transparent!important;padding:0;min-width:0}
+  #pilotBody td:nth-child(1){grid-area:av;align-self:center;padding:0!important}
+  #pilotBody td:nth-child(2){grid-area:no;padding:0!important;font-size:22px;text-align:center}
+  #pilotBody td:nth-child(3){grid-area:nm}
+  #pilotBody td:nth-child(4){grid-area:ph}
+  #pilotBody td:nth-child(5){grid-area:d}
+  #pilotBody td input{background:var(--bg);border-radius:8px;padding:0 10px}
+  #pilotBody td input.num{font-size:20px;letter-spacing:.04em;text-align:left}
+  #pilotBody td input:focus{background:var(--accent-soft)}
+  #pilotBody button.del{min-height:40px;padding:6px 14px}
+}
 
 /* ทะเบียนเรือ on phones: each ship is a card — name on its own full-width line, then LOA + ท่าประจำ + ลบ, เอเย่นต์, หมายเหตุ with labels (the 7-column table cut names and LOA) */
 @media (max-width:640px){
