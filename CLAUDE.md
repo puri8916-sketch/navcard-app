@@ -10,10 +10,11 @@ Songkhla pilot web app "SKP·Port Premium" (Streamlit Cloud, deploys from `main`
 - Never put secrets (sheet KEYS, passwords) in the repo. `apps_script/Navcard.gs` keeps placeholder KEYS; the owner's copy has real ones.
 - No paid AI/OCR services (owner declined image recognition that costs money).
 
-## Nightly autonomous run (scheduled task, ~01:44 Asia/Bangkok)
-- Roles in one run: Designer (pick ONE task) → Developer (build + Playwright test) → Reviewer (a separate subagent that did not see the build; can veto).
+## Autonomous runs (scheduled task, 5×/day 01:44 05:44 09:44 13:44 17:44 Asia/Bangkok)
+- Owner wants the weekly usage quota used fully: each run does up to 3 tasks (one PR each); bigger multi-file features/UX redesigns are welcome if split into reviewable PRs.
+- Roles per task: Designer (pick the task) → Developer (build + Playwright test) → Reviewer (a separate subagent that did not see the build; can veto).
 - Autonomous work NEVER touches `main`: branch `auto/<yyyymmdd>-<slug>`, open a PR with label `auto-patch`. Owner merges = approve, closes = reject, PR comment = change request. (Work the owner asks for in chat still goes straight to `main`.)
-- Open PRs = the pending-approval list. Max 3 open `auto-patch` PRs; when full, only handle owner comments on them and rebase onto `main` — no new PR.
+- Open PRs = the pending-approval list. Max 8 open `auto-patch` PRs; when full, only handle owner comments on them and rebase onto `main` — no new PR.
 - Task source order: owner comments on open auto PRs → `IDEAS.md` ลำดับความสำคัญ → บั๊กที่เจอ → own idea (add it under "ไอเดียที่ AI เสนอ" in the PR).
 - Not allowed autonomously: changes to `apps_script/Navcard.gs` that need a redeploy unless the PR body says so in bold at the top; deleting/renaming menus; changing sync data formats without a migration; anything listed under "Behaviour decided with the owner" (propose it as an idea instead).
 - PR body in Thai: ทำอะไร / ทำไม / ภาพก่อน-หลัง (screenshots committed under `.auto/screens/`, linked via raw.githubusercontent.com) / ผลทดสอบ / ผลตรวจของ Reviewer / ความเสี่ยง / วิธีย้อนกลับ.
