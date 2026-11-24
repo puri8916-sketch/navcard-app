@@ -89,7 +89,7 @@ _LIGHT_CSS = """
 /* phones: page title ("📑 ปิดการ์ดประจำวัน") and step titles ("ขั้นที่ 1 · …") were 2–3 lines of huge text */
 @media (max-width: 640px) {
     .stApp h1 { font-size: 28px !important; line-height: 1.25 !important; padding-top: .25rem !important; }
-    .stApp h3 { font-size: 21px !important; line-height: 1.3 !important; }
+    .stMain h3 { font-size: 21px !important; line-height: 1.3 !important; }   /* not the menu title in the sidebar */
 }
 """
 
