@@ -85,6 +85,10 @@ const seed=()=>{const D=curDate;
   ok(errs.length===0, `${w}: no page errors ${errs}`);
   await p.close();
  }
+ // paint mode on at 900px, then the window narrows to phone width → paint mode off, ปิดการเงิน buttons back
+ {const p=await b.newPage({viewport:{width:900,height:800}});await p.addInitScript({path:R+'/sync_client.js'});await p.goto('file://'+R+'/pilot_log.html');await p.waitForTimeout(800);await p.evaluate(seed);await p.waitForTimeout(400);
+  await p.click('#fillMain');await p.setViewportSize({width:390,height:844});await p.waitForTimeout(400);
+  ok(await p.evaluate(()=>markMode)===false&&await p.locator('#logCards .stbtn').count()===3, `narrowing to phone width turns paint mode off`);await p.close()}
  // dark mode: card texts readable (not black on dark)
  {const p=await b.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true,colorScheme:'dark'});
   await p.addInitScript({path:R+'/sync_client.js'});await p.goto('file://'+R+'/pilot_log.html');await p.waitForTimeout(800);await p.evaluate(seed);await p.waitForTimeout(500);

@@ -904,6 +904,8 @@ function setLv(v){lvMode=v==="table"?"table":"cards";document.body.classList.tog
   try{localStorage.setItem("pl.logView",lvMode)}catch(e){}requestAnimationFrame(fitTable)}
 document.querySelectorAll("#lvSeg button").forEach(b=>b.addEventListener("click",()=>{if(b.dataset.v==="cards"&&markMode)setMarkMode(false);setLv(b.dataset.v)}));
 try{setLv(localStorage.getItem("pl.logView")||"cards")}catch(e){setLv("cards")}
+/* paint mode on a wide screen, then the window narrows / tablet rotates into the card view: the tools are hidden there, so turn it off */
+try{matchMedia("(max-width:640px)").addEventListener("change",e=>{if(e.matches&&lvMode==="cards"&&markMode)setMarkMode(false)})}catch(e){}
 /* a value with the colours painted on its table cell (marks[key] = fill, marks["fc|"+key] = font) */
 function lcM(c,k,v){const s=el("span",{class:"lc-m"},v);const m=c.marks?.[k],fc=c.marks?.["fc|"+k];
   if(m){if(m[0]==="#")s.style.background=m;else s.dataset.hl=m}if(fc){s.classList.add("mkfc");s.style.setProperty("--mkfc",fc)}return s}
