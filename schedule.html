@@ -671,7 +671,7 @@ html.ios .hbar{position:absolute;bottom:100%!important}
   <section id="view-setup" hidden>
     <div class="panel setup">
       <h2>เชื่อมต่อ Google Sheet ตารางเรือ</h2>
-      <p class="note">ใช้ชีต <b>ShipSchedule_DB</b> + สคริปต์ <b>apps_script/Schedule.gs</b> (คนละชีตกับบันทึกเรือ) ขั้นตอนติดตั้งอยู่ใน README หัวข้อ เมนู 🗓 จัดตารางเรือ</p>
+      <p class="note">ใช้ชีต <b>ShipSchedule_DB</b> + สคริปต์รวม <b>apps_script/Navcard.gs</b> (ชีตเดียวกับสมุดบันทึกเรือ) ขั้นตอนติดตั้งอยู่ใน README หัวข้อ ติดตั้งแบบรวม</p>
       <form id="setupForm" class="fgrid" autocomplete="off">
         <div class="f span4"><label for="sUrl">Web app URL (ลงท้าย /exec)</label><input id="sUrl" placeholder="https://script.google.com/macros/s/…/exec"></div>
         <div class="f span2"><label for="sKey">รหัส (ตามบรรทัด KEYS ในสคริปต์)</label><div class="pw"><input id="sKey" type="password" autocomplete="off"><button type="button" class="pwbtn" id="sKeyShow" aria-label="แสดงรหัส">แสดง</button></div></div>
@@ -901,7 +901,7 @@ function setLayout(D, rows){
   try{ localStorage.setItem(LAYKEY(D), JSON.stringify(rec)); }catch(e){}
   S.layouts=S.layouts||{}; S.layouts[D]=rec; if(S.init) S.init.layouts=S.layouts; cacheSet();
   clearTimeout(layT[D]); layT[D]=setTimeout(()=>api('saveLayout',{},{layout:rec}).then(r=>{ if(r && typeof r==='object' && +r.updated && S.layouts[D]===rec){ rec.updated=+r.updated; try{ localStorage.setItem(LAYKEY(D), JSON.stringify(rec)); }catch(e){} cacheSet(); } }).catch(err=>{
-    if(!layWarned){ layWarned=true; toast(/ไม่รู้จักคำสั่ง/.test(err.message)?'ลำดับแถวเก็บในเครื่องนี้ก่อน · อัปเดต Apps Script (Schedule.gs) เพื่อซิงก์':'บันทึกลำดับแถวไม่สำเร็จ: '+err.message); } }),600);
+    if(!layWarned){ layWarned=true; toast(/ไม่รู้จักคำสั่ง/.test(err.message)?'ลำดับแถวเก็บในเครื่องนี้ก่อน · อัปเดต Apps Script (Navcard.gs) เพื่อซิงก์':'บันทึกลำดับแถวไม่สำเร็จ: '+err.message); } }),600);
 }
 const RANGE_BACK=35, RANGE_FWD=35;
 function rangeFor(D){ return [`${addDays(D,-RANGE_BACK)} 00:00`, `${addDays(D,RANGE_FWD)} 23:59`]; }
@@ -1854,7 +1854,7 @@ function renderShips(){
     || `<tr><td colspan="7" class="empty">ไม่พบเรือ</td></tr>`;
   $('tab-ships').textContent=`ทะเบียนเรือ (${S.ships.length})`;
 }
-function scriptOld(err){ return /ไม่รู้จักคำสั่ง/.test(err.message) ? 'ต้องอัปเดตสคริปต์ Schedule.gs ก่อน (Deploy › Manage deployments › New version)' : err.message; }
+function scriptOld(err){ return /ไม่รู้จักคำสั่ง/.test(err.message) ? 'ต้องอัปเดตสคริปต์ Navcard.gs ก่อน (Deploy › Manage deployments › New version)' : err.message; }
 $('shipBody').addEventListener('change',async e=>{
   const inp=e.target.closest('input[data-sf]'); if(!inp) return;
   const old=inp.dataset.ship, f=inp.dataset.sf, s=S.shipIdx.get(old); if(!s) return;
@@ -3328,7 +3328,7 @@ async function saveProfiles(list){   // [{no, photo?, name?}]
   catch(err){
     if(/ไม่รู้จักคำสั่ง/.test(err.message)){ const o=lsProf(); list.forEach(p=>{ const x=o[p.no]=o[p.no]||{}; if(p.photo!==undefined) x.photo=p.photo; if(p.name!==undefined) x.name=p.name; });
       try{ localStorage.setItem(PH_LS,JSON.stringify(o)); }catch(e){ toast('รูปใหญ่เกินกว่าจะเก็บในเครื่องนี้'); }
-      toast('เก็บรูป/ชื่อไว้ในเครื่องนี้ก่อน · อัปเดตสคริปต์ Schedule.gs เพื่อให้ทุกเครื่องเห็น'); return true; }
+      toast('เก็บรูป/ชื่อไว้ในเครื่องนี้ก่อน · อัปเดตสคริปต์ Navcard.gs เพื่อให้ทุกเครื่องเห็น'); return true; }
     throw err; } }
 async function setPhoto(p,data){
   S.photos=S.photos||{}; const old=S.photos[p]; if(data) S.photos[p]=data; else delete S.photos[p]; renderPilots();
