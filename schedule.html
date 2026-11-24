@@ -218,6 +218,9 @@ table.sheet{border-collapse:collapse;table-layout:fixed;width:100%;font-family:v
 .disp.ok{background:var(--ok);color:var(--ok-ink)}
 label.since{font-size:17px;color:#111;font-weight:800}
 input.since{width:64px;font-size:22px;font-weight:800;padding:6px 8px;border:1px solid #C9C9C9;border-radius:10px;background:#FFF4CC;color:#111;text-align:center}
+/* dark mode: the "วันที่" label and the B (bold) button were near-black on the dark toolbar */
+:root[data-theme="dark"] label.since,:root[data-theme="dark"] .boldbtn b{color:var(--ink)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) label.since,:root:not([data-theme="light"]) .boldbtn b{color:var(--ink)}}
 input.since:focus{outline:none;box-shadow:0 0 0 3px rgb(0 0 0 / .15)}
 .linepaper{width:1600px;padding:0}
 /* like Excel's hair border: fine grey dots, one line between cells */
