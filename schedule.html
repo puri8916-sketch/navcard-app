@@ -2441,7 +2441,8 @@ function renderBoardRead(){ const R=$('boardRead'); if(!R || !brOn()) return; if
 function setBoardRead(on,save){ $('view-line').classList.toggle('reading',!!on); $('brBtn').setAttribute('aria-pressed',on?'true':'false'); $('brBtn').textContent=on?'✎ กลับไปแก้ตาราง':'🔍 อ่านตัวใหญ่';
   if(save) try{ localStorage.setItem(BR_KEY,on?'1':'0'); }catch(e){}
   if(on){ if(typeof hidePop==='function') try{ hidePop(); }catch(e){} try{ if(document.activeElement && document.activeElement.closest && document.activeElement.closest('#board')) document.activeElement.blur(); }catch(e){} renderBoardRead(); }
-  else setTimeout(()=>{ try{ fitBoard(); }catch(e){} },30); }
+  else setTimeout(()=>{ try{ fitBoardWidth(false); fitBoard(); }catch(e){} },30); }
+window.addEventListener('resize',()=>{ if(innerWidth>900 && brOn()) setBoardRead(false,false); });
 $('brBtn').addEventListener('click',()=>setBoardRead(!brOn(),true));
 $('boardRead').addEventListener('click',e=>{ const c=e.target.closest('[data-brgo]'); if(!c) return; const [b,r,k]=c.dataset.brgo.split('|').map(Number);
   setBoardRead(false,true); setTimeout(()=>{ const i=inp(b,r,k); if(!i) return; SEL={b,r1:r,c1:k,r2:r,c2:k}; paintSel(); try{ i.scrollIntoView({block:'center',inline:'center'}); }catch(x){} },80); });
@@ -3543,6 +3544,7 @@ window.addEventListener('resize',()=>{ fitHeads($('board')); fitAll(); });
 
 /* phones: แก้ไข opens with the whole sheet fitting the screen width (pinch to enlarge); a new day / rotating the phone fits again */
 function fitBoardWidth(force){ const B=$('board'), W=B&&B.closest('.scrollx'); if(!W||$('view-line').hidden) return;
+  if(innerWidth<=900 && typeof brOn==='function' && brOn()) return;   /* อ่านตัวใหญ่: the table is hidden (width 0) — keep its zoom until it is shown again */
   if(innerWidth>900){ if(!window.__boardPinched) B.style.zoom=''; return; }
   if(window.__boardPinched && !force) return;
   const w=parseFloat(getComputedStyle(B).width)||1600; B.style.zoom=Math.min(1,Math.max(0.2,(W.clientWidth-2)/w)); }
