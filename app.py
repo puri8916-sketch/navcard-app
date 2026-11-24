@@ -86,6 +86,11 @@ _LIGHT_CSS = """
     background-color: #ffffff !important; border-color: #bfc5d3 !important; }
 [data-baseweb="popover"] *, [data-baseweb="menu"], [data-baseweb="menu"] * {
     background-color: #ffffff !important; color: #31333f !important; }
+/* phones: page title ("📑 ปิดการ์ดประจำวัน") and step titles ("ขั้นที่ 1 · …") were 2–3 lines of huge text */
+@media (max-width: 640px) {
+    .stApp h1 { font-size: 28px !important; line-height: 1.25 !important; padding-top: .25rem !important; }
+    .stApp h3 { font-size: 21px !important; line-height: 1.3 !important; }
+}
 """
 
 _THEME_OPTIONS = ["☀️ สว่าง", "🌙 มืด"]
