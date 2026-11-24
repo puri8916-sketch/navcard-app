@@ -634,6 +634,7 @@ html.ios .hbar{position:absolute;bottom:100%!important}
 .rdview{display:flex;flex-direction:column;gap:12px;padding-bottom:90px}
 .rdview[hidden]{display:none}
 body.rdmode #view-line .scrollx{display:none}
+body.rdmode #view-line .ltool .grp:is(:has(.boldbtn),.fcolor,:has(.fillbtn)){display:none}   /* formatting tools do nothing in the list */
 .rd-day{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:10px}
 .rd-date{font-size:22px;font-weight:700;color:var(--ink);text-align:center;letter-spacing:.02em}
 .rd-h{font-size:17px;font-weight:700;padding:6px 10px;border-radius:8px;display:flex;justify-content:space-between;align-items:center}
@@ -3592,7 +3593,9 @@ setTimeout(()=>fitBoardWidth(false),600);
   tool.appendChild(g); const btn=$('rdBtn');
   const V=document.createElement('div'); V.className='rdview'; V.id='rdView'; V.hidden=true; V.setAttribute('aria-label','ตารางเรือ (อ่านตัวใหญ่)'); W.after(V);
   let on=false, t=null;
-  const txt=(tr,c)=>{ const d=tr.querySelector('.ce[data-c="'+c+'"]'); return d?(d.innerText||d.textContent||'').replace(/\s+/g,' ').trim():''; };
+  /* cell text with its line breaks (Shift+Enter → <br> / <div>) as spaces; read from an inert <template> copy so nothing in it can run */
+  const txt=(tr,c)=>{ const d=tr.querySelector('.ce[data-c="'+c+'"]'); if(!d) return ''; const tp=document.createElement('template');
+    tp.innerHTML=d.innerHTML.replace(/<br\s*\/?>|<\/?(div|p|li)\b[^>]*>/gi,' '); return (tp.content.textContent||'').replace(/\s+/g,' ').trim(); };
   const mk=(tag,cls,text)=>{ const e=document.createElement(tag); if(cls) e.className=cls; if(text!=null) e.textContent=text; return e; };
   const kv=(box,label,v,cls)=>{ if(!v) return; const s=mk('span',cls||''); s.append(mk('small','',label),document.createTextNode(v)); box.appendChild(s); };
   function card(tr,side){ const o=side==='L'?0:9, no=txt(tr,o), ship=txt(tr,o+1); if(!ship) return null;
@@ -3622,7 +3625,9 @@ setTimeout(()=>fitBoardWidth(false),600);
   V.addEventListener('keydown',e=>{ const c=e.target.closest('.rd-ship'); if(c&&(e.key==='Enter'||e.key===' ')){ e.preventDefault(); open(c); } });
   try{ new MutationObserver(later).observe(B,{childList:true,subtree:true,characterData:true}); }catch(e){}
   const wide=()=>window.matchMedia('(min-width:901px)').matches;
-  window.addEventListener('resize',()=>{ if(on&&wide()) set(false,false); });
+  let autoOff=false;   /* turned off only because the screen got wide (tablet rotated) → back on when it is narrow again */
+  window.addEventListener('resize',()=>{ if(on&&wide()){ autoOff=true; set(false,false); } else if(autoOff&&!on&&!wide()){ autoOff=false; set(true,false); } });
+  btn.addEventListener('click',()=>{ autoOff=false; });
   let saved=''; try{ saved=localStorage.getItem('sched_read')||''; }catch(e){}
   if(saved&&!wide()) set(true,false);
 })();

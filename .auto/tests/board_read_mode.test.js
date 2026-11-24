@@ -20,6 +20,9 @@ let fail=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fail++;};
   const fit=await p.$$eval('#rdView *',a=>a.every(x=>{const r=x.getBoundingClientRect();return r.width===0||r.right<=innerWidth+.5}));ok(fit&&await p.evaluate(()=>document.documentElement.scrollWidth)<=w, `${tag}: nothing past the screen edge`);
   if(scheme==='dark'){const lum=c=>{const m=c.match(/[\d.]+/g).map(Number);return (m[0]*299+m[1]*587+m[2]*114)/1000};const cs=await p.$$eval('#rdView :is(.rd-name,.rd-time,.rd-date,.rd-kv span)',a=>a.map(x=>getComputedStyle(x).color));ok(cs.every(c=>lum(c)>150), `${tag}: texts light on dark ${[...new Set(cs)]}`)}
   await p.screenshot({path:`${OUT}_${w}${scheme==='dark'?'_dark':''}.png`});
+  ok(await p.locator('#view-line .boldbtn').isHidden()&&await p.locator('#view-line .fillbtn').isHidden()&&await p.locator('#lineCopy').isVisible(), `${tag}: B / colour / พื้นหลัง hidden in the list, คัดลอกส่งLINE stays`);
+  await p.evaluate(()=>{const ce=[...document.querySelectorAll('#board .ce[data-c="8"]')].find(x=>x.textContent==='ABC');ce.innerHTML='ABC<br>LINE2 &lt;img src=x onerror="window.__x=1"&gt;<div>L3</div>'});await p.waitForTimeout(500);
+  const ag=await p.locator('#rdView .rd-ship',{hasText:'MAERSK ALPHA'}).textContent();ok(ag.includes('ABC LINE2')&&ag.includes(' L3')&&await p.evaluate(()=>!window.__x)&&await p.locator('#rdView img').count()===0, `${tag}: multi-line cell shown with spaces, HTML stays text (${ag.slice(-40)})`);
   // live: a change on the board (as a sync would do) shows in the list
   await p.evaluate(()=>{const ce=[...document.querySelectorAll('#board .ce[data-c="1"]')].find(x=>x.textContent==='SEA GAMMA');ce.textContent='SEA GAMMA II'});await p.waitForTimeout(500);
   ok((await p.$$eval('#rdView .rd-name',a=>a.map(x=>x.textContent))).includes('SEA GAMMA II'), `${tag}: list follows board changes`);
@@ -42,5 +45,6 @@ let fail=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fail++;};
   ok(await p.locator('#rdView').isHidden(), `${tag}: list not shown on other tabs`);
   await p.click('#tab-line');await p.waitForTimeout(300);ok(await p.locator('#rdView').isVisible(), `${tag}: back on แก้ไข the list is there again`);
   await p.setViewportSize({width:1280,height:900});await p.waitForTimeout(400);ok(await p.locator('#rdView').isHidden()&&await p.locator('#board').isVisible(), `${tag}: widening to desktop shows the board`);
+  await p.setViewportSize({width:w,height:h});await p.waitForTimeout(400);ok(await p.locator('#rdView').isVisible(), `${tag}: narrow again → the list comes back`);
   ok(errs.length===0, `${tag}: no page errors ${errs}`);await ctx.close()}
  await b.close();console.log(fail?'FAILED '+fail:'ALL PASS');process.exit(fail?1:0)})();
