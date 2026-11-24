@@ -3,7 +3,7 @@ const {chromium}=require('playwright');const path=require('path');const {setup}=
 const ROOT=path.resolve(__dirname,'../..');const OUT=process.argv[2]||'';let fail=0;
 const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fail++};
 (async()=>{const b=await chromium.launch();
-for(const w of [390,768,1280]){
+for(const w of [360,390,640,641,768,1280]){
  const p=await b.newPage({viewport:{width:w,height:w<500?844:900}});const errs=[];p.on('pageerror',e=>errs.push(e.message));
  await p.addInitScript(()=>{window.__ONLY__='notice'});await setup(p);
  await p.goto('file://'+ROOT+'/schedule.html');await p.waitForTimeout(700);
@@ -14,6 +14,7 @@ for(const w of [390,768,1280]){
  ok(await p.inputValue('.nt-b[data-k=f] >> nth=1')==='PRATEEP',`${w}: next leg's จากท่า auto-filled`);
  await p.click('#ntAdd');await p.fill('.nt-ship >> nth=1','OCEAN BETA');await p.press('.nt-ship >> nth=1','Tab');await p.waitForTimeout(100);
  const txt=await p.textContent('#ntText');
+ if(w===360){await p.fill('.nt-ref','AVERYLONGREFERENCEWITHOUTSPACES1234567890');await p.press('.nt-ref','Tab');}
  ok(txt.startsWith('MAERSK ALPHA / RICM123 ขาดย้าย 2 ขา\n\nย้าย 30-0800 SAWAT<>PRATEEP\n\nย้าย PRATEEP<>')&&txt.includes('OCEAN BETA'),`${w}: LINE text unchanged format`);
  ok(await p.$$eval('.nt-del',x=>x.length)===2,`${w}: delete buttons shown with 2 ships`);
  const lay=await p.evaluate(()=>{const r=[];document.querySelectorAll('.nt-card').forEach(c=>{const cb=c.getBoundingClientRect();
