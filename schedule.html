@@ -457,6 +457,10 @@ input,textarea{line-height:1.6}
 .pzoom .btn{min-width:44px;font-size:20px;padding:6px 10px;display:inline-flex;align-items:center;justify-content:center}
 .pzoom #pzFit{font-size:15px}
 .pzv{min-width:52px;text-align:center;font:600 16px var(--f-num)}
+/* แก้ไข on phones / tablets: zoom buttons for the board (pinch still works); hidden on wide screens where the board is shown 100% */
+#bzGrp.bzoom{display:none}
+@media (max-width:900px){#bzGrp.bzoom{display:inline-flex}}
+.pzoom #bzFit{font-size:15px}.pzoom #bzFit.on{background:var(--accent-soft,#e6f0ff)}
 
 .hbar{position:fixed;bottom:0;z-index:60;height:18px;overflow-x:auto;overflow-y:hidden;background:rgb(255 255 255 / .92);border-top:1px solid var(--line)}
 .hbar>div{height:1px}
@@ -659,6 +663,7 @@ html.ios .hbar{position:absolute;bottom:100%!important}
       <div class="grp"><button class="btn tb boldbtn" data-bact="bold" title="ตัวหนา (Ctrl+B)" aria-label="ตัวหนา"><b>B</b></button></div><div class="grp fcolor"><button class="btn tb fc-main" data-bact="color" title="สีตัวอักษร"><span class="fcA">A</span><span class="fcBar" id="fcBar"></span></button><button class="btn tb fc-drop" id="fcDrop" title="เลือกสี" aria-label="เลือกสีตัวอักษร">▾</button><div class="fc-pal" id="fcPal" hidden></div></div><div class="grp"><button class="btn tb fillbtn" data-bact="togglefill" title="พื้นหลังเทาอ่อน (กดซ้ำเพื่อล้าง)"><span class="fillsw"></span>พื้นหลัง</button></div>
       <div class="grp" id="addBlk"></div>
       <div class="grp"><label class="since" for="lineSince">วันที่</label><input id="lineSince" class="since num" autocomplete="off" inputmode="numeric" maxlength="2" placeholder="วว" aria-label="ดึงเรือตั้งแต่วันที่"><button class="btn" id="linePull">⟳ ดึงจากจัดตารางใหม่</button><span class="note" id="boardInfo" hidden></span></div>
+      <div class="grp pzoom bzoom" id="bzGrp" role="group" aria-label="ซูมกระดาน"><button class="btn tb" id="bzOut" type="button" aria-label="ซูมออก" title="ซูมออก"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.4 15.4 21 21"/><path d="M7.5 10.5h6"/></svg></button><span class="pzv" id="bzVal">100%</span><button class="btn tb" id="bzIn" type="button" aria-label="ซูมเข้า" title="ซูมเข้า"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.4 15.4 21 21"/><path d="M7.5 10.5h6"/><path d="M10.5 7.5v6"/></svg></button><button class="btn tb" id="bzFit" type="button" title="ทั้งตารางพอดีความกว้างจอ">พอดีจอ</button></div>
     </div>
     <div class="scrollx vfit"><div class="paper linepaper" id="board"></div></div>
   </section>
@@ -3484,8 +3489,19 @@ window.addEventListener('resize',()=>{ fitHeads($('board')); fitAll(); });
 function fitBoardWidth(force){ const B=$('board'), W=B&&B.closest('.scrollx'); if(!W||$('view-line').hidden) return;
   if(innerWidth>900){ if(!window.__boardPinched) B.style.zoom=''; return; }
   if(window.__boardPinched && !force) return;
-  const w=parseFloat(getComputedStyle(B).width)||1600; B.style.zoom=Math.min(1,Math.max(0.2,(W.clientWidth-2)/w)); }
+  B.style.zoom=''; const w=parseFloat(getComputedStyle(B).width)||1600; B.style.zoom=Math.min(1,Math.max(0.2,(W.clientWidth-2)/w)); }   /* measured at 100 % (a zoomed board can lay out wider) */
 $('tab-line').addEventListener('click',()=>setTimeout(()=>fitBoardWidth(false),30));
+/* แก้ไข zoom buttons (phones / tablets): − / + by 10 % around the middle of what you see, พอดีจอ = whole board fits the width again */
+(function(){ const B=$('board'), W=B&&B.closest('.scrollx'); if(!B||!W||!$('bzGrp')) return;
+  const cur=()=>parseFloat(B.style.zoom)||1;
+  const show=()=>{ $('bzVal').textContent=Math.round(cur()*100)+'%'; $('bzFit').classList.toggle('on',!window.__boardPinched); };
+  const step=d=>{ const z0=cur(), z=Math.max(0.2,Math.min(2.5,Math.round((z0+d)*10)/10)); if(z===z0) return;
+    const mid=W.scrollLeft+W.clientWidth/2; window.__boardPinched=true; B.style.zoom=z; if(typeof fitHeads==='function') fitHeads(B);
+    W.scrollLeft=Math.max(0,mid*z/z0-W.clientWidth/2); show(); };
+  $('bzIn').addEventListener('click',()=>step(0.1)); $('bzOut').addEventListener('click',()=>step(-0.1));
+  $('bzFit').addEventListener('click',()=>{ window.__boardPinched=false; fitBoardWidth(true); W.scrollLeft=0; show(); });
+  try{ new MutationObserver(show).observe(B,{attributes:true,attributeFilter:['style']}); }catch(e){}
+  show(); })();
 window.addEventListener('orientationchange',()=>setTimeout(()=>{ window.__boardPinched=false; fitBoardWidth(true); },300));
 window.addEventListener('resize',()=>fitBoardWidth(false));
 $('dstrip').addEventListener('click',()=>setTimeout(()=>{ window.__boardPinched=false; fitBoardWidth(true); },200));
