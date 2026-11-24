@@ -490,6 +490,18 @@ _ship_store = components.declare_component(
 with st.container():   # the ×3.2808 calculator moved to a button in สมุดบันทึกเรือ
     import report_page
     st.title("📑 ปิดการ์ดประจำวัน")
+    # ปิดการ์ด is the one page that scrolls: the logo bar gets the page colour so text doesn't show through it;
+    # phones: ≥16px text, big full-width buttons and upload button (page/step titles: separate PR)
+    st.markdown("""<style>
+.stApp header[data-testid="stHeader"]{background-color:PAGEBG!important;left:0!important;right:0!important;width:auto!important}
+@media (max-width:640px){
+[data-testid="stMain"] [data-testid="stMarkdownContainer"] p,[data-testid="stMain"] [data-testid="stWidgetLabel"] p,[data-testid="stMain"] [data-testid="stCaptionContainer"]{font-size:16px!important}
+[data-testid="stMain"] [data-testid="stElementContainer"]:has(> [data-testid="stButton"]),[data-testid="stMain"] [data-testid="stElementContainer"]:has(> [data-testid="stDownloadButton"]),[data-testid="stMain"] [data-testid="stButton"],[data-testid="stMain"] [data-testid="stDownloadButton"],[data-testid="stMain"] [data-testid="stButton"] > div,[data-testid="stMain"] [data-testid="stDownloadButton"] > div,[data-testid="stMain"] .stButton,[data-testid="stMain"] .stDownloadButton{width:100%!important}
+[data-testid="stMain"] [data-testid="stButton"] button,[data-testid="stMain"] [data-testid="stDownloadButton"] button,[data-testid="stMain"] [data-testid="stFileUploaderDropzone"] button{min-height:48px!important;width:100%!important}
+[data-testid="stMain"] [data-testid="stButton"] button p,[data-testid="stMain"] [data-testid="stDownloadButton"] button p,[data-testid="stMain"] [data-testid="stFileUploaderDropzone"] button{font-size:17px!important}
+[data-testid="stMain"] [data-testid="stFileUploaderDropzoneInstructions"] span,[data-testid="stMain"] [data-testid="stFileUploaderDropzoneInstructions"] small{font-size:15px!important}
+}
+</style>""".replace("PAGEBG", "#0e1117" if _theme_choice == _THEME_OPTIONS[1] else "#ffffff"), unsafe_allow_html=True)
 
     _store = _ship_store(key="ship_store", default=None)
     # ship lengths come from the calculator store only (ships.csv defaults now live in the sheet of the original port)
