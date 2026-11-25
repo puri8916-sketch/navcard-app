@@ -114,6 +114,15 @@ table.log{--f-sheet:"LogTimes","Times New Roman",Times,"Tahoma","Leelawadee UI",
 .log tbody tr:is(.main,.shift) td:nth-child(1),.log thead tr:not(.grp) th:nth-child(1){position:sticky;left:0;z-index:1;min-width:150px;max-width:150px}
 .log tbody tr:is(.main,.shift) td:nth-child(2),.log thead tr:not(.grp) th:nth-child(2){position:sticky;left:150px;z-index:1;box-shadow:inset -2px 0 0 var(--line)}
 .log thead th:nth-child(4),.log thead th:nth-child(5){min-width:112px}
+/* A: ลำดับการปิด/✓ปิด always visible on the right; status stripe in front of each row */
+@media (min-width:641px){.log tbody tr.main td:last-child,.log thead tr:not(.grp) th:last-child{position:sticky;right:0;z-index:1;box-shadow:inset 2px 0 0 var(--line)}}
+.log tbody tr.main.st-ok td:first-child{box-shadow:inset 5px 0 0 #2e9d5b}
+.log tbody tr.main.st-num td:first-child{box-shadow:inset 5px 0 0 #e08a1e}
+#sheetTab{display:none}
+.rptmenu{position:relative}.rptmenu:not(:has(.rptpop>button:not([hidden]))){display:none}
+.rptpop{position:fixed;z-index:30;display:flex;flex-direction:column;gap:6px;padding:8px;min-width:200px;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.15)}
+.rptpop[hidden]{display:none}.rptpop .btn{width:100%;justify-content:flex-start;text-align:left}
+.daysum{font-size:15px;color:var(--muted);flex-basis:100%}.daysum b{color:var(--ink)}
 .log td[data-hl="y"]{background:var(--hl-y)}.log td[data-hl="p"]{background:var(--hl-p)}.log td[data-hl="g"]{background:var(--hl-g)}.log td[data-hl="b"]{background:var(--hl-b)}
 body.marking .log tbody td[data-k]{cursor:cell}
 body.marking .log tbody td[data-k]:hover{outline:2px solid var(--accent);outline-offset:-2px}
@@ -437,10 +446,11 @@ body.ay-mode #view-log,body.ay-mode #view-ves,body.ay-mode #view-cfg,body.ay-mod
         <span class="hint" id="hlHint" hidden>คลิกช่องเพื่อใส่สี · คลิกซ้ำเพื่อลบ · Esc เลิก</span>
       </div>
       <div class="cmenu" id="cellMenu" role="menu" hidden></div>
+      <div class="rptmenu"><button class="btn" id="rptBtn" type="button" aria-haspopup="menu" aria-expanded="false">รายงาน ▾</button><div class="rptpop" id="rptPop" role="menu" hidden>
       <button class="btn grpA" id="wordBtn" type="button" hidden title="ไฟล์ Word รายการเรือ เข้า-ออก (SAMARN)">รายงานSMS</button>
       <button class="btn grpA" id="pdfBtn" type="button" hidden>สมุดประจำเดือน</button>
       <button class="btn grpB" id="bigBtn" type="button" hidden title="Excel: จำนวนเรือแยกตามขนาดชั้นใบอนุญาตผู้นำร่อง ประจำเดือน">สรุปเรือนำร่อง</button>
-      <button class="btn grpB" id="statBtn" type="button" hidden title="จำนวนเรือเข้า-ออก-เลื่อน-ค้างท่า พร้อมเน็ต (N.R.T.) / กร๊อส (G.R.T.) จากการ์ด">รายงานสถิติเรือ</button>
+      <button class="btn grpB" id="statBtn" type="button" hidden title="จำนวนเรือเข้า-ออก-เลื่อน-ค้างท่า พร้อมเน็ต (N.R.T.) / กร๊อส (G.R.T.) จากการ์ด">รายงานสถิติเรือ</button></div></div>
     </div>
     <div class="pdfbar" id="bigBar" hidden>
       <b>สรุปเรือนำร่อง (แยกตามขนาดชั้นใบอนุญาตผู้นำร่อง)</b>
@@ -496,6 +506,7 @@ body.ay-mode #view-log,body.ay-mode #view-ves,body.ay-mode #view-cfg,body.ay-mod
       <label class="cfwrap" for="cf">ลำดับการปิด<input id="cf" type="search" placeholder=" " autocomplete="off"></label><select id="cfMon" class="cfmon" hidden aria-label="เดือนของลำดับการปิด"></select>
       <button class="linkbtn" id="clearF" type="button" hidden>ล้างตัวกรอง</button>
       <span class="hint" id="resN"></span>
+      <div class="daysum" id="daySum" aria-live="polite"></div>
     </div>
     </div></div>
     <div class="tools-tgl-row"><button type="button" class="tools-tgl" id="toolsTgl" aria-expanded="true" title="ซ่อน / แสดงแถบเครื่องมือ">︿ ซ่อน</button></div>
@@ -798,6 +809,7 @@ function renderLog0(){if(window.__ONLY__==="ay")setTimeout(renderAy,0);requestAn
   calls=allCalls.filter(c=>c.date===curDate);
   const body=$("logBody");body.replaceChildren();
   $("sCount").textContent=calls.length;
+  {const op=calls.filter(isOpen).length;$("daySum").innerHTML=`วันที่เลือก <b>${calls.length}</b> ลำ · ยังไม่ปิด <b>${op}</b> · ปิดแล้ว <b>${calls.length-op}</b>`}
   $("sShift").textContent=calls.reduce((n,c)=>n+(c.shifts?.length||0),0);
   $("sOk").textContent=calls.filter(c=>c.status==="ปิดการเงิน").length;
   $("openN").textContent=allCalls.filter(isOpen).length;
@@ -830,7 +842,7 @@ function renderLog0(){if(window.__ONLY__==="ay")setTimeout(renderAy,0);requestAn
     const ship=el("td",{class:"ship"},hl(c.vessel||"—"));
     if(n){ship.append(el("button",{class:"shiftbtn","aria-expanded":!collapsed.has(c.id),title:"แสดง/ซ่อนการย้ายท่า",onclick:e=>{e.stopPropagation();collapsed.has(c.id)?collapsed.delete(c.id):collapsed.add(c.id);renderLog()}},(!collapsed.has(c.id)?"▾":"▸")+" ย้ายท่า "+n))}
     const alt=(gi++%2)?" alt":"",showShifts=n&&!collapsed.has(c.id);
-    const tr=el("tr",{class:"main"+alt+(showShifts?"":" grp-end"),"data-id":c.id,tabindex:0,onkeydown:e=>{if(e.key==="Enter"&&e.target===e.currentTarget)openEditor(c)}},
+    const tr=el("tr",{class:"main"+alt+(showShifts?"":" grp-end")+(c.status==="ปิดการเงิน"?" st-ok":String(c.closeNo||"").trim()?" st-num":""),"data-id":c.id,tabindex:0,onkeydown:e=>{if(e.key==="Enter"&&e.target===e.currentTarget)openEditor(c)}},
       cell(el("span",{},canReorder()?el("button",{class:"grip",type:"button",title:"ลากเพื่อเลื่อนลำดับ (หรือกด ↑ ↓)","aria-label":"เลื่อนลำดับ "+(c.vessel||""),onkeydown:e=>{if(e.key==="ArrowUp"||e.key==="ArrowDown"){e.preventDefault();e.stopPropagation();moveRow(c.id,e.key==="ArrowUp"?-1:1)}}},"⠿"):null,el("button",{class:"edbtn",type:"button",title:"เปิดฟอร์มแก้ไข","aria-label":"เปิดฟอร์มแก้ไข "+(c.vessel||""),onclick:e=>{e.stopPropagation();openEditor(c)}},"✎"),el("span",{class:"jobno"},hl(c.job||"")),closeF&&c.date?el("span",{class:"dsub"},beTab(c.date)):null),""), ship, cell(c.from,"mono"),
       cell(timeInv(timeOf(c.eta),invIn(c)),"mono div"), cell(invIn(c)?"-":timeOf(c.order),"mono"+(invIn(c)?" ctr":"")), cell(capCell(c.pilotIn,c.capIn),"mono"), cell(c.berth,"mono"), cell(c.draughtIn,"mono"),
       cell(loaEl(c),"mono div"), cell(c.lbp,"mono"), cell(c.agent?hl(c.agent):""),
@@ -1081,6 +1093,10 @@ function pdfInfo(){
   $("pdfInfo").textContent=(f===t?ymLabel(f):ymLabel(f<t?f:t)+" – "+ymLabel(f<t?t:f))+" · "+monthTotals(f<t?f:t,f<t?t:f);
   $("pdfGo").disabled=!rows.length;
 }
+{const pop=$("rptPop"),b=$("rptBtn"),set=o=>{pop.hidden=!o;b.setAttribute("aria-expanded",String(o));if(o){const r=b.getBoundingClientRect();pop.style.top=(r.bottom+6)+"px";pop.style.left=Math.max(8,Math.min(r.right-pop.offsetWidth,innerWidth-pop.offsetWidth-8))+"px"}};   /* fixed: the toolbar box clips overflow */
+ b.onclick=e=>{e.stopPropagation();set(pop.hidden)};pop.addEventListener("click",()=>set(false));
+ document.addEventListener("click",e=>{if(!pop.hidden&&!e.target.closest(".rptmenu"))set(false)});
+ document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!pop.hidden)set(false)});addEventListener("scroll",()=>{if(!pop.hidden)set(false)},true)}
 $("pdfBtn").onclick=()=>{const b=$("pdfBar");b.hidden=!b.hidden;if(!b.hidden){const ym=curDate.slice(0,7);if(!$("pdfFrom").value)$("pdfFrom").value=ym;if(!$("pdfTo").value)$("pdfTo").value=ym;$("pdfMsg").textContent="";pdfInfo()}};
 $("pdfClose").onclick=()=>{$("pdfBar").hidden=true};
 $("pdfFrom").addEventListener("input",pdfInfo);$("pdfTo").addEventListener("input",pdfInfo);
