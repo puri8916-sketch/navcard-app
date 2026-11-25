@@ -464,7 +464,7 @@ if _page in (_P_LOG, _P_AY):
 
 if _page in (_P_SCHED, _P_NOTICE):
     # Ship's schedule for printing (replaces the per-day tabs + แก้ไข tab of the schedule workbook).
-    # Data lives in its own Google Sheet (ShipSchedule_DB) via apps_script/Schedule.gs.
+    # Data lives in the Google Sheet ShipSchedule_DB via apps_script/Navcard.gs (the combined script).
     with open(os.path.join(_HERE, "schedule.html"), encoding="utf-8") as _f:
         _sched_html = _f.read()
     _sched_cfg = {k: v for k, v in _cfg_for("schedule").items() if k in ("url", "key", "managed")}
