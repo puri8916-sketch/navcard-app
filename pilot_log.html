@@ -402,6 +402,13 @@ body.ay-mode #view-log,body.ay-mode #view-ves,body.ay-mode #view-cfg,body.ay-mod
   #view-ves .reg td.act .linkbtn.del{border-color:color-mix(in srgb,var(--danger) 45%,var(--line))}
   #view-ves .reg tbody td.empty{grid-area:auto;grid-column:1/-1;font-size:15px;font-weight:400;padding:32px 12px;text-align:center}
 }
+/* สมุด › ฟอร์ม (มือถือ/แท็บเล็ต): an empty time box offers quick chips — วันที่ของรายการ / วันถัดไป (only hhmm left to type) or ตอนนี้ */
+#tq{position:fixed;z-index:120;display:flex;gap:6px;flex-wrap:wrap;padding:6px;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);max-width:calc(100vw - 16px);box-sizing:border-box}
+#tq[hidden]{display:none}
+#tq button{font:600 17px/1 var(--f-mono);min-height:44px;padding:0 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer;white-space:nowrap}
+#tq button small{display:block;font:500 12px/1.2 var(--f-body);color:var(--muted);margin-top:3px}
+#tq button.now{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+#tq button.now small{color:inherit;opacity:.85}
 </style>
 </head>
 <body>
@@ -2126,6 +2133,36 @@ document.addEventListener("input",e=>{const t=e.target;if(!t||!t.dataset||!t.dat
   if(e.inputType&&!e.inputType.startsWith("insert"))return; // deleting: leave as typed
   const v=t.value,m=tMask(v);if(m==null||m===v)return;const atEnd=t.selectionStart===v.length;t.value=m;if(atEnd)t.setSelectionRange(m.length,m.length)},true);
 
+
+/* ฟอร์ม (มือถือ/แท็บเล็ต จอสัมผัส): tapping an empty วว-ดด-hhmm box shows chips — the record's date or the next day (then type only hhmm), or ตอนนี้ (date + time now) */
+(function(){const MQ=matchMedia("(hover:none) and (pointer:coarse)");   /* touch screens only — a narrow desktop window keeps typing as before */
+  const bar=document.createElement("div");bar.id="tq";bar.hidden=true;bar.setAttribute("role","toolbar");bar.setAttribute("aria-label","เติมวันที่/เวลา");document.body.appendChild(bar);
+  let tgt=null;const p2=n=>String(n).padStart(2,"0");
+  const dm=iso=>{const [y,m,d]=iso.split("-");return d+"-"+m+"-"};
+  const nextIso=iso=>{const t=new Date(iso+"T00:00:00Z");t.setUTCDate(t.getUTCDate()+1);return t.toISOString().slice(0,10)};
+  const DOW=["อา.","จ.","อ.","พ.","พฤ.","ศ.","ส."],dow=iso=>DOW[new Date(iso+"T00:00:00Z").getUTCDay()];
+  function hide(){bar.hidden=true;tgt=null}
+  function place(){if(!tgt)return;const r=tgt.getBoundingClientRect(),vv=window.visualViewport,vh=vv?vv.height+vv.offsetTop:innerHeight,top0=vv?vv.offsetTop:0;
+    if(r.bottom<top0||r.top>vh){bar.style.visibility="hidden";return}bar.style.visibility="";
+    const bh=bar.offsetHeight,bw=bar.offsetWidth;let y=r.bottom+6;if(y+bh>vh-4&&r.top-bh-6>top0)y=r.top-bh-6;
+    bar.style.top=Math.round(y)+"px";bar.style.left=Math.round(Math.max(8,Math.min(r.left,innerWidth-bw-8)))+"px"}
+  function show(inp){if(!MQ.matches||inp.value.trim()||!inp.closest("#sheet")){hide();return}tgt=inp;
+    const base=(editing&&editing.date)||curDate||isoToday(),nx=nextIso(base),d=new Date(),now=p2(d.getDate())+"-"+p2(d.getMonth()+1)+"-"+p2(d.getHours())+p2(d.getMinutes());
+    bar.innerHTML=`<button type="button" data-v="${dm(base)}">${dm(base)}<small>${dow(base)} วันของรายการ</small></button><button type="button" data-v="${dm(nx)}">${dm(nx)}<small>${dow(nx)} วันถัดไป</small></button><button type="button" class="now" data-v="${now}">ตอนนี้<small>${now}</small></button>`;
+    bar.hidden=false;place()}
+  document.addEventListener("focusin",e=>{const t=e.target;if(t&&t.dataset&&t.dataset.tmask&&t.matches("input"))show(t);else if(!bar.contains(t))hide()});
+  document.addEventListener("focusout",e=>{const t=e.target;if(MQ.matches&&t&&t.dataset&&t.dataset.tmask&&t.closest&&t.closest("#sheet")&&/^\d{1,2}-\d{1,2}-$/.test(t.value.trim())){t.value="";t.dispatchEvent(new Event("input",{bubbles:true}))}   /* day chip tapped but no time typed → leave it empty, not "20-11-" */
+    if(t===tgt)setTimeout(()=>{if(document.activeElement!==tgt)hide()},150)});
+  document.addEventListener("input",e=>{if(e.target===tgt&&tgt.value.trim())hide()});
+  document.addEventListener("click",e=>{const t=e.target;if(bar.hidden&&t===document.activeElement&&t.dataset&&t.dataset.tmask&&t.matches("input"))show(t)});   /* tap the box again → chips back */
+  bar.addEventListener("pointerdown",e=>{if(e.target.closest("button"))e.preventDefault();else hide()});bar.addEventListener("mousedown",e=>{if(e.target.closest("button"))e.preventDefault()});   /* a tap between the chips just closes them */
+  bar.addEventListener("click",e=>{const b=e.target.closest("button[data-v]");if(!b||!tgt)return;const t=tgt;t.value=b.dataset.v;
+    t.dispatchEvent(new Event("input",{bubbles:true}));if(b.classList.contains("now"))t.dispatchEvent(new Event("change",{bubbles:true}));
+    hide();t.focus();try{t.setSelectionRange(t.value.length,t.value.length)}catch(x){}});
+  document.addEventListener("scroll",()=>{if(tgt)place()},true);window.addEventListener("resize",()=>{if(tgt)place()});
+  if(window.visualViewport){visualViewport.addEventListener("resize",()=>{if(tgt)place()});visualViewport.addEventListener("scroll",()=>{if(tgt)place()})}
+  const ce=closeEditor;closeEditor=function(){hide();return ce.apply(this,arguments)};
+  $("edClose").onclick=closeEditor;$("edCancel").onclick=closeEditor;$("scrim").onclick=closeEditor;})();
 /* ---------- big calendar for บันทึกประจำวัน ---------- */
 var CAL_MON=["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน","กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
 var CAL_MS=["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
