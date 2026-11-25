@@ -10,7 +10,8 @@ Songkhla pilot web app "SKP·Port Premium" (Streamlit Cloud, deploys from `main`
 - Never put secrets (sheet KEYS, passwords) in the repo. `apps_script/Navcard.gs` keeps placeholder KEYS; the owner's copy has real ones.
 - No paid AI/OCR services (owner declined image recognition that costs money).
 
-## Autonomous work (scheduled task "navcard auto-dev" fires every hour; continuous, no per-run task limit)
+## Autonomous work (scheduled task "navcard auto-dev"; continuous, no per-run task limit)
+- Token budget (owner: spend tokens on building, not on hunting ideas): no skills; Grep + partial Read (≤150 lines) of big files, never whole; picking a task ≤5 tool calls, no Playwright exploring — take from IDEAS.md, else its "คิวงาน AI" queue (note new ideas there while working); small PRs (≤~150 lines); one test script, 390 + 1280px; reviewer subagent on model sonnet, diff-only; at the 15-PR cap end the run right after the state check.
 - Owner wants the usage quota used up every day: each run keeps doing tasks one after another (one PR each) until the usage limit stops it — no "up to N tasks" limit. Bigger multi-file features/UX redesigns are welcome if split into reviewable PRs.
 - Runs can overlap: before starting a task, `git ls-remote origin 'refs/heads/auto/*'` — a branch for the same task without a PR yet = another run is building it, pick something else. Push the new branch early (first commit) to claim the task.
 - Roles per task: Designer (pick the task) → Developer (build + Playwright test) → Reviewer (a separate subagent that did not see the build; can veto).
