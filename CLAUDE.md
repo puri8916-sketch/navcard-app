@@ -11,12 +11,13 @@ Songkhla pilot web app "SKP·Port Premium" (Streamlit Cloud, deploys from `main`
 - No paid AI/OCR services (owner declined image recognition that costs money).
 
 ## Autonomous work (scheduled task "navcard auto-dev"; continuous, no per-run task limit)
-- Token budget (owner: spend tokens on building, not on hunting ideas): no skills; Grep + partial Read (≤150 lines) of big files, never whole; picking a task ≤5 tool calls, no Playwright exploring — take from IDEAS.md, else its "คิวงาน AI" queue (note new ideas there while working); small PRs (≤~150 lines); one test script, 390 + 1280px; reviewer subagent on model sonnet, diff-only; at the 15-PR cap end the run right after the state check.
+- MAJOR WORK ONLY (owner, 25 Nov 2026): no more small cosmetic/layout PRs. Each run builds the next part of IDEAS.md "งานใหญ่"; a feature is split into parts, each part a usable piece (≈300–600 lines), labels `auto-patch` + `major`. Small fixes only when the owner comments on an existing PR.
+- Token budget (spend tokens on building, not hunting ideas): no skills; Grep + partial Read (≤150 lines) of big files, never whole; picking a task ≤5 tool calls, no Playwright exploring; one test script, 390 + 1280px; reviewer subagent on model sonnet, diff-only.
 - Owner wants the usage quota used up every day: each run keeps doing tasks one after another (one PR each) until the usage limit stops it — no "up to N tasks" limit. Bigger multi-file features/UX redesigns are welcome if split into reviewable PRs.
 - Runs can overlap: before starting a task, `git ls-remote origin 'refs/heads/auto/*'` — a branch for the same task without a PR yet = another run is building it, pick something else. Push the new branch early (first commit) to claim the task.
 - Roles per task: Designer (pick the task) → Developer (build + Playwright test) → Reviewer (a separate subagent that did not see the build; can veto).
 - Autonomous work NEVER touches `main`: branch `auto/<yyyymmdd>-<slug>`, open a PR with label `auto-patch`. Owner merges = approve, closes = reject, PR comment = change request. (Work the owner asks for in chat still goes straight to `main`.)
-- Open PRs = the pending-approval list. Max 15 open `auto-patch` PRs; when full, only handle owner comments on them and rebase onto `main` — no new PR.
+- Open PRs = the pending-approval list. Max 5 open `major` PRs (older small auto-patch PRs don't count); when full, only handle owner comments on them and rebase onto `main` — no new PR.
 - Task source order: owner comments on open auto PRs → `IDEAS.md` ลำดับความสำคัญ → บั๊กที่เจอ → own idea (add it under "ไอเดียที่ AI เสนอ" in the PR).
 - Not allowed autonomously: changes to `apps_script/Navcard.gs` that need a redeploy unless the PR body says so in bold at the top; deleting/renaming menus; changing sync data formats without a migration; anything listed under "Behaviour decided with the owner" (propose it as an idea instead).
 - PR body in Thai: ทำอะไร / ทำไม / ภาพก่อน-หลัง (screenshots committed under `.auto/screens/`, linked via raw.githubusercontent.com) / ผลทดสอบ / ผลตรวจของ Reviewer / ความเสี่ยง / วิธีย้อนกลับ.
