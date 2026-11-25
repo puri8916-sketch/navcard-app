@@ -770,9 +770,9 @@ if(AY){
 }
 
 /* ---------- daily log ---------- */
-const isOpen=c=>c.status!=="ปิดการเงิน"&&!String(c.closeNo||"").trim();
+const isOpen=c=>c.status!=="ปิดการเงิน";   /* only the ✓ ปิด button closes a card; a typed ลำดับการปิด does not */
 function matchQ(c){if(!searchQ)return true;const hay=norm([invIn(c)||invOut(c)?INV_TXT:"",c.vessel,c.job,c.agent,c.agentOut,c.berth,c.from,c.remark,c.closeNo,...(c.shifts||[]).map(x=>x.agent)].join(" "));return searchQ.split(" ").every(t=>hay.includes(t))}
-function matchS(c){return fStatus==="all"||(fStatus==="open"?(closeF?c.status!=="ปิดการเงิน":isOpen(c)):c.status===fStatus)}   /* with a ลำดับการปิด filter, ยังไม่ปิดการ์ด = numbered but not ✓ ปิด yet */
+function matchS(c){return fStatus==="all"||(fStatus==="open"?isOpen(c):c.status===fStatus)}
 function setSeg(id,v){document.querySelectorAll("#"+id+" button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.v===v))}
 function hl(text){
   text=String(text||"");if(!searchQ||!text)return text;
