@@ -513,8 +513,29 @@ html.only-notice body{padding-bottom:0!important}
 .nt-add{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:700}
 .nt-out{background:var(--surface);border:2px solid var(--accent);border-radius:12px;padding:12px}
 .nt-outh{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:18px;margin-bottom:8px}
-#ntText{margin:0;white-space:pre-wrap;font:18px/1.5 "Tahoma","Leelawadee UI","Noto Sans Thai",sans-serif;background:#C5F2A5;color:#111;border-radius:10px;padding:12px;min-height:60px}
-@media (max-width:640px){ .nt-row{font-size:17px} .nt-card input{font-size:17px} .nt-b{width:calc(50% - 40px)} .nt-dt{width:104px} }
+#ntText{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font:18px/1.5 "Tahoma","Leelawadee UI","Noto Sans Thai",sans-serif;background:#C5F2A5;color:#111;border-radius:10px;padding:12px;min-height:60px}
+@media (min-width:641px){ .nt-ship{flex:2 1 260px} .nt-ref{flex:1 1 140px} }
+/* phone: ship name gets its own full line; each leg = "ย้าย [วว-ชชนน]" then "[จากท่า] <> [ไปท่า]" (no lone wrapped boxes) */
+@media (max-width:640px){ .nt-row{font-size:17px} .nt-card input{font-size:17px}
+  .nt-card{padding:10px}
+  .nt-top{display:grid;grid-template-columns:auto minmax(0,1fr) auto 64px auto;gap:8px 6px}
+  .nt-top .nt-ship{grid-column:1/-1;grid-row:1;width:100%}
+  .nt-top.has-del .nt-ship{grid-column:1/-2}
+  .nt-top .nt-del{grid-column:-2/-1;grid-row:1;margin:0;min-width:44px;min-height:44px}
+  .nt-top .nt-ref{width:100%}
+  .nt-top .nt-n{width:64px}
+  .nt-leg{display:grid;grid-template-columns:auto minmax(0,1fr) auto minmax(0,1fr);gap:6px 6px;padding-bottom:8px}
+  .nt-leg+.nt-leg{border-top:1px dashed var(--line);padding-top:8px}
+  .nt-leg .lab{grid-column:1;grid-row:1;min-width:40px}
+  .nt-leg .nt-dt{grid-column:2/-1;grid-row:1;justify-self:start;width:150px}
+  .nt-leg .nt-b{width:100%}
+  .nt-leg .nt-b[data-k="f"]{grid-column:2;grid-row:2}
+  .nt-leg>span:not(.lab){grid-column:3;grid-row:2;text-align:center}
+  .nt-leg .nt-b[data-k="to"]{grid-column:4;grid-row:2}
+  .nt-outh{flex-direction:column;align-items:stretch;text-align:center}
+  .nt-copy{width:100%}
+  .nt-bar .btn{flex:1 1 0}
+}
 /* compact header + toolbars (more room for the sheet, still easy to read) */
 @media (min-width:641px) and (min-height:521px){
   .top{padding-block:4px;gap:6px 12px}
@@ -3514,7 +3535,7 @@ setTimeout(()=>fitBoardWidth(false),600);
   const showText=()=>{ $('ntText').textContent=text()||'—'; };
   function render(){
     N.innerHTML=D.map((x,i)=>`<div class="nt-card" data-i="${i}">
-      <div class="nt-row"><input class="nt-ship" data-f="ship" data-k="ship" value="${esc(x.ship)}" placeholder="ชื่อเรือ" autocomplete="off" aria-label="ชื่อเรือ">
+      <div class="nt-row nt-top${D.length>1?' has-del':''}"><input class="nt-ship" data-f="ship" data-k="ship" value="${esc(x.ship)}" placeholder="ชื่อเรือ" autocomplete="off" aria-label="ชื่อเรือ">
         <span class="nt-slash">/</span><input class="nt-ref" data-k="ref" value="${esc(x.ref)}" placeholder="RICM…" autocomplete="off" aria-label="เลขอ้างอิง">
         <span>ขาดย้าย</span><input class="nt-n" data-k="n" type="text" inputmode="numeric" value="${esc(x.n)}" placeholder="0" aria-label="จำนวนขา"><span>ขา</span>
         ${D.length>1?`<button type="button" class="btn nt-del" data-del="${i}" title="ลบเรือลำนี้">✕</button>`:''}</div>
