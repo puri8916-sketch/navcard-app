@@ -922,7 +922,9 @@ $("logBody").addEventListener("pointerdown",e=>{
 function cnParts(v){const m=String(v||"").trim().match(/^(.*?)\s*\/\s*(\d+)\s*$/);return m?{p:m[1].trim(),n:+m[2]}:null}
 /* month of a card for ลำดับการปิด: the month it sailed (ATD); not sailed yet → the month of its page */
 function cnMonth(c){const t=wParse(c.atd||(c.pilotOut==="-CAP-"?c.capOut:""),c.date);return t?t.iso.slice(0,7):(c.date||"").slice(0,7)}
-function matchC(c){if(!closeF)return true;const v=String(c.closeNo||"").trim();if(!v)return false;if(cfMonV&&cfMonV!=="*"&&cnMonth(c)!==cfMonV)return false;
+/* month the ลำดับการปิด was typed (cnAt), local time — a card numbered today shows in this month's list even if it sailed earlier */
+function cnAtMonth(c){if(!c.cnAt)return "";const d=new Date(c.cnAt);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")}
+function matchC(c){if(!closeF)return true;const v=String(c.closeNo||"").trim();if(!v)return false;if(cfMonV&&cfMonV!=="*"&&cnMonth(c)!==cfMonV&&cnAtMonth(c)!==cfMonV)return false;
   if(closeF.includes("/"))return v.replace(/\s+/g,"").toUpperCase().startsWith(closeF.replace(/\s+/g,"").toUpperCase());
   const pp=cnParts(v);return pp?pp.p.toUpperCase()===closeF.toUpperCase():v.toUpperCase()===closeF.toUpperCase()}
 /* card No. typed on the first ship of a closing sequence (e.g. 18/1 → SGZ354/70): the later ships of the same sequence and month
