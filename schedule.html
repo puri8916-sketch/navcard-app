@@ -600,6 +600,24 @@ html.ios .hbar{position:absolute;bottom:100%!important}
   #pilotBody button.del{min-height:40px;padding:6px 14px}
 }
 
+/* ทะเบียนเรือ on tablets (641–1000px): wider name / LOA / เอเย่นต์ columns, slimmer padding, so long names, 199.99 and agents aren't cut */
+@media (min-width:641px) and (max-width:1000px){
+  #view-ships .st col:nth-child(1){width:4%!important}
+  #view-ships .st col:nth-child(2){width:40%!important}
+  #view-ships .st col:nth-child(3){width:10%!important}
+  #view-ships .st col:nth-child(4){width:12%!important}
+  #view-ships .st col:nth-child(5){width:17%!important}
+  #view-ships .st col:nth-child(6){width:10%!important}
+  #view-ships .st col:nth-child(7){width:7%!important}
+  #view-ships .st td{padding-left:0;padding-right:0}
+  #view-ships .st th{padding-left:2px;padding-right:2px;white-space:nowrap;font-size:14px}
+  #view-ships .st input{padding:0 5px;font-size:16px}
+  #view-ships .st input.num{font-size:15px;padding:0 2px}
+  #view-ships .st input.nt{font-size:14px;padding:0 2px}
+  #view-ships .st td:first-child{font-size:14px}
+  #view-ships .st button.del{padding:6px 8px}
+}
+
 /* ทะเบียนเรือ on phones: each ship is a card — name on its own full-width line, then LOA + ท่าประจำ + ลบ, เอเย่นต์, หมายเหตุ with labels (the 7-column table cut names and LOA) */
 @media (max-width:640px){
   #view-ships .gridwrap{background:transparent;border:0;border-radius:0}
@@ -1853,7 +1871,18 @@ function renderShips(){
   $('shipBody').innerHTML = list.map((s,i)=>`<tr><td class="num">${i+1}</td>${cell(s,'name','nm')}${cell(s,'loa','num')}${cell(s,'berth')}${cell(s,'agent')}${cell(s,'note','nt')}<td><button type="button" class="del" data-delship="${esc(s.name)}">ลบ</button></td></tr>`).join('')
     || `<tr><td colspan="7" class="empty">ไม่พบเรือ</td></tr>`;
   $('tab-ships').textContent=`ทะเบียนเรือ (${S.ships.length})`;
+  setTimeout(fitShipCells,0);
 }
+/* ทะเบียนเรือ: a long ship name / berth / agent that doesn't fit its box gets a smaller font (down to 12px) instead of being cut */
+function fitShipCells(){ const B=$('shipBody'); if(!B||B.offsetParent===null) return;
+  const all=[...B.querySelectorAll('input[data-sf]')]; all.forEach(i=>{ i.style.fontSize=''; i.title=''; }); const list=all.filter(i=>i.value);
+  const m=list.map(i=>[i.scrollWidth,i.clientWidth,parseFloat(getComputedStyle(i).fontSize)]);
+  const lo=innerWidth<=640?16:12;   /* phones: never under 16px (iPhone zooms the page into smaller inputs) */
+  list.forEach((i,k)=>{ const [sw,cw,fs]=m[k]; if(cw>0 && sw>cw+1){ i.style.fontSize=Math.max(lo,fs*(cw-2)/sw).toFixed(1)+'px'; if(i.scrollWidth>i.clientWidth+1) i.title=i.value; } }); }
+const fitShipSoon=(ms=150)=>{ clearTimeout(fitShipCells._t); fitShipCells._t=setTimeout(fitShipCells,ms); };
+window.addEventListener('resize',()=>fitShipSoon());
+$('shipBody').addEventListener('input',()=>fitShipSoon(250));
+$('shipBody').addEventListener('change',()=>fitShipSoon(0));   /* the save handler fits again when the sheet answers */
 function scriptOld(err){ return /ไม่รู้จักคำสั่ง/.test(err.message) ? 'ต้องอัปเดตสคริปต์ Schedule.gs ก่อน (Deploy › Manage deployments › New version)' : err.message; }
 $('shipBody').addEventListener('change',async e=>{
   const inp=e.target.closest('input[data-sf]'); if(!inp) return;
@@ -1865,6 +1894,7 @@ $('shipBody').addEventListener('change',async e=>{
     Object.assign(s,ns); if(f==='name'){ S.shipIdx.delete(old); S.shipIdx.set(v,s); inp.dataset.ship=v; inp.closest('tr').querySelectorAll('[data-ship]').forEach(x=>x.dataset.ship=v); inp.closest('tr').querySelector('[data-delship]').dataset.delship=v; }
     inp.value=v; inp.classList.add('saved'); setTimeout(()=>inp.classList.remove('saved'),900); }
   catch(err){ inp.value=s[f]||''; toast('แก้ไม่สำเร็จ: '+scriptOld(err)); }
+  finally{ if(typeof fitShipCells==='function') fitShipCells(); }   /* saved (upper-cased) or put back → fit again */
 });
 $('shipBody').addEventListener('keydown',e=>{ const i=e.target.closest('input[data-sf]'); if(!i) return;
   if(e.key==='Enter'||e.key==='ArrowDown'||e.key==='ArrowUp'){ e.preventDefault(); const col=[...$('shipBody').querySelectorAll(`input[data-sf="${i.dataset.sf}"]`)]; const n=col[col.indexOf(i)+(e.key==='ArrowUp'?-1:1)]; if(n) n.focus(); else i.blur(); } });
