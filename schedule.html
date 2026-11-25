@@ -2147,6 +2147,7 @@ function boardSave(){
   if(!BD) return;
   try{ autoDropEmpty(); }catch(e){}
   try{ refreshSent(); }catch(e){}
+  try{ logGoneNow(); }catch(e){}
   for(const b of BD.blocks) for(const r of b.rows) if(r.st){ for(const sd of Object.keys(r.st)){ const a=sd==='L'?0:9, z=sd==='L'?9:17; if(!r.c.slice(a,z).some(v=>String(v).trim())) delete r.st[sd]; } if(!Object.keys(r.st).length) delete r.st; }   /* ship taken off → its ขึ้นแล้ว mark goes too */ const now=Date.now(), changed=[]; setTimeout(undoSave,0);
   for(const d of Object.keys(BD.all)){ const vis=BD.blocks.find(x=>x.date===d); if(vis){ vis.hidden=false; BD.all[d]=vis; } else BD.all[d].hidden=true; }
   for(const blk of Object.values(BD.all)){
@@ -2871,6 +2872,11 @@ function refreshSent(){ if(!BD) return; const m=sentMatch();
   for(const [p,c] of m.pairs){ const t=p.t, X=p.X; Object.assign(p,c); if(!parseTime(c.t,c.X)){ p.t=t; p.X=X; } }   /* a time being cleared/half-typed keeps the last good one */
   for(const [c,b] of m.fresh){ if(!b || !c.ship || !parseTime(c.t,c.X)) continue; b.sent=b.sent||{};
     let k=c.side+'|'+c.ship, n=2; while(b.sent[k]) k=c.side+'|'+c.ship+'#'+(n++); b.sent[k]={...c}; } }
+/* a ship deleted from the board → offer it for the log at once (owner 25 Nov 2026: no need to press คัดลอกส่งLINE first) */
+function logGoneNow(){ const left=sentMatch().left; if(!left.length) return; const L=new Set(left);
+  for(const b of Object.values(BD.all)) if(b.sent) for(const [k,h] of Object.entries(b.sent)) if(L.has(h)) delete b.sent[k];   /* asked once; ↶ brings the row back as a new one */
+  const gone=left.filter(h=>h.drf!=='งด' && parseTime(h.t,h.X));
+  if(gone.length) setTimeout(()=>askLog(gone),300); }
 function logGone(){ if(!BD) return; const gone=[];
   for(const h of sentMatch().left){ if(h.drf==='งด' || !parseTime(h.t, h.X)) continue;   /* cancelled / no time: nothing happened */
     gone.push(h); }
@@ -2886,7 +2892,7 @@ async function askLog(list){
   const inv=list.map(h=>{ if(!calls || !isOut(h)) return false; const c=openCall(calls,baseShip(h.ship)); return !!(c && norm(h.agent) && norm(c.agent||c.agentOut) && norm(h.agent)!==norm(c.agent||c.agentOut)); });
   const M=document.createElement('div'); M.className='crop-m';
   M.innerHTML=`<div class="crop-box lg-box" role="dialog" aria-label="บันทึกลงสมุดบันทึกเรือ"><h3>บันทึกลงสมุดบันทึกเรือ</h3>
-    <div class="crop-hint">เรือที่เอาออกจากตารางตั้งแต่ส่ง LINE ครั้งก่อน (ถือว่าทำแล้วตามเวลาในตาราง)</div>
+    <div class="crop-hint">เรือที่เพิ่งลบออกจากตาราง (ถือว่าทำแล้วตามเวลาในตาราง)</div>
     <div class="lg-list">${list.map((h,i)=>`<div class="lg-row"><label class="lg-main"><input type="checkbox" data-i="${i}" checked><b>${esc(h.ship)}</b><span class="lg-k k${kind(h)}">${kind(h)}</span><span class="num">${esc(h.t)}</span><span>${esc(h.berth)}</span><span class="pc">${esc(h.pilot)}</span></label>${isOut(h) && (!calls || openCall(calls,baseShip(h.ship)))?`<label class="lg-inv${inv[i]?' on':''}" title="สร้างเรือใหม่ในสมุดเฉพาะขาออก (เอเยนต์ต่างจากขาเข้า)"><input type="checkbox" data-v="${i}"${inv[i]?' checked':''}>แยกใบแจ้งหนี้</label>`:''}</div>`).join('')}</div>
     <div class="crop-row end"><button type="button" class="btn" data-a="no">ไม่บันทึก</button><button type="button" class="btn primary" data-a="ok">บันทึก</button></div></div>`;
   document.body.appendChild(M);
