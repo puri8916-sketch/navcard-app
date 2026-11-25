@@ -276,6 +276,17 @@ tr.shift.dragging{opacity:.45}
   .two{grid-template-columns:1fr;gap:10px}.two>.blk+.blk{border-left:0;padding-left:0;border-top:1px solid var(--line);padding-top:10px}
   .srow{grid-template-columns:repeat(6,minmax(0,1fr));padding-bottom:8px;border-bottom:1px dashed var(--line)}.srow.head,.srow .num,.srow .arw{display:none}.srow>input{grid-column:span 2}.srow>[id^="sf"],.srow>[id^="sb"]{grid-column:span 3;order:4}.srow>[id^="sb"]{order:5}.srow>[id^="sd"]{order:3}.srow>.ag{grid-column:span 4;order:6}.srow .mv{grid-column:span 2;order:6;justify-content:flex-end}.srow>.srm{grid-column:span 5;order:7}.srow .x{order:8}
 }
+/* ฟอร์มแก้ไข on tablets (761–960px): one ย้ายท่า on two lines — Order · Pilot · จากท่า → ไปท่า · Draught · ▲▼ ✕ / Agent · Remark;
+   in one line ท่า and Agent were cut (PRATEE…, SOUTHE…). The column titles stay above line 1 (Agent / Remark show their placeholder) */
+@media (min-width:761px) and (max-width:960px){
+  #sheet .srow{grid-template-columns:22px minmax(0,1.1fr) minmax(0,.8fr) minmax(0,1.2fr) 14px minmax(0,1.2fr) minmax(0,.8fr) 62px 26px;
+    grid-template-areas:"n o p f a b d mv x" ". ag ag ag ag rm rm rm rm"}
+  #sheet .srow:not(.head){padding-bottom:8px;border-bottom:1px dashed var(--line)}
+  #sheet .srow>:nth-child(1){grid-area:n}#sheet .srow>:nth-child(2){grid-area:o}#sheet .srow>:nth-child(3){grid-area:p}#sheet .srow>:nth-child(4){grid-area:f}
+  #sheet .srow>:nth-child(5){grid-area:a}#sheet .srow>:nth-child(6){grid-area:b}#sheet .srow>:nth-child(7){grid-area:d}#sheet .srow>:nth-child(8){grid-area:ag}
+  #sheet .srow>:nth-child(9){grid-area:rm}#sheet .srow>:nth-child(10){grid-area:mv}#sheet .srow>:nth-child(11){grid-area:x}
+  #sheet .srow.head{grid-template-areas:"n o p f a b d mv x"}#sheet .srow.head>:nth-child(8),#sheet .srow.head>:nth-child(9){display:none}
+}
 /* vessels + settings */
 .panel{margin-top:16px;display:flex;flex-direction:column;gap:14px}
 .toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:end}
