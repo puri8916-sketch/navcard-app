@@ -350,6 +350,29 @@ td.mkfc,td.mkfc *{color:var(--mkfc)!important}
 .calcpanel[hidden]{display:none}
 .calcpanel .cp-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;background:#fff;border-bottom:1px solid #e3e6ec;font-size:16px}
 .calcpanel iframe{flex:1;width:100%;border:0;background:#f4f4f7}
+/* สมุด on phones (≤640px): faster typing in the form — 17px text in every box (iPhone no longer zooms the page when a box is tapped:
+   it does that for text under 16px), taller boxes and bigger titles, large บันทึก / ยกเลิก; the search / ลำดับการปิด boxes too */
+@media (max-width:640px){
+  #sheet{width:calc(100% - 12px)}
+  #sheet .body{padding:10px 12px 12px;gap:10px}
+  #sheet label.f{font-size:15px}
+  #sheet label.f input,#sheet .srow input{font-size:17px;height:44px;padding:6px 10px}
+  #sheet .seg button{font-size:16px;padding:8px 16px}
+  #sheet .srow .mv button{width:42px;height:42px;font-size:16px}#sheet .srow .x{width:42px;height:42px;font-size:18px}
+  /* ย้ายท่า: Order · Pilot (room for "-CAP- 24-08-00") / จากท่า · ไปท่า / Draught · Agent / ▲▼ · Remark · ✕ */
+  #sheet .srow>[id^="so"],#sheet .srow>[id^="sp"]{grid-column:span 3}
+  #sheet .srow>[id^="sd"]{grid-column:span 2;order:6}#sheet .srow>.ag{grid-column:span 4;order:6}
+  #sheet .srow .mv{grid-column:span 2;order:7;justify-content:flex-start}#sheet .srow>.srm{grid-column:span 3;order:8}#sheet .srow .x{order:9}
+  #sheet .lg{font-size:16px}#sheet .lg label.sync{font-size:15px}
+  #sheet .lg label.sync input{width:20px;height:20px}
+  #sheet footer{padding:10px 12px calc(10px + env(safe-area-inset-bottom,0px))}
+  #sheet footer .btn{font-size:17px;min-height:46px;padding:8px 18px}
+  #sheet footer #edSave{flex:1 1 auto;font-weight:700}
+  #sheet footer .hint{display:none}
+  #sheet header h2{font-size:17px}#sheet header .ibtn{width:44px;height:44px;font-size:18px}
+  .combo-pop .opt{font-size:17px;padding:10px 12px}.combo-pop .opt small{font-size:13px}
+  .filters #q,.cfwrap input{font-size:16px}
+}
 /* table in the printed logbook's font (Times New Roman look) */
 table.log,table.log *{font-family:var(--f-sheet)!important;letter-spacing:0!important}
 table.log{font-size:18px}table.log td.mono{font-size:18px}table.log thead th{font-size:16px;text-transform:none;font-weight:400}   /* headers as printed in the logbook: Ship’s Name, ETA Bar */table.log thead tr.grp th{font-size:16px}table.log tbody tr.shift td{font-size:16px}
