@@ -69,6 +69,14 @@ input[type=date]{border:1px solid var(--line);background:var(--surface);border-r
 :root{--gA-bg:#e8f0fd;--gA-bd:#9db8ea;--gA-ink:#1c3fa6;--gB-bg:#e9f6ec;--gB-bd:#92c9a0;--gB-ink:#16612a}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--gA-bg:#1c2a45;--gA-bd:#3c5a94;--gA-ink:#b9cdf5;--gB-bg:#17321f;--gB-bd:#3b7a4c;--gB-ink:#a9e0b8}}
 :root[data-theme="dark"]{--gA-bg:#1c2a45;--gA-bd:#3c5a94;--gA-ink:#b9cdf5;--gB-bg:#17321f;--gB-bd:#3b7a4c;--gB-ink:#a9e0b8}
+/* dark mode (phone / computer set to dark): text that was hard-coded black or dark grey becomes light —
+   table text with the default black ink, the form's field titles, แจ้งเรืออย. titles and rows */
+:root[data-theme="dark"] body.ink-black{--pen:var(--ink)}:root[data-theme="dark"] body.ink-black table.log .jobno{color:var(--ink)}
+:root[data-theme="dark"] #sheet label.f,:root[data-theme="dark"] #sheet .srow.head,:root[data-theme="dark"] .stbox{color:var(--muted)}:root[data-theme="dark"] .tools-tgl{color:var(--muted)}
+:root[data-theme="dark"] .ay-h,:root[data-theme="dark"] .ay-row{color:var(--ink)}:root[data-theme="dark"] .ay-row.on{background:#1f3a24}:root[data-theme="dark"] .ay-row .k.IN{color:#6fd08c}:root[data-theme="dark"] .ay-row .k.SH{color:#f0a860}:root[data-theme="dark"] .ay-row .k.OUT{color:#8eb2ff}:root[data-theme="dark"] .log td.mkfill{--pen:#000;--pen-red:#c2261e;--pen-green:#16612a}:root[data-theme="dark"] body:not(.ink-black) .log td.mkfill{--pen:#1c3fa6}:root[data-theme="dark"] body table.log td.mkfill .jobno{color:var(--pen)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) body.ink-black{--pen:var(--ink)}:root:not([data-theme="light"]) body.ink-black table.log .jobno{color:var(--ink)}
+:root:not([data-theme="light"]) #sheet label.f,:root:not([data-theme="light"]) #sheet .srow.head,:root:not([data-theme="light"]) .stbox{color:var(--muted)}:root:not([data-theme="light"]) .tools-tgl{color:var(--muted)}
+:root:not([data-theme="light"]) .ay-h,:root:not([data-theme="light"]) .ay-row{color:var(--ink)}:root:not([data-theme="light"]) .ay-row.on{background:#1f3a24}:root:not([data-theme="light"]) .ay-row .k.IN{color:#6fd08c}:root:not([data-theme="light"]) .ay-row .k.SH{color:#f0a860}:root:not([data-theme="light"]) .ay-row .k.OUT{color:#8eb2ff}:root:not([data-theme="light"]) .log td.mkfill{--pen:#000;--pen-red:#c2261e;--pen-green:#16612a}:root:not([data-theme="light"]) body:not(.ink-black) .log td.mkfill{--pen:#1c3fa6}:root:not([data-theme="light"]) body table.log td.mkfill .jobno{color:var(--pen)}}
 .btn:hover{background:var(--hover)}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:500}
 .btn.primary:hover{filter:brightness(1.08)}
@@ -1553,6 +1561,7 @@ function paintMarks(rows){
     const c=byId.get(tr.dataset.id);if(!c)return;const pre=tr.dataset.si!=null?"s"+tr.dataset.si+":":"";
     [...tr.children].forEach((td,j)=>{const k=pre+CELL_KEYS[j];td.dataset.k=k;const m=c.marks?.[k],fc=c.marks?.["fc|"+k];
       delete td.dataset.hl;td.style.background="";
+      td.classList.toggle("mkfill",!!m&&m[0]==="#");   /* bright Excel-style fill: text stays black in dark mode */
       if(m){if(m[0]==="#")td.style.background=m;else td.dataset.hl=m}
       if(fc){td.classList.add("mkfc");td.style.setProperty("--mkfc",fc)}else{td.classList.remove("mkfc");td.style.removeProperty("--mkfc")}});
   });
