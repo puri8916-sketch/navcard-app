@@ -16,6 +16,7 @@ const dlg=await p.locator('.lg-box').count();const names=await p.locator('.lg-bo
 console.log(w,'dialog',dlg,names);if(dlg!==1||names.length!==1||names[0]!==info[0])throw Error('expected dialog for '+info[0]);
 await p.click('.lg-box [data-a="ok"]');await p.waitForTimeout(800);
 const tt=await p.evaluate(()=>[...document.querySelectorAll('.toast,#toast')].map(e=>e.textContent).join('|'));console.log('toast',tt);if(!/บันทึกลงสมุดบันทึกเรือแล้ว/.test(tt)||!ops.some(o=>o.col==='calls'))throw Error('log not written');
+if(await p.evaluate(()=>logqGet().length))throw Error('queue not cleared after success');
 // งด row deleted → no dialog
 await p.evaluate(()=>{const r=BD.blocks.flatMap(b=>b.rows).find(r=>r.c[3]==='งด');for(let k=0;k<9;k++)r.c[k]='';boardSave()});await p.waitForTimeout(600);
 if(await p.locator('.lg-box').count())throw Error('งด offered');
