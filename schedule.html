@@ -983,8 +983,11 @@ function insertNew(rows, m){   /* เรือเพิ่ม: แค่เร�
   const side=m.type==='IN'?'L':'R';
   let lastLE=-1; rows.forEach((r,k)=>{ if(!r.blank && r[side] && sortMv(r[side],m)<=0) lastLE=k; });
   let nextGT=rows.length; for(let k=lastLE+1;k<rows.length;k++) if(!rows[k].blank && rows[k][side]){ nextGT=k; break; }
-  for(let k=lastLE+1;k<nextGT;k++) if(!rows[k].blank && !rows[k][side]){ rows[k][side]=m; return; }
-  let at=nextGT; while(at>lastLE+1 && rows[at-1] && rows[at-1].blank) at--;   // stick to the ships above, not after a separator
+  const os=side==='L'?'R':'L', near=o=>o.datetime===m.datetime;
+  /* share a row only with an other-side ship of the same time (as จัดอัตโนมัติ does); otherwise a row of its own at its time */
+  for(let k=lastLE+1;k<nextGT;k++) if(!rows[k].blank && !rows[k][side] && rows[k][os] && near(rows[k][os])){ rows[k][side]=m; return; }
+  let at=nextGT; for(let k=lastLE+1;k<nextGT;k++) if(!rows[k].blank && rows[k][os] && sortMv(rows[k][os],m)>0){ at=k; break; }
+  while(at>lastLE+1 && rows[at-1] && rows[at-1].blank) at--;   // stick to the ships above, not after a separator
   rows.splice(at,0,{[side]:m});
 }
 /* a day shown by the automatic arrangement keeps that arrangement once ships are added to it */
