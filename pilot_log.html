@@ -1788,7 +1788,9 @@ function renderShifts(){
     const or=el("input",{id:"so"+i,class:"mono","aria-label":"Order ครั้งที่ "+(i+1),placeholder:"__-__-____","data-tmask":"1",autocomplete:"off",value:s.order||""});or.oninput=()=>s.order=or.value.trim();
     const pi=el("input",{id:"sp"+i,class:"mono","aria-label":"Pilot No.",placeholder:"Pilot",title:"-CAP- ใส่เวลาต่อท้ายได้ เช่น -CAP- 14-10-0700",value:capRaw(s.pilot,s.capTime)});combo(pi,pilotOpts);pi.oninput=()=>{const p=capSplit(pi.value);s.pilot=p.p;s.capTime=p.t};
     const fb=el("input",{id:"sf"+i,class:"mono","aria-label":"จากท่า",placeholder:"จากท่า",value:s.fromBerth||""});combo(fb,berthOpts,{upper:true});fb.oninput=()=>s.fromBerth=fb.value.trim();
-    const be=el("input",{id:"sb"+i,class:"mono","aria-label":"ไปท่า",placeholder:"ไปท่า",value:s.berth||""});combo(be,berthOpts,{upper:true});be.oninput=()=>s.berth=be.value.trim();
+    const be=el("input",{id:"sb"+i,class:"mono","aria-label":"ไปท่า",placeholder:"ไปท่า",value:s.berth||""});combo(be,berthOpts,{upper:true});be.oninput=()=>{const old=(s.berth||"").toUpperCase();s.berth=be.value.trim();
+      /* ไปท่า of this shift = จากท่า of the next one (filled while typing; a จากท่า typed by hand that differs stays) */
+      const n=shifts[i+1];if(n&&(!n.fromBerth||n.fromBerth.toUpperCase()===old)){n.fromBerth=s.berth.toUpperCase();const f=$("sf"+(i+1));if(f)f.value=n.fromBerth}};
     const dr=el("input",{id:"sd"+i,class:"mono","aria-label":"Draught",placeholder:"Draught",autocomplete:"off",value:s.draught||""});dr.oninput=()=>s.draught=dr.value.trim();
     const ag=el("input",{id:"sa"+i,class:"ag","aria-label":"Agent",placeholder:"Agent",autocomplete:"off",value:s.agent||""});ag.oninput=()=>s.agent=ag.value.trim();combo(ag,agentOpts);
     const rm=el("input",{id:"sr"+i,class:"srm","aria-label":"Remark ย้ายท่าครั้งที่ "+(i+1),placeholder:"Remark",autocomplete:"off",value:s.remark||""});rm.oninput=()=>s.remark=rm.value.trim();
