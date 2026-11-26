@@ -2596,11 +2596,17 @@ function setColor(col){
       pushUndo(); typingKey=`${el.dataset.b}:${el.dataset.r}:${el.dataset.c}`;
       document.execCommand('styleWithCSS',false,true);
       document.execCommand('foreColor',false,col||(PILOT_COLS.includes(+el.dataset.c)?'#FF0000':DRF_COLS.includes(+el.dataset.c)?'#0070C0':'#000000'));
-      const {b,r,c}=cellOf(el); const row=BD.blocks[b].rows[r]; row.c[c]=el.value; setH(row,c,cleanHTML(el)); boardSave(); return;
+      const {b,r,c}=cellOf(el); const row=BD.blocks[b].rows[r]; row.c[c]=el.value; setH(row,c,cleanHTML(el)); pairColor(b,r,c,true); boardSave(); return;
     }
   }
-  pushUndo(); eachSel((row,r,c)=>{ row.r[c]=col; setH(row,c,''); }); boardSave(); renderBoard();
+  pushUndo(); eachSel((row,r,c)=>{ row.r[c]=col; setH(row,c,''); });
+  { const R=rect(); eachSel((row,r,c)=>{ const o2=c===4?5:c===5?4:-1; if(o2>=0 && (o2<R.c0||o2>R.c1)) pairColor(R.b,r,c); }); }
+  boardSave(); renderBoard();
 }
+/* ETA ↔ POB holding the same time: a colour given to one goes to the other too (like a time typed in one) */
+function pairColor(b,r,c,dom){ const o2=c===4?5:c===5?4:-1; if(o2<0) return; const row=BD.blocks[b].rows[r], base=BD.blocks[b].date||BD.date, dt=parseTime(row.c[c],base);
+  if(!dt || parseTime(row.c[o2],base)!==dt) return; mirrorTime(row,c,o2,dt);
+  if(dom){ const e=BOARD.querySelector(`.ce[data-b="${b}"][data-r="${r}"][data-c="${o2}"]`); if(e){ e.innerHTML=cellHTML(row,o2); e.style.color=colOf(row,o2)||''; } } }
 function setFill(on){ if(!needSel()) return; pushUndo(); eachSel((row,r,c)=>{ if(!row.g) row.g=Array(17).fill(''); row.g[c]=on?FILL:''; }); boardSave(); renderBoard(); }
 function toggleBold(){ if(!needSel()) return; let all=true; eachSel((row,r,c)=>{ if(!isBold(row,c)) all=false; });
   pushUndo(); eachSel((row,r,c)=>{ if(!row.w) row.w=Array(17).fill(''); row.w[c]=all?'n':'b'; }); boardSave(); renderBoard(); }
