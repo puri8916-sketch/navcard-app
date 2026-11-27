@@ -881,7 +881,7 @@ const CACHE_KEY = () => 'shipsched_cache_v1:'+(CFG.API_URL||'demo');
 function cacheGet(){ try{ return JSON.parse(localStorage.getItem(CACHE_KEY())||'null'); }catch(e){ return null; } }
 function cacheSet(){ try{ localStorage.setItem(CACHE_KEY(), JSON.stringify({init:S.init, mv:S.mv, loaded:S.loaded})); }catch(e){} }
 function applyInit(d){
-  S.init=d; if(!window.__bpl){ window.__bpl=1; setTimeout(()=>{ try{ bpendLoad(); }catch(e){} try{ logqRun(); }catch(e){} },800); }
+  S.init=d; if(!window.__bpl){ window.__bpl=1; setTimeout(()=>{ try{ bpendLoad(); }catch(e){} try{ logqRun(); }catch(e){} try{ askRun(); }catch(e){} },800); }
   S.ships = d.ships.filter(s=>s.name); S.shipIdx = new Map(S.ships.map(s=>[s.name.toUpperCase(), s]));
   S.berths = d.berths; S.agents = d.agents; S.pilots = d.pilots; S.duty = d.duty; S.fixed = d.fixed; d.profiles=d.profiles||{}; d.profiles.photos=d.profiles.photos||{}; d.profiles.names=d.profiles.names||{}; S.photos=d.profiles.photos; S.names=d.profiles.names;
   S.settings = {...S.settings, ...d.settings};
@@ -2885,14 +2885,23 @@ function refreshSent(){ if(!BD) return; const m=sentMatch();
 function logGoneNow(){ const left=sentMatch().left; if(!left.length) return; const L=new Set(left);
   for(const b of Object.values(BD.all)) if(b.sent) for(const [k,h] of Object.entries(b.sent)) if(L.has(h)) delete b.sent[k];   /* asked once; ↶ brings the row back as a new one */
   const gone=left.filter(h=>h.drf!=='งด' && parseTime(h.t,h.X));
-  if(gone.length) setTimeout(()=>askLog(gone),300); }
+  if(gone.length){ askAdd(gone); setTimeout(()=>askLog(gone),300); } }
 function logGone(){ if(!BD) return; const gone=[];
   for(const h of sentMatch().left){ if(h.drf==='งด' || !parseTime(h.t, h.X)) continue;   /* cancelled / no time: nothing happened */
     gone.push(h); }
   for(const blk of Object.values(BD.all)) blk.sent=boardHalves(blk);
   boardSave();
-  if(gone.length) setTimeout(()=>askLog(gone),600); }
+  if(gone.length){ askAdd(gone); setTimeout(()=>askLog(gone),600); } }
+/* ships taken off the board but not answered yet (the box shows 1–3 s later; the menu switched or the page closed before the answer):
+   kept on this device and asked again the next time this page opens */
+const ASKK=()=>'skp_logask:'+(CFG.API_URL||'demo'), askKey=h=>[h.side,h.ship,h.t,h.X].join('|');
+const askGet=()=>{ try{ return JSON.parse(localStorage.getItem(ASKK())||'[]')||[]; }catch(e){ return []; } };
+const askPut=q=>{ try{ q.length?localStorage.setItem(ASKK(),JSON.stringify(q)):localStorage.removeItem(ASKK()); }catch(e){} };
+function askAdd(list){ const q=askGet(), have=new Set(q.map(askKey)); askPut([...q, ...list.filter(h=>!have.has(askKey(h)))]); }
+function askDone(list){ const k=new Set(list.map(askKey)); askPut(askGet().filter(h=>!k.has(askKey(h)))); }
+function askRun(){ const q=askGet(); if(q.length && !document.querySelector('.lg-box')) askLog(q); }
 async function askLog(list){
+  askAdd(list);
   list.sort((a,b)=>parseTime(a.t,a.X)<parseTime(b.t,b.X)?-1:1);
   const kind=h=>h.side==='L'?'เข้า':(String(h.berth).includes('<>')?'ย้าย':'ออก');
   /* แยกใบแจ้งหนี้: an ออก (not ย้าย) leg whose agent differs from the open inbound record in the log → ticked in advance; untick to log it as usual */
@@ -2906,8 +2915,10 @@ async function askLog(list){
     <div class="crop-row end"><button type="button" class="btn" data-a="no">ไม่บันทึก</button><button type="button" class="btn primary" data-a="ok">บันทึก</button></div></div>`;
   document.body.appendChild(M);
   M.addEventListener('change',e=>{ const v=e.target.closest('input[data-v]'); if(v) v.parentElement.classList.toggle('on',v.checked); });
-  M.addEventListener('click',async e=>{ const a=e.target.closest('[data-a]')?.dataset.a; if(e.target===M||a==='no'){ M.remove(); return; }
+  M.addEventListener('click',async e=>{ const a=e.target.closest('[data-a]')?.dataset.a;   /* only the two buttons close it: a stray tap outside must not drop the ships */
+    if(a==='no'){ askDone(list); M.remove(); return; }
     if(a!=='ok') return; const pick=[...M.querySelectorAll('input[data-i]:checked')].map(x=>({...list[+x.dataset.i], inv:!!M.querySelector(`input[data-v="${x.dataset.i}"]:checked`)})); M.remove();
+    askDone(list);   /* answered (sync, together with logqAdd below): from here the write queue keeps them */
     if(!pick.length) return;
     const qid=logqAdd(pick);
     try{ const t0=performance.now(); const n=await writeLog(pick); logqDone(qid); const sec=((performance.now()-t0)/1000).toFixed(1); toast(n?`บันทึกลงสมุดบันทึกเรือแล้ว ${n} รายการ (${sec} วิ)`:`มีในสมุดบันทึกเรือแล้ว (${sec} วิ)`); }
