@@ -2894,12 +2894,13 @@ function logGone(){ if(!BD) return; const gone=[];
   if(gone.length){ askAdd(gone); setTimeout(()=>askLog(gone),600); } }
 /* ships taken off the board but not answered yet (the box shows 1–3 s later; the menu switched or the page closed before the answer):
    kept on this device and asked again the next time this page opens */
+document.addEventListener('keydown',e=>{ const box=document.querySelector('.lg-log'); if(box && !box.contains(e.target)){ e.preventDefault(); e.stopPropagation(); box.querySelector('.lg-ok')?.focus(); } },true);
 const ASKK=()=>'skp_logask:'+(CFG.API_URL||'demo'), askKey=h=>[h.side,h.ship,h.t,h.X].join('|');
 const askGet=()=>{ try{ return JSON.parse(localStorage.getItem(ASKK())||'[]')||[]; }catch(e){ return []; } };
 const askPut=q=>{ try{ q.length?localStorage.setItem(ASKK(),JSON.stringify(q)):localStorage.removeItem(ASKK()); }catch(e){} };
 function askAdd(list){ const q=askGet(), have=new Set(q.map(askKey)); askPut([...q, ...list.filter(h=>!have.has(askKey(h)))]); }
 function askDone(list){ const k=new Set(list.map(askKey)); askPut(askGet().filter(h=>!k.has(askKey(h)))); }
-function askRun(){ const q=askGet(); if(q.length && !document.querySelector('.lg-box')) askLog(q); }
+function askRun(){ const q=askGet(); if(q.length && !document.querySelector('.lg-log')) askLog(q); }
 async function askLog(list){
   askAdd(list);
   list.sort((a,b)=>parseTime(a.t,a.X)<parseTime(b.t,b.X)?-1:1);
@@ -2909,11 +2910,11 @@ async function askLog(list){
   const isOut=h=>h.side==='R' && !String(h.berth).includes('<>');
   const inv=list.map(h=>{ if(!calls || !isOut(h)) return false; const c=openCall(calls,baseShip(h.ship)); return !!(c && norm(h.agent) && norm(c.agent||c.agentOut) && norm(h.agent)!==norm(c.agent||c.agentOut)); });
   const M=document.createElement('div'); M.className='crop-m';
-  M.innerHTML=`<div class="crop-box lg-box" role="dialog" aria-label="บันทึกลงสมุดบันทึกเรือ"><h3>บันทึกลงสมุดบันทึกเรือ</h3>
-    <div class="crop-hint">เรือที่เพิ่งลบออกจากตาราง (ถือว่าทำแล้วตามเวลาในตาราง)</div>
+  M.innerHTML=`<div class="crop-box lg-box lg-log" role="dialog" aria-modal="true" aria-label="บันทึกลงสมุดบันทึกเรือ"><h3>บันทึกลงสมุดบันทึกเรือ</h3>
+    <div class="crop-hint">เรือที่เพิ่งลบออกจากตาราง (ถือว่าทำแล้วตามเวลาในตาราง) · ลำไหนไม่ต้องบันทึก เอาติ๊กออกแล้วกดบันทึก</div>
     <div class="lg-list">${list.map((h,i)=>`<div class="lg-row"><label class="lg-main"><input type="checkbox" data-i="${i}" checked><b>${esc(h.ship)}</b><span class="lg-k k${kind(h)}">${kind(h)}</span><span class="num">${esc(h.t)}</span><span>${esc(h.berth)}</span><span class="pc">${esc(h.pilot)}</span></label>${isOut(h) && (!calls || openCall(calls,baseShip(h.ship)))?`<label class="lg-inv${inv[i]?' on':''}" title="สร้างเรือใหม่ในสมุดเฉพาะขาออก (เอเยนต์ต่างจากขาเข้า)"><input type="checkbox" data-v="${i}"${inv[i]?' checked':''}>แยกใบแจ้งหนี้</label>`:''}</div>`).join('')}</div>
-    <div class="crop-row end"><button type="button" class="btn" data-a="no">ไม่บันทึก</button><button type="button" class="btn primary" data-a="ok">บันทึก</button></div></div>`;
-  document.body.appendChild(M);
+    <div class="crop-row end"><button type="button" class="btn primary lg-ok" data-a="ok">บันทึก</button></div></div>`;
+  document.body.appendChild(M); M.querySelector('.lg-ok').focus();   /* owner 27 Nov 2026: บันทึก must be pressed before anything else (no ไม่บันทึก, no closing by a tap outside) */
   M.addEventListener('change',e=>{ const v=e.target.closest('input[data-v]'); if(v) v.parentElement.classList.toggle('on',v.checked); });
   M.addEventListener('click',async e=>{ const a=e.target.closest('[data-a]')?.dataset.a;   /* only the two buttons close it: a stray tap outside must not drop the ships */
     if(a==='no'){ askDone(list); M.remove(); return; }

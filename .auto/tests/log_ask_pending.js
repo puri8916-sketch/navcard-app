@@ -21,7 +21,11 @@ await p.click('.lg-box [data-a="ok"]');await p.waitForTimeout(1000);
 const n=ops.filter(o=>o.col==='calls'&&o.doc&&o.doc.vessel===loc.ship).length;console.log('written',n);if(n!==1)throw Error('not written once');
 if(await p.evaluate(()=>askGet().length))throw Error('pending not cleared');
 await p.reload();await p.waitForTimeout(2500);if(await p.locator('.lg-box').count())throw Error('asked again after answer');
-// ไม่บันทึก clears too
+// no ไม่บันทึก button; keys don't reach the board; unticked + บันทึก = nothing written, cleared
 await p.evaluate(()=>{askAdd([{side:'R',ship:'X SHIP',t:'27-1000',X:BD.date,berth:'MPP',pilot:'1',agent:'A'}])});await p.reload();await p.waitForTimeout(2500);
-await p.click('.lg-box [data-a="no"]');if(await p.evaluate(()=>askGet().length))throw Error('ไม่บันทึก did not clear');
+if(await p.locator('.lg-box [data-a="no"]').count())throw Error('ไม่บันทึก still there');
+const before=await p.evaluate(()=>JSON.stringify(BD.blocks.map(b=>b.rows.map(r=>r.c))));await p.keyboard.press('Delete');await p.keyboard.type('zz');
+if(before!==await p.evaluate(()=>JSON.stringify(BD.blocks.map(b=>b.rows.map(r=>r.c)))))throw Error('keys reached the board');
+await p.uncheck('.lg-box input[data-i="0"]');const n0=ops.length;await p.click('.lg-box [data-a="ok"]');await p.waitForTimeout(600);
+if(ops.length!==n0||await p.evaluate(()=>askGet().length)||await p.locator('.lg-box').count())throw Error('unticked บันทึก wrong');
 if(errs.length)throw Error(errs.join('|'));console.log('PASS');await b.close()})().catch(e=>{console.error('FAIL',e.message);process.exit(1)});
